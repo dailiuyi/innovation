@@ -1,0 +1,105 @@
+name: innovation
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  postgres:
+    image: postgres:17.6-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: innovation
+      POSTGRES_USER: innovation
+      POSTGRES_PASSWORD: ${AR_DATABASE_PASSWORD:?Set AR_DATABASE_PASSWORD in a private env file}
+      TZ: UTC
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks: [services]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  redis:
+    image: redis:7.4.5-alpine3.21
+    restart: unless-stopped
+    command: [redis-server, --save, "", --appendonly, "no"]
+    tmpfs:
+      - /data
+    networks: [services]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+
+  backend:
+    image: innovation-backend:infra-v1
+    build:
+      context: .
+      dockerfile: deploy/backend.Dockerfile
+    restart: unless-stopped
+    environment:
+      AR_DATABASE_URL: jdbc:postgresql://postgres:5432/innovation
+      AR_DATABASE_USER: innovation
+      AR_DATABASE_PASSWORD: ${AR_DATABASE_PASSWORD:?Set AR_DATABASE_PASSWORD}
+      AR_TOKEN_SECRET: ${AR_TOKEN_SECRET:?Set AR_TOKEN_SECRET}
+      AR_BOOTSTRAP_PASSWORD: ${AR_BOOTSTRAP_PASSWORD:?Set AR_BOOTSTRAP_PASSWORD}
+      AR_REDIS_HOST: redis
+      AR_REDIS_PORT: "6379"
+      AR_PORT: "8080"
+      AR_UPLOAD_DIR: /data/framework-uploads
+      AR_STORAGE_ENABLED: "true"
+      AR_STORAGE_ROOT: /data/artifacts
+      AR_STORAGE_MAX_BYTES: ${AR_STORAGE_MAX_BYTES:?Set a positive infrastructure test limit; validate with real artifacts later}
+      TZ: UTC
+    volumes:
+      - artifacts_data:/data/artifacts
+      - framework_uploads:/data/framework-uploads
+      - backend_logs:/app/.local/logs
+    networks: [services]
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, java, -cp, /opt/healthcheck, Healthcheck]
+      interval: 30s
+      timeout: 10s
+      start_period: 90s
+      retries: 5
+    logging: *logging
+
+  gateway:
+    image: innovation-gateway:infra-v1
+    build:
+      context: .
+      dockerfile: deploy/gateway.Dockerfile
+    restart: unless-stopped
+    ports:
+      - "${AR_BIND_ADDRESS:-127.0.0.1}:${AR_HTTP_PORT:-18081}:8080"
+    networks: [edge, services]
+    depends_on:
+      backend: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, --spider, http://127.0.0.1:8080/healthz]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging: *logging
+
+networks:
+  edge: {}
+  services:
+    internal: true
+
+volumes:
+  postgres_data: {}
+  artifacts_data: {}
+  framework_uploads: {}
+  backend_logs: {}

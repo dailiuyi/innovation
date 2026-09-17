@@ -1,0 +1,98 @@
+{
+  "stage": "framework",
+  "database": "PostgreSQL 17.6",
+  "checks": [
+    {
+      "name": "wrong password rejected",
+      "passed": true
+    },
+    {
+      "name": "anonymous denied",
+      "passed": true
+    },
+    {
+      "name": "equal roles and permissions",
+      "passed": true
+    },
+    {
+      "name": "routers load",
+      "passed": true
+    },
+    {
+      "name": "user pagination",
+      "passed": true
+    },
+    {
+      "name": "/monitor/logininfor/list PostgreSQL query",
+      "passed": true
+    },
+    {
+      "name": "/monitor/logininfor/list date filter",
+      "passed": true
+    },
+    {
+      "name": "/monitor/operlog/list PostgreSQL query",
+      "passed": true
+    },
+    {
+      "name": "/monitor/operlog/list date filter",
+      "passed": true
+    },
+    {
+      "name": "/register denied",
+      "passed": true
+    },
+    {
+      "name": "/system/role/list denied",
+      "passed": true
+    },
+    {
+      "name": "/common/upload denied",
+      "passed": true
+    },
+    {
+      "name": "/system/user/102 denied",
+      "passed": true
+    },
+    {
+      "name": "/tool/gen/list denied",
+      "passed": true
+    },
+    {
+      "name": "disabled token rejected",
+      "passed": true
+    },
+    {
+      "name": "last administrator protected",
+      "passed": true
+    },
+    {
+      "name": "password reset succeeds",
+      "passed": true
+    },
+    {
+      "name": "old token after password reset rejected",
+      "passed": true
+    },
+    {
+      "name": "logout token rejected",
+      "passed": true
+    },
+    {
+      "name": "expired Redis credential rejected",
+      "passed": true
+    },
+    {
+      "name": "own password change succeeds",
+      "passed": true
+    },
+    {
+      "name": "own password revokes current token",
+      "passed": true
+    },
+    {
+      "name": "profile and users do not expose password hashes",
+      "passed": true
+    }
+  ]
+}

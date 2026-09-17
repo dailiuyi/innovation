@@ -1,0 +1,109 @@
+{
+  "stage": "infrastructure",
+  "project": "innovation-infra-check",
+  "containerRecreationTested": true,
+  "checks": [
+    {
+      "name": "test config uses loopback and isolated port",
+      "passed": true
+    },
+    {
+      "name": "resolved gateway stays on isolated loopback port",
+      "passed": true
+    },
+    {
+      "name": "only gateway exposes host ports",
+      "passed": true
+    },
+    {
+      "name": "service network is internal",
+      "passed": true
+    },
+    {
+      "name": "Redis session data uses tmpfs",
+      "passed": true
+    },
+    {
+      "name": "gateway has no artifact volume",
+      "passed": true
+    },
+    {
+      "name": "database and artifacts use named volumes",
+      "passed": true
+    },
+    {
+      "name": "backend is not root",
+      "passed": true
+    },
+    {
+      "name": "nginx configuration loads",
+      "passed": true
+    },
+    {
+      "name": "frontend served",
+      "passed": true
+    },
+    {
+      "name": "scene API requires login",
+      "passed": true
+    },
+    {
+      "name": "private path blocked /artifacts/file.bin",
+      "passed": true
+    },
+    {
+      "name": "private path blocked /_artifacts/file.bin",
+      "passed": true
+    },
+    {
+      "name": "private path blocked /staging/file.part",
+      "passed": true
+    },
+    {
+      "name": "private path blocked /committed/file.bin",
+      "passed": true
+    },
+    {
+      "name": "private path blocked /data/artifacts/file.bin",
+      "passed": true
+    },
+    {
+      "name": "private path blocked /.env",
+      "passed": true
+    },
+    {
+      "name": "framework upload remains disabled",
+      "passed": true
+    },
+    {
+      "name": "isolated bootstrap login",
+      "passed": true
+    },
+    {
+      "name": "scene write through proxy",
+      "passed": true
+    },
+    {
+      "name": "artifact volume supports hard links",
+      "passed": true
+    },
+    {
+      "name": "isolated bootstrap login",
+      "passed": true
+    },
+    {
+      "name": "database survives container recreation",
+      "passed": true
+    },
+    {
+      "name": "artifact bytes survive container recreation",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "No real artifact/client contract",
+    "No upload/publication/download APIs",
+    "No real disk-full or power-loss test",
+    "No physical Linux host migration"
+  ]
+}

@@ -1,0 +1,3771 @@
+openapi: 3.0.3
+info:
+  title: AR Demo and candidate API
+  version: 0.2.0
+  description: 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Docker
+    Compose and local ArtifactStorage infrastructure are available without artifact
+    HTTP endpoints. Historical cloud/day-night resource and publication contracts
+    below await a real deliverable and client loading agreement; they are not implemented.'
+servers:
+- url: https://api.example.invalid
+  description: placeholder
+paths:
+  /api/v1/scenes:
+    post:
+      operationId: createScene
+      summary: 创建场景（包含地点信息）
+      description: 创建场景（包含地点信息）
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SceneView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SceneCreate'
+      tags:
+      - Demo 已实现
+    get:
+      operationId: listScenes
+      summary: 列出场景
+      description: 列出场景
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      - name: name
+        in: query
+        required: false
+        schema:
+          type: string
+          maxLength: 200
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SceneList'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /api/v1/scenes/{sceneId}:
+    get:
+      operationId: getScene
+      summary: 查看场景和当前昼夜版本
+      description: 查看场景和当前昼夜版本
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: sceneId
+        in: path
+        required: true
+        schema: &id001
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SceneView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+    put:
+      operationId: updateScene
+      summary: 修改场景基本信息
+      description: 修改场景基本信息
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: sceneId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SceneView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SceneUpdate'
+      tags:
+      - Demo 已实现
+  /api/v1/scenes/{sceneId}/enabled:
+    put:
+      operationId: setSceneEnabled
+      summary: 启用或禁用场景
+      description: 启用或禁用场景
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: sceneId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SceneView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnabledUpdate'
+      tags:
+      - Demo 已实现
+  /api/v1/markers:
+    post:
+      operationId: createMarker
+      summary: 创建固定坐标的现场标记
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。创建固定坐标的现场标记
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarkerView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkerCreate'
+      tags:
+      - 候选：尚未实现
+  /api/v1/markers/{markerId}/enabled:
+    put:
+      operationId: setMarkerEnabled
+      summary: 启用或禁用现场标记
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。启用或禁用现场标记
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: markerId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Resource'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MarkerEnabled'
+      tags:
+      - 候选：尚未实现
+  /api/v1/scenes/{sceneId}/versions:
+    post:
+      operationId: createVersion
+      summary: 创建昼夜草稿
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。客户端生成稳定UUID作为id；同id同scene/variant返回原版本，不同参数409。服务端锁scene行分配versionNo。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: sceneId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VersionCreate'
+      tags:
+      - 候选：尚未实现
+    get:
+      operationId: listVersions
+      summary: 查看历史版本以选择回滚目标
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。查看历史版本以选择回滚目标
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: sceneId
+        in: path
+        required: true
+        schema: *id001
+      - name: variant
+        in: query
+        required: false
+        schema: &id004
+          type: string
+          enum:
+          - DAY
+          - NIGHT
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionList'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      tags:
+      - 候选：尚未实现
+  /api/v1/versions/{versionId}:
+    get:
+      operationId: getVersion
+      summary: 查询版本状态、配置和文件
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。查询版本状态、配置和文件
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: versionId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionDetail'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      tags:
+      - 候选：尚未实现
+    put:
+      operationId: updateDraft
+      summary: 原子替换草稿配置和文件
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。原子替换草稿配置和文件
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: versionId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftUpdate'
+      tags:
+      - 候选：尚未实现
+  /api/v1/versions/{versionId}/ready:
+    post:
+      operationId: sealVersion
+      summary: 校验并冻结版本
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。校验并冻结版本
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: versionId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ExpectedVersion'
+      tags:
+      - 候选：尚未实现
+  /api/v1/versions/{versionId}/revoke:
+    post:
+      operationId: revokeVersion
+      summary: 撤销问题版本
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。撤销问题版本
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: versionId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+      tags:
+      - 候选：尚未实现
+  /api/v1/scenes/{sceneId}/publish:
+    put:
+      operationId: publishVersion
+      summary: 发布、回滚或下线一个昼夜版本
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。versionId=null为下线；expectedVersion是scene.lockVersion。切换指针与审计同事务；冲突409后重新读取，不盲目覆盖。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: sceneId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SceneView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Publish'
+      tags:
+      - 候选：尚未实现
+  /api/v1/assets/uploads:
+    post:
+      operationId: createUpload
+      summary: 登记文件并申请对象存储直传
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。id稳定；重复登记比较文件元数据，相同复用PENDING资产并重新签发凭证，不同409。只有staging写权限。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '201':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadIntent'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadRequest'
+      tags:
+      - 候选：尚未实现
+  /api/v1/assets/{assetId}/complete:
+    post:
+      operationId: completeUpload
+      summary: 同步校验上传文件并登记为可用
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。有界校验在DB事务外执行；固定对象版本、验证摘要并复制到不可覆盖final key。超时503后GET查询，PENDING可安全重试；不创建后台任务。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UploadComplete'
+      tags:
+      - 候选：尚未实现
+  /api/v1/assets/{assetId}:
+    get:
+      operationId: getAsset
+      summary: 查询文件是否已验证
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。查询文件是否已验证
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      tags:
+      - 候选：尚未实现
+  /api/v1/assets/{assetId}/revoke:
+    post:
+      operationId: revokeAsset
+      summary: 撤销问题文件并记录审计
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。撤销问题文件并记录审计
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: assetId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AssetView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Reason'
+      tags:
+      - 候选：尚未实现
+  /api/v1/versions/{versionId}/preview:
+    get:
+      operationId: previewVersion
+      summary: 登录后预览待发布的READY版本
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。READY且所有文件可用；未发布版本只允许管理员预览。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: versionId
+        in: path
+        required: true
+        schema: *id001
+      - &id002
+        name: platform
+        in: query
+        required: true
+        schema: &id011
+          type: string
+          enum:
+          - ANDROID
+          - IOS
+          - MINIPROGRAM
+      - &id003
+        name: clientBuild
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeManifest'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      tags:
+      - 候选：尚未实现
+  /api/v1/client/markers/{code}/manifest:
+    get:
+      operationId: resolveManifest
+      summary: 游客扫码取得运行清单
+      description: 尚未实现，文件格式待确认；当前服务不开放此接口。不指定versionId取当前指针；指定历史版本须同scene/variant且有发布审计记录。检查scene/marker启用、文件未撤销、平台兼容；no-store。
+      security: []
+      parameters:
+      - name: code
+        in: path
+        required: true
+        schema:
+          type: string
+      - *id002
+      - *id003
+      - name: variant
+        in: query
+        required: true
+        schema: *id004
+      - name: versionId
+        in: query
+        required: false
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeManifest'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: candidate
+      tags:
+      - 候选：尚未实现
+  /api/v1/audits:
+    get:
+      operationId: listAudits
+      summary: 只读场景业务审计
+      description: 只读场景业务审计
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+      - name: offset
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 0
+          default: 0
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditList'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /login:
+    post:
+      operationId: login
+      summary: 登录；成功返回 token
+      description: 登录；成功返回 token。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Login'
+      tags:
+      - Demo 已实现
+  /logout:
+    post:
+      operationId: logout
+      summary: 退出登录
+      description: 退出登录。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /getInfo:
+    get:
+      operationId: getInfo
+      summary: 当前用户及权限
+      description: 当前用户及权限。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /getRouters:
+    get:
+      operationId: getRouters
+      summary: 当前用户菜单
+      description: 当前用户菜单。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /captchaImage:
+    get:
+      operationId: captchaConfig
+      summary: 验证码开关与挑战；本地 Demo 关闭验证码
+      description: 验证码开关与挑战；本地 Demo 关闭验证码。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /system/user/profile:
+    get:
+      operationId: profile
+      summary: 本人资料
+      description: 本人资料。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+    put:
+      operationId: updateProfile
+      summary: 修改本人资料
+      description: 修改本人资料。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProfileUpdate'
+      tags:
+      - Demo 已实现
+  /system/user/list:
+    get:
+      operationId: listUsers
+      summary: 账号分页列表
+      description: 账号分页列表。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: pageNum
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 20
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /system/user:
+    post:
+      operationId: createUser
+      summary: 创建固定角色管理员
+      description: 创建固定角色管理员。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountCreate'
+      tags:
+      - Demo 已实现
+  /system/user/changeStatus:
+    put:
+      operationId: changeUserStatus
+      summary: 修改账号状态
+      description: 修改账号状态。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountStatus'
+      tags:
+      - Demo 已实现
+  /system/user/resetPwd:
+    put:
+      operationId: resetPassword
+      summary: 重置密码并撤销旧凭证
+      description: 重置密码并撤销旧凭证。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AccountPassword'
+      tags:
+      - Demo 已实现
+  /system/user/profile/updatePwd:
+    put:
+      operationId: changeOwnPassword
+      summary: 修改本人密码并撤销旧凭证
+      description: 修改本人密码并撤销旧凭证。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters: []
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OwnPassword'
+      tags:
+      - Demo 已实现
+  /monitor/logininfor/list:
+    get:
+      operationId: loginLogs
+      summary: 登录日志分页
+      description: 登录日志分页。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: pageNum
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 20
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /monitor/operlog/list:
+    get:
+      operationId: operationLogs
+      summary: 操作日志分页
+      description: 操作日志分页。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: pageNum
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 1
+      - name: pageSize
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+          default: 20
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /monitor/operlog/{operId}:
+    get:
+      operationId: operationLogDetail
+      summary: 操作日志详情
+      description: 操作日志详情。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: operId
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /system/dict/data/type/{dictType}:
+    get:
+      operationId: dictionaryValues
+      summary: 界面状态字典
+      description: 界面状态字典。沿用若依 code/msg 响应；业务错误可能使用 HTTP 200。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: dictType
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FrameworkResponse'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  schemas:
+    Error:
+      type: object
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        traceId:
+          type: string
+      required:
+      - code
+      - message
+      - traceId
+    Login:
+      type: object
+      additionalProperties: false
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+          minLength: 12
+          maxLength: 64
+      required:
+      - username
+      - password
+    Resource:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+      required:
+      - id
+    SceneCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        name: &id005
+          type: string
+          minLength: 1
+          maxLength: 200
+        address: &id006
+          type: string
+          maxLength: 1000
+          nullable: true
+        longitude: &id007
+          type: number
+          minimum: -180
+          maximum: 180
+          nullable: true
+        latitude: &id008
+          type: number
+          minimum: -90
+          maximum: 90
+          nullable: true
+        geoCrs: &id009
+          type: string
+          enum:
+          - WGS84
+          - GCJ02
+          - BD09
+          nullable: true
+      required:
+      - name
+    SceneView:
+      type: object
+      additionalProperties: false
+      properties:
+        name: *id005
+        address: *id006
+        longitude: *id007
+        latitude: *id008
+        geoCrs: *id009
+        id: *id001
+        enabled:
+          type: boolean
+        lockVersion:
+          type: integer
+          minimum: 0
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+      required:
+      - id
+      - name
+      - enabled
+      - lockVersion
+      - createdAt
+      - updatedAt
+    SceneList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SceneView'
+        total:
+          type: integer
+          minimum: 0
+      required:
+      - items
+      - total
+    MarkerCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        sceneId: *id001
+        widthMeters:
+          type: number
+          minimum: 1.0e-06
+        heightMeters:
+          type: number
+          minimum: 1.0e-06
+        position: &id012
+          type: array
+          items:
+            type: number
+          minItems: 3
+          maxItems: 3
+        rotation: &id013
+          type: array
+          items:
+            type: number
+          minItems: 4
+          maxItems: 4
+      required:
+      - sceneId
+      - widthMeters
+      - heightMeters
+      - position
+      - rotation
+    MarkerView:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        code:
+          type: string
+        sceneId: *id001
+      required:
+      - id
+      - code
+      - sceneId
+    EnabledUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+        expectedVersion:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - enabled
+      - expectedVersion
+      - reason
+    MarkerEnabled:
+      type: object
+      additionalProperties: false
+      properties:
+        enabled:
+          type: boolean
+        reason:
+          type: string
+          minLength: 1
+      required:
+      - enabled
+      - reason
+    VersionCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        variant: *id004
+      required:
+      - id
+      - variant
+    VersionView:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        sceneId: *id001
+        variant: *id004
+        versionNo: &id016
+          type: integer
+          minimum: 1
+        state: &id017
+          type: string
+          enum:
+          - DRAFT
+          - READY
+          - REVOKED
+        lockVersion: &id018
+          type: integer
+          minimum: 0
+      required:
+      - id
+      - sceneId
+      - variant
+      - versionNo
+      - state
+      - lockVersion
+    DraftUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+        packages:
+          type: object
+          additionalProperties: false
+          properties: &id019
+            ANDROID: &id010
+              type: object
+              additionalProperties: false
+              properties:
+                format:
+                  type: string
+                  minLength: 1
+                runtimeVersion:
+                  type: string
+                  minLength: 1
+                minClientBuild:
+                  type: integer
+                  minimum: 1
+                maxClientBuild:
+                  type: integer
+                  minimum: 1
+                entrypoint:
+                  type: string
+                  minLength: 1
+              required:
+              - format
+              - runtimeVersion
+              - minClientBuild
+              - entrypoint
+            IOS: *id010
+            MINIPROGRAM: *id010
+          minProperties: 1
+        playback: &id015
+          type: object
+          additionalProperties: false
+          properties:
+            mode:
+              type: string
+              enum:
+              - LOCAL_INDEPENDENT
+            durationMs:
+              type: integer
+              minimum: 0
+            recoveryPolicy:
+              type: string
+              enum:
+              - RESUME_LOCAL_TIME
+              - RESTART
+          required:
+          - mode
+          - durationMs
+          - recoveryPolicy
+        note:
+          type: string
+        files:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              assetId: *id001
+              platform: *id011
+              logicalPath:
+                type: string
+                minLength: 1
+            required:
+            - assetId
+            - platform
+            - logicalPath
+          minItems: 1
+          maxItems: 1000
+      required:
+      - expectedVersion
+      - packages
+      - playback
+      - note
+      - files
+    ExpectedVersion:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedVersion:
+          type: integer
+          minimum: 0
+      required:
+      - expectedVersion
+    Reason:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+      required:
+      - reason
+    Publish:
+      type: object
+      additionalProperties: false
+      properties:
+        variant: *id004
+        versionId:
+          type: string
+          format: uuid
+          nullable: true
+        expectedVersion:
+          type: integer
+          minimum: 0
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1000
+      required:
+      - variant
+      - versionId
+      - expectedVersion
+      - reason
+    UploadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        kind:
+          type: string
+          enum:
+          - CAPTURE
+          - GS
+          - MODEL
+          - TEXTURE
+          - AUDIO
+          - TIMELINE
+          - BUNDLE
+          - MANIFEST
+          - OTHER
+        contentType:
+          type: string
+          minLength: 1
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+        sha256: &id014
+          type: string
+          pattern: ^[0-9a-f]{64}$
+      required:
+      - id
+      - kind
+      - contentType
+      - bytes
+      - sha256
+    UploadIntent:
+      type: object
+      additionalProperties: false
+      properties:
+        assetId: *id001
+        uploadUrl:
+          type: string
+          format: uri
+        method:
+          type: string
+          enum:
+          - PUT
+        headers:
+          type: object
+          additionalProperties:
+            type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+      - assetId
+      - uploadUrl
+      - method
+      - headers
+      - expiresAt
+    UploadComplete:
+      type: object
+      additionalProperties: false
+      properties:
+        objectVersion:
+          type: string
+          minLength: 1
+      required:
+      - objectVersion
+    AssetView:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        state:
+          type: string
+          enum:
+          - PENDING
+          - READY
+          - REJECTED
+          - REVOKED
+      required:
+      - id
+      - state
+    RuntimeManifest:
+      type: object
+      additionalProperties: false
+      properties:
+        schemaVersion:
+          type: integer
+          enum:
+          - 1
+        sceneId: *id001
+        versionId: *id001
+        versionNo:
+          type: integer
+          minimum: 1
+        variant: *id004
+        platform: *id011
+        format:
+          type: string
+          minLength: 1
+        runtimeVersion:
+          type: string
+          minLength: 1
+        clientBuildRange:
+          type: object
+          additionalProperties: false
+          properties:
+            min:
+              type: integer
+              minimum: 1
+            max:
+              type: integer
+              minimum: 1
+          required:
+          - min
+        coordinateSystem:
+          type: string
+          enum:
+          - scene-local-v1
+        markers:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              markerId: *id001
+              widthMeters:
+                type: number
+                minimum: 1.0e-06
+              heightMeters:
+                type: number
+                minimum: 1.0e-06
+              sceneFromMarker:
+                type: object
+                additionalProperties: false
+                properties:
+                  position: *id012
+                  rotation: *id013
+                required:
+                - position
+                - rotation
+            required:
+            - markerId
+            - widthMeters
+            - heightMeters
+            - sceneFromMarker
+          minItems: 1
+        files:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              assetId: *id001
+              logicalPath:
+                type: string
+                minLength: 1
+              sha256: *id014
+              bytes:
+                type: integer
+                format: int64
+                minimum: 1
+              url:
+                type: string
+                format: uri
+                pattern: ^https://
+              expiresAt:
+                type: string
+                format: date-time
+            required:
+            - assetId
+            - logicalPath
+            - sha256
+            - bytes
+            - url
+            - expiresAt
+          minItems: 1
+          maxItems: 1000
+        entrypoint:
+          type: string
+          minLength: 1
+        playback: *id015
+      required:
+      - schemaVersion
+      - sceneId
+      - versionId
+      - versionNo
+      - variant
+      - platform
+      - format
+      - runtimeVersion
+      - clientBuildRange
+      - coordinateSystem
+      - markers
+      - files
+      - entrypoint
+      - playback
+    VersionList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/VersionView'
+      required:
+      - items
+    VersionDetail:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        sceneId: *id001
+        variant: *id004
+        versionNo: *id016
+        state: *id017
+        lockVersion: *id018
+        packages:
+          type: object
+          additionalProperties: false
+          properties: *id019
+        playback: *id015
+        note:
+          type: string
+        files:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              assetId: *id001
+              platform: *id011
+              logicalPath:
+                type: string
+                minLength: 1
+            required:
+            - assetId
+            - platform
+            - logicalPath
+      required:
+      - id
+      - sceneId
+      - variant
+      - versionNo
+      - state
+      - lockVersion
+      - packages
+      - playback
+      - note
+      - files
+    SceneUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        name: *id005
+        address: *id006
+        longitude: *id007
+        latitude: *id008
+        geoCrs: *id009
+        expectedVersion:
+          type: integer
+          minimum: 0
+      required:
+      - name
+      - expectedVersion
+    FrameworkResponse:
+      type: object
+      additionalProperties: true
+      properties:
+        code:
+          type: integer
+        msg:
+          type: string
+    AccountCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        userName:
+          type: string
+          pattern: ^[A-Za-z0-9_]{3,30}$
+        nickName:
+          type: string
+          minLength: 1
+          maxLength: 30
+        password:
+          type: string
+          minLength: 12
+          maxLength: 64
+      required:
+      - userName
+      - nickName
+      - password
+    AccountStatus:
+      type: object
+      additionalProperties: false
+      properties:
+        userId:
+          type: integer
+          format: int64
+        status:
+          type: string
+          enum:
+          - '0'
+          - '1'
+      required:
+      - userId
+      - status
+    AccountPassword:
+      type: object
+      additionalProperties: false
+      properties:
+        userId:
+          type: integer
+          format: int64
+        password:
+          type: string
+          minLength: 12
+          maxLength: 64
+      required:
+      - userId
+      - password
+    OwnPassword:
+      type: object
+      additionalProperties: false
+      properties:
+        oldPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 64
+      required:
+      - oldPassword
+      - newPassword
+    ProfileUpdate:
+      type: object
+      additionalProperties: false
+      properties:
+        nickName:
+          type: string
+          maxLength: 30
+        email:
+          type: string
+          maxLength: 50
+        phonenumber:
+          type: string
+          maxLength: 11
+        sex:
+          type: string
+          enum:
+          - '0'
+          - '1'
+          - '2'
+    AuditList:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+        total:
+          type: integer
+          minimum: 0
+      required:
+      - items
+      - total

@@ -1,0 +1,1 @@
+<template><div class="app-container"><h1>AR 场景管理</h1><p>管理场景信息、团队账号与操作记录。</p><el-button type="primary" @click="$router.push('/admin/scenes')">进入场景管理</el-button></div></template>

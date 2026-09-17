@@ -1,0 +1,14 @@
+{
+  "browser": "Microsoft Edge headless",
+  "viewport": "1440x1000",
+  "passed": true,
+  "checks": [
+    "login",
+    "create scene",
+    "edit scene",
+    "disable scene",
+    "read audit detail",
+    "logout"
+  ],
+  "pageErrors": []
+}

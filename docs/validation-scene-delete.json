@@ -1,0 +1,70 @@
+[
+  {
+    "name": "synthetic scene created",
+    "passed": true
+  },
+  {
+    "name": "anonymous delete rejected",
+    "passed": true
+  },
+  {
+    "name": "missing revision rejected",
+    "passed": true
+  },
+  {
+    "name": "stale revision rejected",
+    "passed": true
+  },
+  {
+    "name": "confirmation identifies scene",
+    "passed": true
+  },
+  {
+    "name": "cancel sends no deletion request",
+    "passed": true
+  },
+  {
+    "name": "cancel preserves scene",
+    "passed": true
+  },
+  {
+    "name": "confirmed deletion succeeds",
+    "passed": true
+  },
+  {
+    "name": "confirmation submits once",
+    "passed": true
+  },
+  {
+    "name": "deleted scene hidden",
+    "passed": true
+  },
+  {
+    "name": "deleted scene excluded from count",
+    "passed": true
+  },
+  {
+    "name": "repeated deletion rejected",
+    "passed": true
+  },
+  {
+    "name": "deleted scene cannot be edited",
+    "passed": true
+  },
+  {
+    "name": "deleted scene cannot be enabled",
+    "passed": true
+  },
+  {
+    "name": "creation and deletion audits retained",
+    "passed": true
+  },
+  {
+    "name": "delete actor recorded",
+    "passed": true
+  },
+  {
+    "name": "concurrent deletes have one winner",
+    "passed": true
+  }
+]

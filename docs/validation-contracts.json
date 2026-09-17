@@ -1,0 +1,911 @@
+{
+  "passed": true,
+  "operations": 37,
+  "checks": [
+    {
+      "name": "OpenAPI 3.0 structural validation",
+      "passed": true
+    },
+    {
+      "name": "runtime manifest Draft 2020-12 schema and example",
+      "passed": true
+    },
+    {
+      "name": "entrypoint resolves to unique file",
+      "passed": true
+    },
+    {
+      "name": "example quaternion normalized",
+      "passed": true
+    },
+    {
+      "name": "reject unsupported platform",
+      "passed": true
+    },
+    {
+      "name": "reject negative marker size",
+      "passed": true
+    },
+    {
+      "name": "reject invalid SHA256",
+      "passed": true
+    },
+    {
+      "name": "reject HTTP download forbidden",
+      "passed": true
+    },
+    {
+      "name": "reject missing version ID",
+      "passed": true
+    },
+    {
+      "name": "reject unexpected manifest field",
+      "passed": true
+    },
+    {
+      "name": "OpenAPI matches authoring source",
+      "passed": true
+    },
+    {
+      "name": "manifest schema matches authoring source",
+      "passed": true
+    },
+    {
+      "name": "manifest example matches authoring source",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API createScene",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary createScene",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF createScene",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer createScene",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API listScenes",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary listScenes",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF listScenes",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer listScenes",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API getScene",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary getScene",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF getScene",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer getScene",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API updateScene",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary updateScene",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF updateScene",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer updateScene",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API setSceneEnabled",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary setSceneEnabled",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF setSceneEnabled",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer setSceneEnabled",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API createMarker",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary createMarker",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF createMarker",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer createMarker",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API setMarkerEnabled",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary setMarkerEnabled",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF setMarkerEnabled",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer setMarkerEnabled",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API createVersion",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary createVersion",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF createVersion",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer createVersion",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API listVersions",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary listVersions",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF listVersions",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer listVersions",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API getVersion",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary getVersion",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF getVersion",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer getVersion",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API updateDraft",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary updateDraft",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF updateDraft",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer updateDraft",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API sealVersion",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary sealVersion",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF sealVersion",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer sealVersion",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API revokeVersion",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary revokeVersion",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF revokeVersion",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer revokeVersion",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API publishVersion",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary publishVersion",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF publishVersion",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer publishVersion",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API createUpload",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary createUpload",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF createUpload",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer createUpload",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API completeUpload",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary completeUpload",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF completeUpload",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer completeUpload",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API getAsset",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary getAsset",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF getAsset",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer getAsset",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API revokeAsset",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary revokeAsset",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF revokeAsset",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer revokeAsset",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API previewVersion",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary previewVersion",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF previewVersion",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer previewVersion",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API resolveManifest",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary resolveManifest",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF resolveManifest",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API listAudits",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary listAudits",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF listAudits",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer listAudits",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API login",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary login",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF login",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API logout",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary logout",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF logout",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer logout",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API getInfo",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary getInfo",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF getInfo",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer getInfo",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API getRouters",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary getRouters",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF getRouters",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer getRouters",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API captchaConfig",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary captchaConfig",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF captchaConfig",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API profile",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary profile",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF profile",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer profile",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API updateProfile",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary updateProfile",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF updateProfile",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer updateProfile",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API listUsers",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary listUsers",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF listUsers",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer listUsers",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API createUser",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary createUser",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF createUser",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer createUser",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API changeUserStatus",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary changeUserStatus",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF changeUserStatus",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer changeUserStatus",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API resetPassword",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary resetPassword",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF resetPassword",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer resetPassword",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API changeOwnPassword",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary changeOwnPassword",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF changeOwnPassword",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer changeOwnPassword",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API loginLogs",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary loginLogs",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF loginLogs",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer loginLogs",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API operationLogs",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary operationLogs",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF operationLogs",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer operationLogs",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API operationLogDetail",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary operationLogDetail",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF operationLogDetail",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer operationLogDetail",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API dictionaryValues",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary dictionaryValues",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF dictionaryValues",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer dictionaryValues",
+      "passed": true
+    },
+    {
+      "name": "operation IDs unique",
+      "passed": true
+    },
+    {
+      "name": "database and API version states agree",
+      "passed": true
+    },
+    {
+      "name": "only seven schema tables",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/11-current-platform-architecture.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/09-upstream-adaptation.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/presentation.html",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/11-current-platform-architecture.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/06-validation.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> database/README.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> contracts/openapi.yaml",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> contracts/schemas/runtime-manifest.schema.json",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> contracts/examples/runtime-manifest.json",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> AGENTS.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> ../docs/08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> migrations/V001__platform.sql",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> migrations/V002__publication_functions.sql",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> ../docs/validation-database.json",
+      "passed": true
+    },
+    {
+      "name": "local link 01-scope-architecture.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 01-scope-architecture.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 01-scope-architecture.md -> images/architecture-v0.1.png",
+      "passed": true
+    },
+    {
+      "name": "local link 01-scope-architecture.md -> images/architecture-v0.1.svg",
+      "passed": true
+    },
+    {
+      "name": "local link 01-scope-architecture.md -> 09-upstream-adaptation.md",
+      "passed": true
+    },
+    {
+      "name": "local link 02-data-model.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 02-data-model.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 02-data-model.md -> images/database-v0.1.png",
+      "passed": true
+    },
+    {
+      "name": "local link 02-data-model.md -> images/database-v0.1.svg",
+      "passed": true
+    },
+    {
+      "name": "local link 02-data-model.md -> ../database/migrations/V001__platform.sql",
+      "passed": true
+    },
+    {
+      "name": "local link 02-data-model.md -> ../database/migrations/V002__publication_functions.sql",
+      "passed": true
+    },
+    {
+      "name": "local link 03-workflows.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 03-workflows.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 04-api-security-operations.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 04-api-security-operations.md -> ../contracts/openapi.yaml",
+      "passed": true
+    },
+    {
+      "name": "local link 04-api-security-operations.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 05-review-checklist.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 05-review-checklist.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-infrastructure.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-framework.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-demo.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-browser.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-initialization.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-contracts.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> 09-upstream-adaptation.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-database.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-contracts.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> 07-design-review.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> design-review-evidence.json",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> 02-data-model.md",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> ../database/migrations/V002__publication_functions.sql",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> ../database/migrations/V001__platform.sql",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> ../scripts/generate_contracts.py",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> ../database/migrations/V002__publication_functions.sql",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> ../database/migrations/V001__platform.sql",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> 03-workflows.md",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> ../database/migrations/V002__publication_functions.sql",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> 04-api-security-operations.md",
+      "passed": true
+    },
+    {
+      "name": "local link 07-design-review.md -> design-review-evidence.json",
+      "passed": true
+    },
+    {
+      "name": "local link 08-demo-runbook.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 08-demo-runbook.md -> ../config/demo.env.example",
+      "passed": true
+    },
+    {
+      "name": "local link 09-upstream-adaptation.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link 09-upstream-adaptation.md -> upstream-lock.json",
+      "passed": true
+    },
+    {
+      "name": "local link 10-local-infrastructure.md -> 06-validation.md",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "No HTTP server or client runtime executed",
+    "No cloud storage or GPU invoked",
+    "Mermaid source checked only as Markdown, not rendered"
+  ]
+}

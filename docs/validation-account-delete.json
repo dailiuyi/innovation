@@ -1,0 +1,74 @@
+[
+  {
+    "name": "create test account 0",
+    "passed": true
+  },
+  {
+    "name": "create test account 1",
+    "passed": true
+  },
+  {
+    "name": "anonymous deletion rejected",
+    "passed": true
+  },
+  {
+    "name": "self deletion rejected",
+    "passed": true
+  },
+  {
+    "name": "confirmation identifies account",
+    "passed": true
+  },
+  {
+    "name": "cancel sends no delete request",
+    "passed": true
+  },
+  {
+    "name": "cancel preserves login",
+    "passed": true
+  },
+  {
+    "name": "confirmed deletion succeeds",
+    "passed": true
+  },
+  {
+    "name": "only one delete request",
+    "passed": true
+  },
+  {
+    "name": "deleted account cannot login",
+    "passed": true
+  },
+  {
+    "name": "old token rejected",
+    "passed": true
+  },
+  {
+    "name": "deleted account cannot be enabled",
+    "passed": true
+  },
+  {
+    "name": "deleted account password cannot reset",
+    "passed": true
+  },
+  {
+    "name": "deleted name remains reserved",
+    "passed": true
+  },
+  {
+    "name": "last administrator protected",
+    "passed": true
+  },
+  {
+    "name": "historical scene audit retained",
+    "passed": true
+  },
+  {
+    "name": "disabled bootstrap can be deleted",
+    "passed": true
+  },
+  {
+    "name": "account deletions logged",
+    "passed": true
+  }
+]

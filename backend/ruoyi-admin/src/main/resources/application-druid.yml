@@ -1,0 +1,31 @@
+spring:
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driverClassName: org.postgresql.Driver
+    druid:
+      master:
+        url: ${AR_DATABASE_URL:jdbc:postgresql://127.0.0.1:15432/ar_demo}
+        username: ${AR_DATABASE_USER:ar_demo}
+        password: ${AR_DATABASE_PASSWORD}
+      initialSize: 2
+      minIdle: 2
+      maxActive: 10
+      maxWait: 10000
+      connectTimeout: 10000
+      socketTimeout: 30000
+      timeBetweenEvictionRunsMillis: 60000
+      minEvictableIdleTimeMillis: 300000
+      maxEvictableIdleTimeMillis: 900000
+      testWhileIdle: true
+      testOnBorrow: false
+      testOnReturn: false
+      validationQuery: SELECT 1
+      statViewServlet:
+        enabled: false
+      webStatFilter:
+        enabled: false
+  flyway:
+    locations: classpath:db/demo
+    clean-disabled: true
+  jackson:
+    time-zone: UTC

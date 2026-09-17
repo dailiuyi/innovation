@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="1110" viewBox="0 0 1280 1110" role="img" aria-labelledby="title desc">
+<title id="title">乌托邦世界 V0.1 数据库关系</title>
+<desc id="desc">保留场景、内容版本、成品文件的分离；文件关联粒度待交付格式确认。</desc>
+<rect width="1280" height="1110" fill="#f8fafc"/>
+<text x="40" y="26" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="32" fill="#172b4d">V0.1 数据模型 · 已确定边界与待确认方案</text>
+<text x="40" y="78" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#52647c">蓝色：已确定关系；橙色：待确认。此图表达设计边界，不是最终物理表结构。</text>
+<text x="40" y="127" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="24" fill="#172b4d">01  保留三层分离</text>
+<rect x="40" y="176" width="300" height="164" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="56" y="190" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="23" fill="#172b4d">scene</text>
+<text x="56" y="226" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#2563eb">场景</text>
+<text x="56" y="262" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">在哪里展示</text>
+<text x="56" y="288" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">位置、入口、固定坐标</text>
+<rect x="460" y="176" width="300" height="164" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="476" y="190" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="23" fill="#172b4d">scene_version</text>
+<text x="476" y="226" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#2563eb">内容版本</text>
+<text x="476" y="262" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">这次发布什么内容</text>
+<text x="476" y="288" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">昼夜类型、版本号、播放配置</text>
+<rect x="880" y="176" width="335" height="164" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="896" y="190" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="23" fill="#172b4d">asset</text>
+<text x="896" y="226" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#2563eb">成品文件</text>
+<text x="896" y="262" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">实际交付物是什么</text>
+<text x="896" y="288" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">对象键、大小、摘要、验证状态</text>
+<path d="M340 259 L460 259" stroke="#2563eb" stroke-width="3"/>
+<polygon points="460,259 450,253 450,265" fill="#2563eb"/>
+<text x="352" y="225" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="17" fill="#172b4d">1 → 0..N</text>
+<path d="M760 259 L880 259" stroke="#b45309" stroke-width="3"/>
+<polygon points="880,259 870,253 870,265" fill="#b45309"/>
+<text x="772" y="225" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="17" fill="#b45309">关联待定</text>
+<path d="M155 340 L155 427" stroke="#2563eb" stroke-width="3"/>
+<polygon points="155,427 149,417 161,417" fill="#2563eb"/>
+<text x="172" y="363" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="17" fill="#2563eb">1 → 0..N</text>
+<rect x="40" y="427" width="230" height="157" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="56" y="441" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="23" fill="#172b4d">marker</text>
+<text x="56" y="477" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#2563eb">场景标记</text>
+<text x="56" y="513" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">主键 id / 外键 scene_id</text>
+<text x="56" y="539" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">入口码、尺寸、位置与朝向</text>
+<rect x="355" y="379" width="860" height="205" rx="12" fill="#fff7ed" stroke="#e9b276"/>
+<text x="377" y="397" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="22" fill="#b45309">先确认成品格式，再决定文件粒度</text>
+<text x="377" y="438" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#172b4d">完整包：按平台登记成品包，包内资源交给制作工具管理。</text>
+<text x="377" y="476" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#172b4d">入口与依赖集合：确认客户端需求后，再设计文件关联及依赖检查。</text>
+<text x="377" y="518" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#172b4d">现有 version_asset 仅为候选；暂不确定文件数量、复用与关联表形式。</text>
+<text x="40" y="622" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="24" fill="#172b4d">02  当前发布版本 · 同一组场景与版本表</text>
+<rect x="40" y="668" width="1175" height="130" rx="12" fill="#ecfdf5" stroke="#6bbba5"/>
+<text x="62" y="687" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="21" fill="#087f6f">scene.current_day_version_id     →  白天内容版本（0 或 1 个）</text>
+<text x="62" y="724" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="21" fill="#087f6f">scene.current_night_version_id  →  夜晚内容版本（0 或 1 个）</text>
+<text x="62" y="764" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="17" fill="#172b4d">此处箭头表示指针方向。两项均引用同场景的 scene_version；为空表示对应入口下线。</text>
+<text x="40" y="837" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="24" fill="#172b4d">03  账号与审计 · 下方版本、文件名称复用上方的表</text>
+<rect x="40" y="892" width="265" height="163" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="56" y="906" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="23" fill="#172b4d">admin_user</text>
+<text x="56" y="942" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#2563eb">管理员账号</text>
+<text x="56" y="978" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">主键 id / 独立账号</text>
+<text x="56" y="1004" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">全部管理员权限相同</text>
+<path d="M305 921 L470 921" stroke="#2563eb" stroke-width="3"/>
+<polygon points="470,921 460,915 460,927" fill="#2563eb"/>
+<rect x="335" y="905" width="100" height="31" rx="0" fill="#f8fafc" stroke="#f8fafc"/>
+<text x="345" y="909" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="17" fill="#2563eb">1 → 0..N</text>
+<rect x="470" y="904" width="745" height="43" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="489" y="913" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#172b4d">scene_version.created_by → 版本创建人</text>
+<path d="M305 974 L470 974" stroke="#2563eb" stroke-width="3"/>
+<polygon points="470,974 460,968 460,980" fill="#2563eb"/>
+<rect x="335" y="958" width="100" height="31" rx="0" fill="#f8fafc" stroke="#f8fafc"/>
+<text x="345" y="962" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="17" fill="#2563eb">1 → 0..N</text>
+<rect x="470" y="957" width="745" height="43" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="489" y="966" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#172b4d">asset.created_by → 文件登记人</text>
+<path d="M305 1027 L470 1027" stroke="#2563eb" stroke-width="3"/>
+<polygon points="470,1027 460,1021 460,1033" fill="#2563eb"/>
+<rect x="335" y="1011" width="100" height="31" rx="0" fill="#f8fafc" stroke="#f8fafc"/>
+<text x="345" y="1015" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="17" fill="#2563eb">1 → 0..N</text>
+<rect x="470" y="1010" width="745" height="43" rx="12" fill="#ffffff" stroke="#cbd5e1"/>
+<text x="489" y="1019" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#172b4d">audit_log.actor_id → 操作记录所属账号</text>
+<text x="40" y="1073" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#52647c">audit_log 保存动作、对象 ID、详情和时间；object_id 是业务引用，未声明为业务表外键。</text>
+</svg>

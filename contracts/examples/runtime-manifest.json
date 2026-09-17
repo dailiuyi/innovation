@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "sceneId": "10000000-0000-4000-8000-000000000001",
+  "versionId": "10000000-0000-4000-8000-000000000002",
+  "versionNo": 1,
+  "variant": "DAY",
+  "platform": "ANDROID",
+  "format": "unity-addressables",
+  "runtimeVersion": "TO_BE_CONFIRMED",
+  "clientBuildRange": {
+    "min": 1
+  },
+  "coordinateSystem": "scene-local-v1",
+  "markers": [
+    {
+      "markerId": "10000000-0000-4000-8000-000000000003",
+      "widthMeters": 0.2,
+      "heightMeters": 0.2,
+      "sceneFromMarker": {
+        "position": [
+          0,
+          0,
+          0
+        ],
+        "rotation": [
+          0,
+          0,
+          0,
+          1
+        ]
+      }
+    }
+  ],
+  "files": [
+    {
+      "assetId": "10000000-0000-4000-8000-000000000004",
+      "logicalPath": "catalog.json",
+      "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "bytes": 1024,
+      "url": "https://cdn.example.invalid/catalog.json?signature=EXAMPLE",
+      "expiresAt": "2026-09-14T12:10:00Z"
+    }
+  ],
+  "entrypoint": "catalog.json",
+  "playback": {
+    "mode": "LOCAL_INDEPENDENT",
+    "durationMs": 60000,
+    "recoveryPolicy": "RESUME_LOCAL_TIME"
+  }
+}

@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="1120" viewBox="0 0 1120 1120" role="img" aria-labelledby="title desc">
+<title id="title">乌托邦世界 V0.1 系统结构</title>
+<desc id="desc">客户端访问单个 Spring Boot 应用，应用管理 PostgreSQL 元数据和对象存储文件。管理页面直传文件，用户端直接下载文件。所有组件尚未部署。</desc>
+<rect width="1120" height="1120" fill="#f8fafc"/>
+<text x="40" y="28" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="32" fill="#172b4d">乌托邦世界 · V0.1 系统结构</text>
+<text x="40" y="78" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#52647c">设计阶段 · 尚未部署</text>
+<rect x="40" y="122" width="1040" height="64" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+<text x="60" y="138" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="21" fill="#172b4d">平台外：人工扫描 → GS 重建 → 编辑与构建 → 形成资源包</text>
+<text x="40" y="215" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#52647c">01  客户端</text>
+<rect x="120" y="252" width="390" height="104" rx="12" fill="#eff6ff" stroke="#93b4ef"/>
+<text x="144" y="269" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="24" fill="#172b4d">内部管理页面</text>
+<text x="144" y="312" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#172b4d">登录 · 管理场景 · 预览与发布</text>
+<rect x="610" y="252" width="390" height="104" rx="12" fill="#eff6ff" stroke="#93b4ef"/>
+<text x="634" y="269" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="24" fill="#172b4d">用户端 APP / 小程序</text>
+<text x="634" y="312" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#172b4d">识别标记 · 下载与播放 · 恢复定位</text>
+<path d="M315 356 L315 435" stroke="#2563eb" stroke-width="3"/>
+<polygon points="315,435 309,425 321,425" fill="#2563eb"/>
+<text x="125" y="380" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#2563eb">管理请求 / 上传凭证</text>
+<path d="M805 356 L805 435" stroke="#2563eb" stroke-width="3"/>
+<polygon points="805,435 799,425 811,425" fill="#2563eb"/>
+<text x="815" y="380" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#2563eb">扫码请求 / 运行清单</text>
+<rect x="120" y="435" width="880" height="196" rx="12" fill="#eef2ff" stroke="#879be4"/>
+<text x="144" y="453" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="26" fill="#172b4d">02  Spring Boot 后端</text>
+<text x="144" y="494" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#172b4d">一个应用、一个实例；下列模块在同一进程中运行</text>
+<rect x="144" y="539" width="194" height="68" rx="8" fill="#ffffff" stroke="#c3cdef"/>
+<text x="158" y="545" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#172b4d">auth</text>
+<text x="158" y="577" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">账号与登录</text>
+<rect x="354" y="539" width="194" height="68" rx="8" fill="#ffffff" stroke="#c3cdef"/>
+<text x="368" y="545" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#172b4d">scene</text>
+<text x="368" y="577" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">场景与标记</text>
+<rect x="564" y="539" width="194" height="68" rx="8" fill="#ffffff" stroke="#c3cdef"/>
+<text x="578" y="545" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#172b4d">asset</text>
+<text x="578" y="577" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">文件登记与校验</text>
+<rect x="774" y="539" width="194" height="68" rx="8" fill="#ffffff" stroke="#c3cdef"/>
+<text x="788" y="545" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="20" fill="#172b4d">version</text>
+<text x="788" y="577" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">版本与发布</text>
+<path d="M315 631 L315 714" stroke="#2563eb" stroke-width="3"/>
+<polygon points="315,714 309,704 321,704" fill="#2563eb"/>
+<rect x="140" y="650" width="355" height="40" rx="0" fill="#f8fafc" stroke="#f8fafc"/>
+<text x="148" y="659" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#2563eb">业务数据读写 / 发布事务</text>
+<path d="M805 631 L805 714" stroke="#2563eb" stroke-width="3"/>
+<polygon points="805,714 799,704 811,704" fill="#2563eb"/>
+<rect x="630" y="650" width="350" height="40" rx="0" fill="#f8fafc" stroke="#f8fafc"/>
+<text x="640" y="659" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="18" fill="#2563eb">文件读取校验 / 固定最终对象</text>
+<rect x="120" y="714" width="390" height="133" rx="12" fill="#ffffff" stroke="#a5b4c8"/>
+<text x="144" y="729" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="25" fill="#172b4d">03  PostgreSQL</text>
+<text x="144" y="774" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">7 张表：账号、场景、版本、文件元数据</text>
+<text x="144" y="805" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">版本文件关联、标记、审计</text>
+<rect x="610" y="714" width="390" height="133" rx="12" fill="#ecfdf5" stroke="#6bbba5"/>
+<text x="634" y="729" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="25" fill="#172b4d">03  对象存储 · 私有桶</text>
+<text x="634" y="774" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">保存资源文件：上传区 → 最终文件区</text>
+<text x="634" y="805" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="16" fill="#172b4d">使用凭证访问，最终文件不可覆盖</text>
+<text x="40" y="878" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="23" fill="#172b4d">文件直传与下载</text>
+<text x="40" y="916" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="17" fill="#52647c">以下复用上方组件：客户端获得后端授权后，直接访问对象存储。</text>
+<rect x="120" y="957" width="190" height="49" rx="8" fill="#ecfdf5" stroke="#6bbba5"/>
+<text x="147" y="967" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#172b4d">管理页面</text>
+<path d="M327 982 L787 982" stroke="#087f6f" stroke-width="3"/>
+<polygon points="787,982 777,976 777,988" fill="#087f6f"/>
+<rect x="420" y="959" width="280" height="39" rx="0" fill="#f8fafc" stroke="#f8fafc"/>
+<text x="433" y="966" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#087f6f">凭上传凭证直传成品</text>
+<rect x="805" y="957" width="195" height="49" rx="8" fill="#ecfdf5" stroke="#6bbba5"/>
+<text x="837" y="967" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#172b4d">对象存储</text>
+<rect x="120" y="1028" width="190" height="49" rx="8" fill="#ecfdf5" stroke="#6bbba5"/>
+<text x="147" y="1038" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#172b4d">对象存储</text>
+<path d="M327 1053 L787 1053" stroke="#087f6f" stroke-width="3"/>
+<polygon points="787,1053 777,1047 777,1059" fill="#087f6f"/>
+<rect x="420" y="1030" width="280" height="39" rx="0" fill="#f8fafc" stroke="#f8fafc"/>
+<text x="433" y="1037" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#087f6f">凭签名链接下载文件</text>
+<rect x="805" y="1028" width="195" height="49" rx="8" fill="#ecfdf5" stroke="#6bbba5"/>
+<text x="837" y="1038" dominant-baseline="text-before-edge" font-family="Microsoft YaHei, Noto Sans CJK SC, sans-serif" font-size="19" fill="#172b4d">用户端</text>
+</svg>

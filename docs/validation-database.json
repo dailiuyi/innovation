@@ -1,0 +1,133 @@
+{
+  "temporaryCluster": "C:\\Users\\emla\\AppData\\Local\\Temp\\utopia-design-pg-jtwd2pm0",
+  "checks": [
+    {
+      "name": "apply V001__platform.sql",
+      "passed": true
+    },
+    {
+      "name": "apply V002__publication_functions.sql",
+      "passed": true
+    },
+    {
+      "name": "invalid quaternion",
+      "passed": true
+    },
+    {
+      "name": "marker geometry immutable",
+      "passed": true
+    },
+    {
+      "name": "unverified asset cannot become ready",
+      "passed": true
+    },
+    {
+      "name": "verified asset key immutable",
+      "passed": true
+    },
+    {
+      "name": "duplicate version number",
+      "passed": true
+    },
+    {
+      "name": "unverified version cannot seal",
+      "passed": true
+    },
+    {
+      "name": "draft cannot publish",
+      "passed": true
+    },
+    {
+      "name": "ready but never published is not public",
+      "passed": true
+    },
+    {
+      "name": "ready version content immutable",
+      "passed": true
+    },
+    {
+      "name": "ready associations immutable",
+      "passed": true
+    },
+    {
+      "name": "version from another scene rejected",
+      "passed": true
+    },
+    {
+      "name": "day version cannot publish as night",
+      "passed": true
+    },
+    {
+      "name": "publish first version",
+      "passed": true
+    },
+    {
+      "name": "concurrent publisher cannot overwrite locked scene",
+      "passed": true
+    },
+    {
+      "name": "published version publicly eligible",
+      "passed": true
+    },
+    {
+      "name": "stale publisher CAS rejected",
+      "passed": true
+    },
+    {
+      "name": "publish second version",
+      "passed": true
+    },
+    {
+      "name": "publish night independently",
+      "passed": true
+    },
+    {
+      "name": "day pointer unchanged by night publish",
+      "passed": true
+    },
+    {
+      "name": "rollback first day version",
+      "passed": true
+    },
+    {
+      "name": "night pointer unchanged by day rollback",
+      "passed": true
+    },
+    {
+      "name": "only successful publications audited",
+      "passed": true
+    },
+    {
+      "name": "audit immutable",
+      "passed": true
+    },
+    {
+      "name": "withdraw day",
+      "passed": true
+    },
+    {
+      "name": "withdraw does not erase published history",
+      "passed": true
+    },
+    {
+      "name": "revoked version cannot publish",
+      "passed": true
+    },
+    {
+      "name": "revoked file blocks runtime download",
+      "passed": true
+    },
+    {
+      "name": "disabled admin cannot publish",
+      "passed": true
+    },
+    {
+      "name": "only seven approved tables",
+      "passed": true
+    }
+  ],
+  "serverVersion": "postgres (PostgreSQL) 18.4",
+  "tableCount": 7,
+  "passed": true,
+  "clusterStopped": true
+}

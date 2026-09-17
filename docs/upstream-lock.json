@@ -1,0 +1,74 @@
+{
+  "backend": {
+    "repository": "https://github.com/yangzongzhuan/RuoYi-Vue",
+    "branch": "springboot3",
+    "commit": "a51a838b71b446ea27256900efe7ed2faa2a02fd",
+    "modifiedFiles": [
+      "pom.xml",
+      "ruoyi-admin/pom.xml",
+      "ruoyi-admin/src/main/java/com/ruoyi/web/controller/system/SysProfileController.java",
+      "ruoyi-admin/src/main/java/com/ruoyi/web/controller/system/SysUserController.java",
+      "ruoyi-admin/src/main/resources/application-druid.yml",
+      "ruoyi-admin/src/main/resources/application.yml",
+      "ruoyi-admin/src/main/resources/logback.xml",
+      "ruoyi-common/src/main/java/com/ruoyi/common/constant/UserConstants.java",
+      "ruoyi-common/src/main/java/com/ruoyi/common/core/domain/entity/SysUser.java",
+      "ruoyi-common/src/main/java/com/ruoyi/common/core/domain/model/LoginUser.java",
+      "ruoyi-framework/src/main/java/com/ruoyi/framework/config/ApplicationConfig.java",
+      "ruoyi-framework/src/main/java/com/ruoyi/framework/config/SecurityConfig.java",
+      "ruoyi-framework/src/main/java/com/ruoyi/framework/security/filter/JwtAuthenticationTokenFilter.java",
+      "ruoyi-framework/src/main/java/com/ruoyi/framework/security/handle/AuthenticationEntryPointImpl.java",
+      "ruoyi-framework/src/main/java/com/ruoyi/framework/web/service/TokenService.java",
+      "ruoyi-system/src/main/resources/mapper/system/SysConfigMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysDeptMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysDictDataMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysDictTypeMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysLogininforMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysMenuMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysNoticeMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysNoticeReadMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysOperLogMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysPostMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysRoleMapper.xml",
+      "ruoyi-system/src/main/resources/mapper/system/SysUserMapper.xml"
+    ],
+    "addedFiles": [
+      "ruoyi-admin/src/main/java/com/ruoyi/web/DemoBootstrap.java",
+      "ruoyi-admin/src/main/resources/db/demo/V001__ruoyi_postgresql.sql",
+      "ruoyi-admin/src/main/resources/db/demo/V002__account_credential_epoch.sql",
+      "ruoyi-admin/src/main/resources/db/demo/V003__scene_and_audit.sql",
+      "ruoyi-admin/src/main/resources/db/demo/V004__initial_password_dates.sql",
+      "ruoyi-ar/pom.xml",
+      "ruoyi-ar/src/main/java/com/ruoyi/ar/ArExceptionHandler.java",
+      "ruoyi-ar/src/main/java/com/ruoyi/ar/SceneController.java",
+      "ruoyi-ar/src/main/java/com/ruoyi/ar/SceneInput.java",
+      "ruoyi-ar/src/main/java/com/ruoyi/ar/SceneMapper.java",
+      "ruoyi-ar/src/main/java/com/ruoyi/ar/SceneService.java",
+      "ruoyi-system/src/main/java/com/ruoyi/system/service/DemoAccountService.java"
+    ]
+  },
+  "frontend": {
+    "repository": "https://github.com/yangzongzhuan/RuoYi-Vue3",
+    "branch": "master",
+    "commit": "838965c5a18d2c61b73ec30c6e288057aaa08b63",
+    "modifiedFiles": [
+      ".env.development",
+      ".env.production",
+      ".env.staging",
+      "src/layout/components/Navbar.vue",
+      "src/router/index.js",
+      "src/settings.js",
+      "src/utils/request.js",
+      "src/views/index.vue",
+      "src/views/login.vue",
+      "vite.config.js"
+    ],
+    "addedFiles": [
+      "src/views/demo/accounts.vue",
+      "src/views/demo/audits.vue",
+      "src/views/demo/profile.vue",
+      "src/views/demo/scenes.vue"
+    ],
+    "lockfileSha256": "775ff9a59bb42e2d984a9503fad2f4489c2f16349762d8bec91c885a3553d391"
+  }
+}

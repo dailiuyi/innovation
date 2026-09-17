@@ -1,0 +1,27 @@
+{
+  "passed": true,
+  "database": "ar_init_e059357e15",
+  "postgresql": "17.6",
+  "firstStart": [
+    4,
+    1,
+    7,
+    1,
+    0
+  ],
+  "secondStart": [
+    4,
+    1,
+    7,
+    1,
+    0
+  ],
+  "columns": [
+    "migrations",
+    "users",
+    "menus",
+    "roles",
+    "scenes"
+  ],
+  "note": "Dedicated database retained in local test cluster."
+}

@@ -1,0 +1,14 @@
+**
+!backend/
+!backend/**
+!frontend/
+!frontend/**
+!deploy/
+!deploy/**
+**/target
+**/node_modules
+**/dist
+**/.local
+**/.env*.local
+**/*.log
+deploy/*.env

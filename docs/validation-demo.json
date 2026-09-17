@@ -1,0 +1,281 @@
+{
+  "database": "PostgreSQL 17.6 on x86_64-windows, compiled by msvc-19.44.35213, 64-bit",
+  "checks": [
+    {
+      "name": "PostgreSQL 17 target",
+      "passed": true
+    },
+    {
+      "name": "AR anonymous error contract",
+      "passed": true
+    },
+    {
+      "name": "coordinate pair validation",
+      "passed": true
+    },
+    {
+      "name": "blank name validation",
+      "passed": true
+    },
+    {
+      "name": "create scene",
+      "passed": true
+    },
+    {
+      "name": "detail matches",
+      "passed": true
+    },
+    {
+      "name": "search and count",
+      "passed": true
+    },
+    {
+      "name": "concurrent update one success one conflict",
+      "passed": true
+    },
+    {
+      "name": "exactly one audit for winning update",
+      "passed": true
+    },
+    {
+      "name": "audit actor tracked",
+      "passed": true
+    },
+    {
+      "name": "disable scene",
+      "passed": true
+    },
+    {
+      "name": "invalid pagination rejected",
+      "passed": true
+    },
+    {
+      "name": "missing scene 404",
+      "passed": true
+    },
+    {
+      "name": "delete prohibited",
+      "passed": true
+    },
+    {
+      "name": "audit failure surfaces",
+      "passed": true
+    },
+    {
+      "name": "business mutation rolled back",
+      "passed": true
+    },
+    {
+      "name": "append-only audit enforced",
+      "passed": true
+    },
+    {
+      "name": "synthetic performance data rolled back",
+      "passed": true
+    }
+  ],
+  "performance": {
+    "list": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.29,
+          "Total Cost": 1.67,
+          "Plan Rows": 20,
+          "Plan Width": 674,
+          "Actual Startup Time": 0.004,
+          "Actual Total Time": 0.011,
+          "Actual Rows": 20,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 22,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "ar_scene_created_idx",
+              "Relation Name": "ar_scene",
+              "Alias": "ar_scene",
+              "Startup Cost": 0.29,
+              "Total Cost": 692.44,
+              "Plan Rows": 10002,
+              "Plan Width": 674,
+              "Actual Startup Time": 0.003,
+              "Actual Total Time": 0.009,
+              "Actual Rows": 20,
+              "Actual Loops": 1,
+              "Shared Hit Blocks": 22,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 59,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.467,
+        "Triggers": [],
+        "Execution Time": 0.018
+      }
+    ],
+    "filter": [
+      {
+        "Plan": {
+          "Node Type": "Limit",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Startup Cost": 0.29,
+          "Total Cost": 4.89,
+          "Plan Rows": 20,
+          "Plan Width": 674,
+          "Actual Startup Time": 0.012,
+          "Actual Total Time": 0.452,
+          "Actual Rows": 20,
+          "Actual Loops": 1,
+          "Shared Hit Blocks": 1513,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0,
+          "Plans": [
+            {
+              "Node Type": "Index Scan",
+              "Parent Relationship": "Outer",
+              "Parallel Aware": false,
+              "Async Capable": false,
+              "Scan Direction": "Forward",
+              "Index Name": "ar_scene_created_idx",
+              "Relation Name": "ar_scene",
+              "Alias": "ar_scene",
+              "Startup Cost": 0.29,
+              "Total Cost": 767.46,
+              "Plan Rows": 3334,
+              "Plan Width": 674,
+              "Actual Startup Time": 0.011,
+              "Actual Total Time": 0.45,
+              "Actual Rows": 20,
+              "Actual Loops": 1,
+              "Filter": "(POSITION(('perf-scene-99'::text) IN (lower((name)::text))) > 0)",
+              "Rows Removed by Filter": 1493,
+              "Shared Hit Blocks": 1513,
+              "Shared Read Blocks": 0,
+              "Shared Dirtied Blocks": 0,
+              "Shared Written Blocks": 0,
+              "Local Hit Blocks": 0,
+              "Local Read Blocks": 0,
+              "Local Dirtied Blocks": 0,
+              "Local Written Blocks": 0,
+              "Temp Read Blocks": 0,
+              "Temp Written Blocks": 0
+            }
+          ]
+        },
+        "Planning": {
+          "Shared Hit Blocks": 0,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.042,
+        "Triggers": [],
+        "Execution Time": 0.458
+      }
+    ],
+    "detail": [
+      {
+        "Plan": {
+          "Node Type": "Index Scan",
+          "Parallel Aware": false,
+          "Async Capable": false,
+          "Scan Direction": "Forward",
+          "Index Name": "ar_scene_pkey",
+          "Relation Name": "ar_scene",
+          "Alias": "ar_scene",
+          "Startup Cost": 0.29,
+          "Total Cost": 8.3,
+          "Plan Rows": 1,
+          "Plan Width": 674,
+          "Actual Startup Time": 0.003,
+          "Actual Total Time": 0.003,
+          "Actual Rows": 1,
+          "Actual Loops": 1,
+          "Index Cond": "(id = '038df263-e533-fde2-7f51-76b3bf9c58f8'::uuid)",
+          "Rows Removed by Index Recheck": 0,
+          "Shared Hit Blocks": 3,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning": {
+          "Shared Hit Blocks": 3,
+          "Shared Read Blocks": 0,
+          "Shared Dirtied Blocks": 0,
+          "Shared Written Blocks": 0,
+          "Local Hit Blocks": 0,
+          "Local Read Blocks": 0,
+          "Local Dirtied Blocks": 0,
+          "Local Written Blocks": 0,
+          "Temp Read Blocks": 0,
+          "Temp Written Blocks": 0
+        },
+        "Planning Time": 0.046,
+        "Triggers": [],
+        "Execution Time": 0.007
+      }
+    ]
+  },
+  "environment": {
+    "os": "Windows-11-10.0.26100-SP0",
+    "processor": "Intel64 Family 6 Model 183 Stepping 1, GenuineIntel",
+    "java": "21.0.12.1",
+    "node": "24.19.0",
+    "redis": "3.0.504",
+    "sampling": "one EXPLAIN ANALYZE per query, warm local instance, not throughput benchmark"
+  }
+}

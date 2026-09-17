@@ -1,0 +1,5 @@
+# Validation tooling only; not Spring Boot production dependencies.
+PyYAML==6.0.2
+jsonschema==4.23.0
+openapi-spec-validator==0.7.2
+psycopg[binary]>=3.2,<4

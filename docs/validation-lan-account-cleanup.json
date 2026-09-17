@@ -1,0 +1,18 @@
+{
+  "address": "http://192.168.0.12:43174/login",
+  "retainedAccount": "superadmin",
+  "removedAccounts": [
+    "bootstrap",
+    "demo_a",
+    "demo_b"
+  ],
+  "deletion": "logical deletion; disabled and hidden; historical audit preserved",
+  "auditCount": 18,
+  "removedLoginChecks": {
+    "demo_a": "login denied",
+    "demo_b": "login denied"
+  },
+  "localLanHttp": "page and API proxy returned 200",
+  "firewall": "rule addition requires Windows administrator privileges; not applied",
+  "otherDeviceTest": "not performed"
+}
