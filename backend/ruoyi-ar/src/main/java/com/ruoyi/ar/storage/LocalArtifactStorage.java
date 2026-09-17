@@ -86,8 +86,9 @@ public final class LocalArtifactStorage implements ArtifactStorage {
                         ByteBuffer bytes = ByteBuffer.wrap(buffer, 0, read);
                         while (bytes.hasRemaining()) output.write(bytes);
                     }
-                    if (count != expected.bytes() || !HexFormat.of().formatHex(digest.digest()).equals(expected.sha256())) {
-                        throw new IOException("Artifact size or SHA256 mismatch");
+                    if (count != expected.bytes()) throw new IOException("Artifact size mismatch");
+                    if (!HexFormat.of().formatHex(digest.digest()).equals(expected.sha256())) {
+                        throw new IOException("Artifact SHA256 mismatch");
                     }
                     output.force(true);
                 }
@@ -142,6 +143,20 @@ public final class LocalArtifactStorage implements ArtifactStorage {
     @Override
     public InputStream open(UUID id) throws IOException {
         return Files.newInputStream(file(committed, id, ".bin"), LinkOption.NOFOLLOW_LINKS);
+    }
+
+    @Override
+    public void delete(UUID id) throws IOException {
+        locked(id, () -> {
+            // Validate every exact UUID path before deleting any entry. Never recurse or follow links.
+            Path partial = file(staging, id, ".part");
+            Path ready = file(staging, id, ".ready");
+            Path target = file(committed, id, ".bin");
+            Files.deleteIfExists(partial);
+            Files.deleteIfExists(ready);
+            Files.deleteIfExists(target);
+            // Keep the zero-byte lock inode; deleting it could split mutual exclusion.
+        });
     }
 
     @Override

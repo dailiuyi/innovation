@@ -21,7 +21,7 @@ import com.ruoyi.framework.security.handle.LogoutSuccessHandlerImpl;
 
 /**
  * spring security配置
- * 
+ *
  * @author ruoyi
  */
 @EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)
@@ -45,7 +45,7 @@ public class SecurityConfig
      */
     @Autowired
     private JwtAuthenticationTokenFilter authenticationTokenFilter;
-    
+
     /**
      * 跨域过滤器
      */
@@ -62,7 +62,7 @@ public class SecurityConfig
 	 * 身份验证实现
 	 */
 	@Bean
-	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception 
+	public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception
 	{
 		return authenticationConfiguration.getAuthenticationManager();
 	}
@@ -116,6 +116,10 @@ public class SecurityConfig
                     .requestMatchers(HttpMethod.POST, "/api/v1/scenes").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/scenes/{id}").authenticated()
                     .requestMatchers(HttpMethod.PUT, "/api/v1/scenes/{id}", "/api/v1/scenes/{id}/enabled").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/drafts/config", "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files", "/api/v1/scenes/{id}/drafts").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/scenes/{id}/drafts", "/api/v1/drafts/{id}/files").authenticated()
+                    .requestMatchers(HttpMethod.PUT, "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files/{fileId}/content").authenticated()
+                    .requestMatchers(HttpMethod.DELETE, "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files/{fileId}").authenticated()
                     .anyRequest().denyAll();
             })
             // 添加Logout filter

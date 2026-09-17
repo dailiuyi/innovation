@@ -13,7 +13,7 @@ ruoyi:
   # 验证码类型 math 数字计算 char 字符验证
   captchaType: math
 
-# Opt-in storage infrastructure; no artifact HTTP endpoints are registered.
+# Draft ingestion endpoints are registered when local storage is enabled.
 ar:
   storage:
     enabled: ${AR_STORAGE_ENABLED:false}

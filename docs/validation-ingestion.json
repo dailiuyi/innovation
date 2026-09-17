@@ -1,0 +1,364 @@
+{
+  "passed": true,
+  "postgres": "postgres (PostgreSQL) 17.6",
+  "runtime": "isolated native PostgreSQL 17 / Redis / Spring Boot / Vite / Edge",
+  "checks": [
+    {
+      "name": "real PostgreSQL 17 runtime",
+      "passed": true
+    },
+    {
+      "name": "administrator login",
+      "passed": true
+    },
+    {
+      "name": "anonymous config rejected",
+      "passed": true
+    },
+    {
+      "name": "create scene draft",
+      "passed": true
+    },
+    {
+      "name": "draft create retry is idempotent",
+      "passed": true
+    },
+    {
+      "name": "missing scene draft rejected",
+      "passed": true
+    },
+    {
+      "name": "deleted scene draft rejected",
+      "passed": true
+    },
+    {
+      "name": "edit draft description",
+      "passed": true
+    },
+    {
+      "name": "stale edit rejected",
+      "passed": true
+    },
+    {
+      "name": "register pending file",
+      "passed": true
+    },
+    {
+      "name": "registration retry returns same row",
+      "passed": true
+    },
+    {
+      "name": "idempotency key metadata conflict",
+      "passed": true
+    },
+    {
+      "name": "first upload available",
+      "passed": true
+    },
+    {
+      "name": "duplicate content submission stays available",
+      "passed": true
+    },
+    {
+      "name": "second different file available",
+      "passed": true
+    },
+    {
+      "name": "two files associated with one draft",
+      "passed": true
+    },
+    {
+      "name": "formal storage bytes and SHA256 first.bin",
+      "passed": true
+    },
+    {
+      "name": "formal storage bytes and SHA256 second.bin",
+      "passed": true
+    },
+    {
+      "name": "oversized declaration rejected",
+      "passed": true
+    },
+    {
+      "name": "digest mismatch rejected and not available",
+      "passed": true
+    },
+    {
+      "name": "actual size exceeds declaration rejected",
+      "passed": true
+    },
+    {
+      "name": "failure reason identifies digest mismatch",
+      "passed": true
+    },
+    {
+      "name": "failed files absent from formal storage",
+      "passed": true
+    },
+    {
+      "name": "AAR requires client library category",
+      "passed": true
+    },
+    {
+      "name": "AAR registered only as client library",
+      "passed": true
+    },
+    {
+      "name": "anonymous file removal rejected",
+      "passed": true
+    },
+    {
+      "name": "wrong draft cannot remove file",
+      "passed": true
+    },
+    {
+      "name": "remove uploaded file",
+      "passed": true
+    },
+    {
+      "name": "repeat removal is idempotent",
+      "passed": true
+    },
+    {
+      "name": "removed file hidden from list",
+      "passed": true
+    },
+    {
+      "name": "physical deletion removes formal bytes",
+      "passed": true
+    },
+    {
+      "name": "physical deletion removes file row",
+      "passed": true
+    },
+    {
+      "name": "removed file cannot upload",
+      "passed": true
+    },
+    {
+      "name": "old registration key cannot resurrect file",
+      "passed": true
+    },
+    {
+      "name": "new registration can readd removed file",
+      "passed": true
+    },
+    {
+      "name": "removal audit is attributable and singular",
+      "passed": true
+    },
+    {
+      "name": "failed file can be removed",
+      "passed": true
+    },
+    {
+      "name": "anonymous draft removal rejected",
+      "passed": true
+    },
+    {
+      "name": "remove empty draft",
+      "passed": true
+    },
+    {
+      "name": "repeat draft removal is idempotent",
+      "passed": true
+    },
+    {
+      "name": "removed draft hidden from list",
+      "passed": true
+    },
+    {
+      "name": "packed draft file available",
+      "passed": true
+    },
+    {
+      "name": "remove draft with files",
+      "passed": true
+    },
+    {
+      "name": "removed draft row gone",
+      "passed": true
+    },
+    {
+      "name": "removed draft files physically gone",
+      "passed": true
+    },
+    {
+      "name": "removed draft cannot be edited",
+      "passed": true
+    },
+    {
+      "name": "draft deletion audit is attributable",
+      "passed": true
+    },
+    {
+      "name": "same request key can create a new draft after deletion",
+      "passed": true
+    },
+    {
+      "name": "pending file can be removed",
+      "passed": true
+    },
+    {
+      "name": "storage deletion failure reports 503",
+      "passed": true
+    },
+    {
+      "name": "failed deletion stays visible and retryable",
+      "passed": true
+    },
+    {
+      "name": "deletion in progress rejects upload",
+      "passed": true
+    },
+    {
+      "name": "failed deletion retry completes",
+      "passed": true
+    },
+    {
+      "name": "partial request durably marked uploading",
+      "passed": true
+    },
+    {
+      "name": "active upload cannot be removed",
+      "passed": true
+    },
+    {
+      "name": "active upload blocks draft deletion",
+      "passed": true
+    },
+    {
+      "name": "concurrent upload rejected without false success",
+      "passed": true
+    },
+    {
+      "name": "disconnected upload marked failed",
+      "passed": true
+    },
+    {
+      "name": "interrupted upload retry succeeds with same file id",
+      "passed": true
+    },
+    {
+      "name": "partial request durably marked uploading",
+      "passed": true
+    },
+    {
+      "name": "hard-stopped service retains unfinished record",
+      "passed": true
+    },
+    {
+      "name": "restart does not restore removed files",
+      "passed": true
+    },
+    {
+      "name": "restart completes interrupted physical deletions",
+      "passed": true
+    },
+    {
+      "name": "legacy removals not purged automatically",
+      "passed": true
+    },
+    {
+      "name": "completed files remain available after restart",
+      "passed": true
+    },
+    {
+      "name": "restart identifies incomplete upload",
+      "passed": true
+    },
+    {
+      "name": "restart reconciles ready and committed files",
+      "passed": true
+    },
+    {
+      "name": "explicit legacy deletion clears bytes and row",
+      "passed": true
+    },
+    {
+      "name": "retry after service restart succeeds",
+      "passed": true
+    },
+    {
+      "name": "no duplicate registration after retries",
+      "passed": true
+    },
+    {
+      "name": "audit identifies actor draft and file",
+      "passed": true
+    },
+    {
+      "name": "reconciliation audit marks system action",
+      "passed": true
+    },
+    {
+      "name": "anonymous upload rejected",
+      "passed": true
+    },
+    {
+      "name": "nonadministrator authenticated",
+      "passed": true
+    },
+    {
+      "name": "nonadministrator removal forbidden",
+      "passed": true
+    },
+    {
+      "name": "nonadministrator draft removal forbidden",
+      "passed": true
+    },
+    {
+      "name": "nonadministrator draft access forbidden",
+      "passed": true
+    },
+    {
+      "name": "fresh administrator session for browser",
+      "passed": true
+    },
+    {
+      "name": "browser creates draft and uploads two files",
+      "passed": true
+    },
+    {
+      "name": "browser multi-chunk hash matches original",
+      "passed": true
+    },
+    {
+      "name": "browser refresh preserves selected draft and files",
+      "passed": true
+    },
+    {
+      "name": "browser repeated file selection does not duplicate row",
+      "passed": true
+    },
+    {
+      "name": "browser cancellation keeps file",
+      "passed": true
+    },
+    {
+      "name": "browser removal remains hidden after refresh",
+      "passed": true
+    },
+    {
+      "name": "browser can explicitly readd removed file",
+      "passed": true
+    },
+    {
+      "name": "browser cancellation keeps draft",
+      "passed": true
+    },
+    {
+      "name": "browser draft removal hides row and files",
+      "passed": true
+    },
+    {
+      "name": "browser shows failure reason and retry action",
+      "passed": true
+    }
+  ],
+  "limitations": [
+    "No Addressables/client-loading validation",
+    "No power-loss or disk-full injection",
+    "Nginx container route not exercised by this native test"
+  ]
+}

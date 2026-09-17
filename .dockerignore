@@ -12,3 +12,5 @@
 **/.env*.local
 **/*.log
 deploy/*.env
+
+**/.git

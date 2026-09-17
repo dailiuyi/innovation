@@ -14,6 +14,7 @@ public class ArExceptionHandler {
     public ResponseEntity<Map<String,String>> handle(Exception e) {
         int status=500;String message="服务内部错误";
         if(e instanceof ResponseStatusException r) {status=r.getStatusCode().value();message=r.getReason();}
+        else if(e instanceof org.springframework.security.access.AccessDeniedException) {status=403;message="仅管理员可操作";}
         else if(e instanceof org.springframework.web.bind.MethodArgumentNotValidException
              || e instanceof org.springframework.web.bind.MissingServletRequestParameterException
              || e instanceof jakarta.validation.ConstraintViolationException

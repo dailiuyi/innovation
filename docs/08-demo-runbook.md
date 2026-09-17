@@ -1,16 +1,17 @@
 # PostgreSQL Demo 启动与维护
 
-另有 [Docker Compose 部署与本地存储组件](10-local-infrastructure.md)，使用独立数据库卷和账号，不自动导入本文的本机 Demo。上传、发布和客户端下载仍未接入。
+另有 [Docker Compose 部署与本地存储组件](10-local-infrastructure.md)，使用独立数据库卷和账号，不自动导入本文的本机 Demo。资源入库已接入；发布、回滚和客户端下载仍未接入，见 [资源入库说明](12-resource-ingestion.md)。
 
 ## 已实现范围
 
-单个 Spring Boot 应用提供若依登录、固定同权账号、登录日志、操作日志、场景管理和只读场景审计。Vue3 页面复用若依布局及 Element Plus。
+单个 Spring Boot 应用提供若依登录、固定同权账号、登录日志、操作日志、场景管理、版本草稿、文件入库和只读业务审计。Vue3 页面复用若依布局及 Element Plus。
 
-本阶段没有资源上传、对象存储、标记管理、版本冻结、发布回滚或游客接口。原七表 PostgreSQL 脚本仍是下一阶段候选材料，不参与 Demo 初始化。
+本阶段没有对象存储、标记管理、版本冻结、资源预览、发布回滚或游客接口。原七表 PostgreSQL 脚本仍是下一阶段候选材料，不参与 Demo 初始化。
 
 ## 当前本机入口
 
-- 前端：http://192.168.0.12:43174
+- 本机 Vite 前端：http://127.0.0.1:43174
+- 局域网 Compose 网关：http://192.168.0.12:43174（使用独立容器后端和数据库）
 - 后端：http://127.0.0.1:18080
 - PostgreSQL 17.6：127.0.0.1:15432
 - 独立 Redis 3.0.504（本机既有版本）：127.0.0.1:16379
@@ -28,10 +29,10 @@ python scripts/local_demo.py infra
 python scripts/local_demo.py build
 python scripts/local_demo.py backend
 npm --prefix frontend ci
-python scripts/local_demo.py frontend
+npm --prefix frontend run dev
 ```
 
-`infra` 只初始化本项目 `.local/pgdata17`，使用固定本机独立端口。已有实例运行时不要重复执行。前端通过 Vite 代理访问本机后端。本机 `.local/demo-secrets.json` 中 `AR_FRONTEND_HOST` 已配置为 `192.168.0.12`，`SERVER_ADDRESS` 为 `127.0.0.1`；更换网络后需更新前端绑定地址。局域网其他设备需要 Windows 防火墙允许同子网访问 43174；当前自动添加规则因缺少管理员权限未完成。
+`infra` 只初始化本项目 `.local/pgdata17`，使用固定本机独立端口。已有实例运行时不要重复执行。前端通过 Vite 代理访问本机后端。`npm --prefix frontend run dev` 按 Vite 配置绑定 `127.0.0.1:43174`，可与绑定 `192.168.0.12:43174` 的 Compose 网关并存。Compose 运行时不要执行 `python scripts/local_demo.py frontend`：该脚本读取 `AR_FRONTEND_HOST`，现有局域网绑定会与网关冲突。
 
 首次运行生成 `.local/demo-secrets.json`，包含数据库密码、Token 密钥与引导密码；无共享默认密码。空库启动后用 `bootstrap` 登录，在账号管理中创建第一个日常管理员。创建成功后引导账号失效，重新使用新账号登录即可。
 
@@ -80,7 +81,7 @@ npm --prefix frontend run build:prod
 
 升级前先对照上游来源记录和修改清单，重点复核鉴权入口、账号策略、凭证失效和 SQL 方言。通过现有 HTTP、数据库、浏览器测试后再替换依赖；不要整体覆盖当前工程。
 
-资源阶段需要先取得实际成品、平台加载说明与包体数据，再确认文件关联形式和上传限制。当前已选择内网本地文件存储；场景坐标、昼夜或其他内容变体需要结合真实体验重新确认，当前 Demo 不实现这些能力。
+资源入库已实现草稿与多个文件关联；客户端加载、正式发布和回滚仍需要实际成品、平台加载说明与包体数据。当前已选择内网本地文件存储；场景坐标、昼夜或其他内容变体需要结合真实体验重新确认，当前 Demo 不实现这些能力。
 # 侧栏分组
 
 侧栏按业务分为两个板块：场景管理（场景列表、场景操作记录）和账号管理（账号列表、登录日志、操作日志）。首页继续保留。菜单变更通过 V005 迁移执行，固定角色权限不变；已有页面需刷新以重新加载菜单。

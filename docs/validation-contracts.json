@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "operations": 37,
+  "operations": 47,
   "checks": [
     {
       "name": "OpenAPI 3.0 structural validation",
@@ -635,6 +635,166 @@
       "passed": true
     },
     {
+      "name": "no worker/project API ingestionConfig",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary ingestionConfig",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF ingestionConfig",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer ingestionConfig",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API listDrafts",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary listDrafts",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF listDrafts",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer listDrafts",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API createDraft",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary createDraft",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF createDraft",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer createDraft",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API getDraft",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary getDraft",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF getDraft",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer getDraft",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API editDraft",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary editDraft",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF editDraft",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer editDraft",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API removeDraft",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary removeDraft",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF removeDraft",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer removeDraft",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API listDraftFiles",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary listDraftFiles",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF listDraftFiles",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer listDraftFiles",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API registerDraftFile",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary registerDraftFile",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF registerDraftFile",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer registerDraftFile",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API removeDraftFile",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary removeDraftFile",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF removeDraftFile",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer removeDraftFile",
+      "passed": true
+    },
+    {
+      "name": "no worker/project API uploadDraftFile",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary uploadDraftFile",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF uploadDraftFile",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer uploadDraftFile",
+      "passed": true
+    },
+    {
       "name": "operation IDs unique",
       "passed": true
     },
@@ -644,6 +804,10 @@
     },
     {
       "name": "only seven schema tables",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/12-resource-ingestion.md",
       "passed": true
     },
     {
@@ -696,6 +860,10 @@
     },
     {
       "name": "local link README.md -> AGENTS.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> ../docs/12-resource-ingestion.md",
       "passed": true
     },
     {
@@ -784,6 +952,34 @@
     },
     {
       "name": "local link 05-review-checklist.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-ingestion.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-ingestion.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> 12-resource-ingestion.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-ingestion.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> 11-artifact-transfer-reference.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-account-delete.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-scene-delete.json",
       "passed": true
     },
     {
@@ -887,6 +1083,10 @@
       "passed": true
     },
     {
+      "name": "local link 08-demo-runbook.md -> 12-resource-ingestion.md",
+      "passed": true
+    },
+    {
       "name": "local link 08-demo-runbook.md -> ../config/demo.env.example",
       "passed": true
     },
@@ -899,7 +1099,31 @@
       "passed": true
     },
     {
+      "name": "local link 10-local-infrastructure.md -> 11-artifact-transfer-reference.md",
+      "passed": true
+    },
+    {
+      "name": "local link 10-local-infrastructure.md -> 12-resource-ingestion.md",
+      "passed": true
+    },
+    {
       "name": "local link 10-local-infrastructure.md -> 06-validation.md",
+      "passed": true
+    },
+    {
+      "name": "local link 11-current-platform-architecture.md -> 12-resource-ingestion.md",
+      "passed": true
+    },
+    {
+      "name": "local link 12-resource-ingestion.md -> ../contracts/openapi.yaml",
+      "passed": true
+    },
+    {
+      "name": "local link 12-resource-ingestion.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 12-resource-ingestion.md -> validation-ingestion.json",
       "passed": true
     }
   ],

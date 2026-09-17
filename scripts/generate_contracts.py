@@ -192,13 +192,55 @@ for path,method,operation,summary,request in [
         paths[path][method]['parameters'] += [query('pageNum',integer(minimum=1,default=1),False),query('pageSize',integer(minimum=1,default=20),False)]
 for path in ('/api/v1/scenes','/api/v1/scenes/{sceneId}','/api/v1/scenes/{sceneId}/enabled','/api/v1/audits'):
     for operation in paths[path].values(): operation['x-implementation']='implemented'
+# Implemented private draft ingestion, separate from historical version/publication candidates.
+schemas['DraftCreate'] = obj({'requestKey':uuid,'description':string(maxLength=2000)})
+schemas['DraftEdit'] = obj({'description':string(maxLength=2000),'expectedVersion':integer(minimum=0)})
+schemas['DraftView'] = obj({'id':uuid,'sceneId':uuid,'description':string(maxLength=2000),
+    'lockVersion':integer(minimum=0),'creatorId':integer(format='int64'),'creatorName':string(),
+    'createdAt':string(format='date-time'),'updatedAt':string(format='date-time')})
+schemas['DraftList'] = obj({'items':array(ref('DraftView')),'total':integer(minimum=0)})
+schemas['DraftFileCreate'] = obj({'requestKey':uuid,'fileName':string(minLength=1,maxLength=255),
+    'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),'bytes':integer(format='int64',minimum=0),'sha256':sha})
+schemas['DraftFileView'] = obj({'id':uuid,'draftId':uuid,'fileName':string(),'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),
+    'bytes':integer(format='int64',minimum=0),'sha256':sha,'storageKey':string(),
+    'status':enum('PENDING','UPLOADING','AVAILABLE','FAILED','DELETING','DELETE_FAILED'),'verifiedBytes':integer(format='int64',minimum=0,nullable=True),
+    'verifiedSha256':dict(sha,nullable=True),'failureReason':string(nullable=True),'attempts':integer(minimum=0),
+    'creatorId':integer(format='int64'),'creatorName':string(),'lastActorId':integer(format='int64'),'lastActorName':string(),
+    'createdAt':string(format='date-time'),'updatedAt':string(format='date-time')},
+    ['id','draftId','fileName','kind','bytes','sha256','storageKey','status','attempts','creatorId','creatorName','lastActorId','lastActorName','createdAt','updatedAt'])
+schemas['DraftFileList'] = obj({'items':array(ref('DraftFileView')),'total':integer(minimum=0)})
+schemas['IngestionConfig'] = obj({'maxBytes':integer(format='int64',minimum=1)})
+paging=[query('limit',integer(minimum=1,maximum=100,default=20),False),query('offset',integer(minimum=0,default=0),False)]
+add('/api/v1/drafts/config','get','ingestionConfig','查看单文件上传上限',response='IngestionConfig')
+add('/api/v1/scenes/{sceneId}/drafts','get','listDrafts','列出场景版本草稿',response='DraftList',query=paging)
+add('/api/v1/scenes/{sceneId}/drafts','post','createDraft','创建版本草稿','DraftCreate','DraftView',
+    description='requestKey 在场景内幂等；重复返回原草稿，不修改说明。不存在或已删除场景返回404。')
+add('/api/v1/drafts/{draftId}','get','getDraft','查看草稿',response='DraftView')
+add('/api/v1/drafts/{draftId}','put','editDraft','编辑草稿说明','DraftEdit','DraftView')
+add('/api/v1/drafts/{draftId}','delete','removeDraft','永久删除草稿',status='204',description='确认后删除草稿及其全部文件的实际内容和文件行，保留审计及文件删除回执。成功/重复删除204；任一文件处理中409；存储删除失败503，草稿保留，失败文件可重试删除草稿。')
+add('/api/v1/drafts/{draftId}/files','get','listDraftFiles','分页查看文件及处理状态',response='DraftFileList',query=paging)
+add('/api/v1/drafts/{draftId}/files','post','registerDraftFile','登记待上传文件','DraftFileCreate','DraftFileView',
+    description='requestKey 在草稿内唯一；重复同元数据返回原记录，不同元数据409。大小超限413。AAR必须为CLIENT_LIBRARY。登记本身不代表文件可用。')
+add('/api/v1/drafts/{draftId}/files/{fileId}','delete','removeDraftFile','永久删除草稿文件',status='204',description='删除实际文件和草稿文件行，保留审计及最小幂等回执。成功/重复删除204，处理中409；存储删除失败503，列表显示DELETE_FAILED可重试。启动恢复未完成删除。旧登记请求键410，重新添加须用新键。')
+add('/api/v1/drafts/{draftId}/files/{fileId}/content','put','uploadDraftFile','流式上传并校验文件',response='DraftFileView',
+    description='原始字节流。校验实际大小、SHA256，正式存储重新校验后才AVAILABLE。重复可用文件请求核验已存文件并返回原记录；不覆盖正式文件。中断后全量重传，无分片续传。同文件处理中409，校验/存储失败422；失败记录可查。')
+paths['/api/v1/drafts/{draftId}/files/{fileId}/content']['put']['requestBody'] = {
+    'required':True,'content':{'application/octet-stream':{'schema':{'type':'string','format':'binary'}}}}
+for path, methods in paths.items():
+    if '/drafts' in path:
+        for operation in methods.values():
+            operation['x-implementation']='implemented'
+            operation['description']='仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。'+operation['description']
+            operation['responses']['410']={'description':'登记请求键对应文件已移除；重新添加须使用新请求键'}
+            operation['responses']['422']={'description':'文件校验或存储失败；查看持久化文件记录中的失败原因','content':{'application/json':{'schema':ref('Error')}}}
+
 for methods in paths.values():
     for operation in methods.values():
         operation['tags'] = ['Demo 已实现' if operation['x-implementation']=='implemented' else '候选：尚未实现']
         if operation['x-implementation']=='candidate':
             operation['description'] = '尚未实现，文件格式待确认；当前服务不开放此接口。'+operation['description']
-spec = {'openapi': '3.0.3', 'info': {'title': 'AR Demo and candidate API', 'version': '0.2.0',
-         'description': 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Docker Compose and local ArtifactStorage infrastructure are available without artifact HTTP endpoints. Historical cloud/day-night resource and publication contracts below await a real deliverable and client loading agreement; they are not implemented.'},
+spec = {'openapi': '3.0.3', 'info': {'title': 'AR Demo and candidate API', 'version': '0.3.0',
+         'description': 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Private draft ingestion supports multi-file registration, size/SHA256 verification, retry and restart reconciliation. No publication, rollback, public download or client loading is implemented. Historical cloud/day-night resource and publication contracts below await a real deliverable and client loading agreement; they are not implemented.'},
         'servers': [{'url': 'https://api.example.invalid', 'description': 'placeholder'}], 'paths': paths,
         'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat':'JWT'}}, 'schemas': schemas}}
 example = {'schemaVersion': 1, 'sceneId': '10000000-0000-4000-8000-000000000001',

@@ -24,6 +24,38 @@ class LocalArtifactStorageTest {
                 HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(data)));
     }
 
+    @Test void physicalDeleteRemovesAllPayloadsButPreservesOtherIdsAndLock() throws Exception {
+        var storage = new LocalArtifactStorage(root, 1024);
+        var selected = descriptor(UUID.randomUUID(), DATA);
+        var other = descriptor(UUID.randomUUID(), DATA);
+        storage.stage(selected, new ByteArrayInputStream(DATA));storage.commit(selected);
+        storage.stage(other, new ByteArrayInputStream(DATA));storage.commit(other);
+        Files.write(root.resolve("staging/" + selected.id() + ".part"), DATA);
+        Files.write(root.resolve("staging/" + selected.id() + ".ready"), DATA);
+        storage.delete(selected.id());storage.delete(selected.id());
+        assertFalse(Files.exists(root.resolve("committed/" + selected.storageKey())));
+        assertFalse(Files.exists(root.resolve("staging/" + selected.id() + ".part")));
+        assertFalse(Files.exists(root.resolve("staging/" + selected.id() + ".ready")));
+        assertTrue(Files.exists(root.resolve("locks/" + selected.id() + ".lock")));
+        storage.verify(other);
+    }
+
+    @Test void physicalDeleteFailsClosedForNonRegularTargetsAndBusyLocks() throws Exception {
+        var storage = new LocalArtifactStorage(root, 1024);
+        var id = UUID.randomUUID();
+        Path invalid = root.resolve("committed/" + id + ".bin");
+        Files.createDirectory(invalid);
+        Files.write(root.resolve("staging/" + id + ".part"), DATA);
+        assertThrows(IOException.class, () -> storage.delete(id));
+        assertTrue(Files.exists(root.resolve("staging/" + id + ".part")));
+        Files.delete(invalid);
+        try (var channel = FileChannel.open(root.resolve("locks/" + id + ".lock"), StandardOpenOption.WRITE);
+             var lock = channel.lock()) {
+            assertThrows(IOException.class, () -> storage.delete(id));
+        }
+        storage.delete(id);
+    }
+
     @Test void stageIsPrivateAndCommitSurvivesRestart() throws Exception {
         var storage = new LocalArtifactStorage(root, 1024);
         var expected = descriptor(UUID.randomUUID(), DATA);

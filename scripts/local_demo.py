@@ -27,6 +27,9 @@ config = json.loads(config_file.read_text(encoding='utf-8'))
 env = dict(os.environ, **config, JAVA_HOME=str(JAVA), TZ='UTC')
 env['PATH'] = str(JAVA / 'bin') + os.pathsep + env['PATH']
 env['PGPASSWORD'] = config['AR_DATABASE_PASSWORD']
+env.setdefault('AR_STORAGE_ENABLED', 'true')
+env.setdefault('AR_STORAGE_ROOT', str(LOCAL / 'artifacts'))
+env.setdefault('AR_STORAGE_MAX_BYTES', str(256 * 1024 * 1024))
 def run(args):
     # A daemon may inherit output handles on Windows; a regular file avoids waiting
     # forever for a PIPE's EOF after pg_ctl has already exited.

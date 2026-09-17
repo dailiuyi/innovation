@@ -9,15 +9,15 @@
       <el-table-column prop="name" label="名称" /><el-table-column prop="address" label="地址" />
       <el-table-column label="状态"><template #default="{row}"><el-tag :type="row.enabled?'success':'info'">{{row.enabled?'启用':'停用'}}</el-tag></template></el-table-column>
       <el-table-column prop="lockVersion" label="修订号" width="90" />
-      <el-table-column label="操作" width="280"><template #default="{row}">
-        <el-button link type="primary" @click="edit(row,true)">详情</el-button><el-button link type="primary" @click="edit(row,false)">编辑</el-button>
+      <el-table-column label="操作" width="220"><template #default="{row}">
+        <el-button link type="primary" @click="edit(row)">编辑</el-button>
         <el-button link type="warning" @click="toggle(row)">{{row.enabled?'停用':'启用'}}</el-button>
         <el-button link type="danger" :disabled="deleting" @click="remove(row)">删除</el-button>
       </template></el-table-column>
     </el-table>
     <pagination v-show="total>0" :total="total" v-model:page="page" v-model:limit="limit" @pagination="load" />
-    <el-dialog v-model="visible" :title="readonly?'场景详情':(form.id?'编辑场景':'新建场景')" width="600px" :close-on-click-modal="false">
-      <el-form label-width="100px" :disabled="readonly">
+    <el-dialog v-model="visible" :title="form.id?'编辑场景':'新建场景'" width="600px" :close-on-click-modal="false">
+      <el-form label-width="100px">
         <el-form-item label="名称" required><el-input v-model="form.name" maxlength="200" /></el-form-item>
         <el-form-item label="地址"><el-input v-model="form.address" maxlength="1000" /></el-form-item>
         <el-form-item label="经度"><el-input-number v-model="form.longitude" :min="-180" :max="180" :controls="false" /></el-form-item>
@@ -25,19 +25,26 @@
         <el-form-item label="坐标类型"><el-select v-model="form.geoCrs" clearable><el-option v-for="c in ['WGS84','GCJ02','BD09']" :key="c" :value="c" :label="c" /></el-select></el-form-item>
         <el-form-item v-if="form.id" label="场景编号"><span>{{form.id}}</span></el-form-item>
       </el-form>
-      <template #footer><el-button @click="visible=false">关闭</el-button><el-button v-if="!readonly" type="primary" :loading="saving" @click="save">保存</el-button></template>
+      <template #footer><el-button v-if="form.id" type="primary" @click="openDrafts(form.id)">版本草稿与文件</el-button><el-button @click="visible=false">关闭</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
     </el-dialog>
+    <DraftPanel :scene-id="draftScene" @close="closeDrafts" />
   </div>
 </template>
 <script setup>
 import request from '@/utils/request'
+import DraftPanel from './DraftPanel.vue'
+import { useRoute, useRouter } from 'vue-router'
+const route=useRoute(),router=useRouter()
+const draftScene=computed(()=>String(route.query.draftScene||''))
+function openDrafts(id){visible.value=false;router.replace({query:{...route.query,draftScene:id}})}
+function closeDrafts(){const query={...route.query};delete query.draftScene;delete query.draftId;router.replace({query})}
 import { ElMessage, ElMessageBox } from 'element-plus'
 const deleting=ref(false)
-const items=ref([]),total=ref(0),page=ref(1),limit=ref(20),name=ref(''),loading=ref(false),visible=ref(false),saving=ref(false),readonly=ref(false),form=ref({})
+const items=ref([]),total=ref(0),page=ref(1),limit=ref(20),name=ref(''),loading=ref(false),visible=ref(false),saving=ref(false),form=ref({})
 async function load(){loading.value=true;try{const r=await request.get('/api/v1/scenes',{params:{name:name.value,limit:limit.value,offset:(page.value-1)*limit.value}});items.value=r.items;total.value=r.total}finally{loading.value=false}}
 function search(){page.value=1;load()}
-function create(){form.value={name:'',address:'',longitude:undefined,latitude:undefined,geoCrs:''};readonly.value=false;visible.value=true}
-async function edit(row,view){form.value=await request.get('/api/v1/scenes/'+row.id);readonly.value=view;visible.value=true}
+function create(){form.value={name:'',address:'',longitude:undefined,latitude:undefined,geoCrs:''};visible.value=true}
+async function edit(row){form.value=await request.get('/api/v1/scenes/'+row.id);visible.value=true}
 async function save(){
   if(!form.value.name?.trim()) return ElMessage.warning('请填写场景名称')
   const s=form.value,lon=s.longitude??null,lat=s.latitude??null
