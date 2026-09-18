@@ -1,0 +1,71 @@
+{
+  "passed": true,
+  "postgres": "postgres (PostgreSQL) 17.6",
+  "work": "E:\\code\\java\\innovation\\.local\\export-path-mig-fny0vn6h",
+  "checks": [
+    {
+      "name": "real PostgreSQL 17 runtime",
+      "passed": true
+    },
+    {
+      "name": "applied migrations through V012",
+      "passed": true
+    },
+    {
+      "name": "nested models path kept",
+      "passed": true
+    },
+    {
+      "name": "nested textures path kept",
+      "passed": true
+    },
+    {
+      "name": "same file name in different directories kept",
+      "passed": true
+    },
+    {
+      "name": "valid top-level name kept",
+      "passed": true
+    },
+    {
+      "name": "reserved name rewritten",
+      "passed": true
+    },
+    {
+      "name": "colon name sanitized",
+      "passed": true
+    },
+    {
+      "name": "question-mark name disambiguated",
+      "passed": true
+    },
+    {
+      "name": "sanitized names unique",
+      "passed": true
+    },
+    {
+      "name": "existing disambiguated name kept",
+      "passed": true
+    },
+    {
+      "name": "generated name did not collide with existing",
+      "passed": true
+    },
+    {
+      "name": "all live paths unique ignoring case",
+      "passed": true
+    },
+    {
+      "name": "file names unchanged",
+      "passed": true
+    },
+    {
+      "name": "storage keys unchanged",
+      "passed": true
+    },
+    {
+      "name": "unique index restored",
+      "passed": true
+    }
+  ]
+}

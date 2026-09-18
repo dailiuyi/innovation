@@ -116,8 +116,12 @@ public class SecurityConfig
                     .requestMatchers(HttpMethod.POST, "/api/v1/scenes").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/scenes/{id}").authenticated()
                     .requestMatchers(HttpMethod.PUT, "/api/v1/scenes/{id}", "/api/v1/scenes/{id}/enabled").authenticated()
-                    .requestMatchers(HttpMethod.GET, "/api/v1/drafts/config", "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files", "/api/v1/scenes/{id}/drafts").authenticated()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/scenes/{id}/drafts", "/api/v1/drafts/{id}/files", "/api/v1/drafts/{id}/publish").authenticated()
+                    .requestMatchers(HttpMethod.GET, "/api/v1/drafts/config", "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files", "/api/v1/scenes/{id}/drafts",
+                        "/api/v1/drafts/{id}/download-manifest", "/api/v1/drafts/{id}/replacements/{rid}",
+                        "/api/v1/drafts/{id}/files/{fileId}/content", "/api/v1/drafts/{id}/zip-exports/{exportId}/content").authenticated()
+                    .requestMatchers(HttpMethod.HEAD, "/api/v1/drafts/{id}/files/{fileId}/content", "/api/v1/drafts/{id}/zip-exports/{exportId}/content").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/scenes/{id}/drafts", "/api/v1/drafts/{id}/files", "/api/v1/drafts/{id}/publish",
+                        "/api/v1/drafts/{id}/replacements", "/api/v1/drafts/{id}/replacements/{rid}/cancel", "/api/v1/drafts/{id}/zip-exports").authenticated()
                     .requestMatchers(HttpMethod.PUT, "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files/{fileId}/content").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files/{fileId}").authenticated()
                     .anyRequest().denyAll();

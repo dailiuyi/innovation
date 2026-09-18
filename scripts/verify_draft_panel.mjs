@@ -6,6 +6,7 @@ import vm from 'node:vm'
 const source = readFileSync(new URL('../frontend/src/views/demo/DraftPanel.vue', import.meta.url), 'utf8')
 const script = source.split('<script setup>')[1].split('</script>')[0]
   .replace(/^import .*$/gm, '').replaceAll('import.meta.url', "'file:///hash.worker.js'")
+  .replaceAll('import.meta.env.VITE_APP_BASE_API', "''").replaceAll('import.meta.env', '({VITE_APP_BASE_API:""})')
 const pending = []
 const props = { sceneId: 'scene-a' }
 const context = vm.createContext({

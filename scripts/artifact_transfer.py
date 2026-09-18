@@ -17,8 +17,9 @@ def digest(path):
         return hashlib.file_digest(source, "sha256").hexdigest()
 
 
-def download(url, destination, size, sha256, timeout=30):
+def download(url, destination, size, sha256, timeout=30, headers=None):
     """One attempt; rerun after a network failure to resume. One writer per destination."""
+    extra = {} if headers is None else dict(headers)
     if type(size) is not int or size < 0 or not re.fullmatch("[0-9a-f]{64}", sha256):
         raise ValueError("Expected nonnegative size and lowercase SHA256")
     if not url.startswith(("http://", "https://")):
@@ -53,6 +54,8 @@ def download(url, destination, size, sha256, timeout=30):
                 raise ValueError("Checksum mismatch; rerun to restart")
         else:
             headers = {"Accept-Encoding": "identity"}
+            if extra:
+                headers.update(extra)
             if offset and etag:
                 headers.update({"Range": f"bytes={offset}-", "If-Range": etag})
             else:
@@ -94,6 +97,62 @@ def download(url, destination, size, sha256, timeout=30):
         return destination
     finally:
         lock.unlink(missing_ok=True)
+
+
+RESERVED_SEGMENT = re.compile(r"^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\..*)?$", re.I)
+
+
+def validate_relative_path(path):
+    if not isinstance(path, str) or not path or "\0" in path or "\\" in path:
+        raise ValueError("unsafe relative path")
+    if path.startswith("/") or path.endswith("/") or "//" in path:
+        raise ValueError("unsafe relative path")
+    if len(path) >= 2 and path[1] == ":" and path[0].isalpha():
+        raise ValueError("unsafe relative path")
+    parts = path.split("/")
+    if not parts or len(parts) > 32 or len(path) > 1024:
+        raise ValueError("unsafe relative path")
+    for part in parts:
+        if part in (".", "..") or not part or len(part) > 255:
+            raise ValueError("unsafe relative path")
+        if part.startswith(" ") or part.endswith(" ") or part.endswith("."):
+            raise ValueError("unsafe relative path")
+        if any(ord(c) < 32 or c == 127 or c in '<>:"|?*' for c in part):
+            raise ValueError("unsafe relative path")
+        if RESERVED_SEGMENT.fullmatch(part):
+            raise ValueError("unsafe relative path")
+    return path
+
+
+def restore_tree(manifest, destination, base_url="", headers=None, timeout=30):
+    """Download every manifest file into destination, keeping the top-level folder."""
+    destination = Path(destination).absolute()
+    if destination.exists():
+        raise ValueError("destination already exists")
+    files = manifest["files"]
+    paths = [validate_relative_path(item["relativePath"]) for item in files]
+    if len(set(paths)) != len(paths) or len({p.lower() for p in paths}) != len(paths):
+        raise ValueError("relative path conflict")
+    ordered = sorted(path.lower() for path in paths)
+    for index, prefix in enumerate(ordered):
+        for other in ordered[index + 1:]:
+            if other.startswith(prefix + "/"):
+                raise ValueError("file and directory path conflict")
+            if not other.startswith(prefix):
+                break
+    destination.mkdir(parents=True)
+    for item in files:
+        relative = validate_relative_path(item["relativePath"])
+        url = item["downloadPath"]
+        if url.startswith("/"):
+            url = base_url.rstrip("/") + url
+        target = destination.joinpath(*relative.split("/"))
+        if not target.resolve().is_relative_to(destination.resolve()):
+            raise ValueError("path escaped destination")
+        download(url, target, int(item["bytes"]), item["sha256"], timeout=timeout, headers=headers)
+        if digest(target) != item["sha256"] or target.stat().st_size != item["bytes"]:
+            raise ValueError("restored file mismatch")
+    return destination
 
 
 def reference_server(package, port=0):
@@ -169,10 +228,21 @@ def main():
     p = commands.add_parser("serve")
     p.add_argument("package", type=Path)
     p.add_argument("--port", type=int, default=18083)
+    p = commands.add_parser("restore-manifest")
+    p.add_argument("manifest", type=Path)
+    p.add_argument("destination", type=Path)
+    p.add_argument("--base-url", default="")
     args = parser.parse_args()
     if args.command == "download":
-        download(args.url, args.destination, args.bytes, args.sha256)
+        token = os.environ.get("AR_TOKEN")
+        download(args.url, args.destination, args.bytes, args.sha256,
+                 headers={"Authorization": "Bearer " + token} if token else None)
         print("Verified and downloaded")
+    elif args.command == "restore-manifest":
+        token = os.environ.get("AR_TOKEN")
+        restore_tree(json.loads(args.manifest.read_text("utf-8")), args.destination, args.base_url,
+                     headers={"Authorization": "Bearer " + token} if token else None)
+        print("Verified and restored")
     else:
         with reference_server(args.package, args.port) as server:
             print(f"Reference only: http://127.0.0.1:{server.server_port}/artifact", flush=True)

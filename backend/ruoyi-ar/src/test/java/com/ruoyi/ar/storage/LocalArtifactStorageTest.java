@@ -158,6 +158,22 @@ class LocalArtifactStorageTest {
         storage.commit(expected);
     }
 
+    @Test void rangeOpenReturnsRequestedSliceAndRejectsBounds() throws Exception {
+        var storage = new LocalArtifactStorage(root, 1024);
+        var expected = descriptor(UUID.randomUUID(), DATA);
+        storage.stage(expected, new ByteArrayInputStream(DATA));
+        storage.commit(expected);
+        assertEquals(DATA.length, storage.size(expected.id()));
+        try (InputStream slice = storage.open(expected.id(), 2, 3)) {
+            assertArrayEquals(java.util.Arrays.copyOfRange(DATA, 2, 5), slice.readAllBytes());
+        }
+        try (InputStream empty = storage.open(expected.id(), DATA.length, 0)) {
+            assertEquals(0, empty.readAllBytes().length);
+        }
+        assertThrows(IOException.class, () -> storage.open(expected.id(), DATA.length, 1));
+        assertThrows(IOException.class, () -> storage.open(expected.id(), -1, 1));
+    }
+
     @Test void invalidDescriptorCannotIntroducePaths() {
         assertThrows(IllegalArgumentException.class, () -> new ArtifactStorage.Descriptor(null, 1, "../file"));
         assertThrows(IllegalArgumentException.class, () -> new ArtifactStorage.Descriptor(UUID.randomUUID(), -1, "0".repeat(64)));

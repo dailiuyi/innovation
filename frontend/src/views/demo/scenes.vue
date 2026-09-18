@@ -27,7 +27,7 @@
         <el-form-item label="坐标类型"><el-select v-model="form.geoCrs" clearable><el-option v-for="c in ['WGS84','GCJ02','BD09']" :key="c" :value="c" :label="c" /></el-select></el-form-item>
         <el-form-item v-if="form.id" label="场景编号"><span>{{form.id}}</span></el-form-item>
       </el-form>
-      <template #footer><el-button v-if="form.id" type="primary" @click="openDrafts(form.id)">版本草稿与文件</el-button><el-button @click="visible=false">关闭</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
+      <template #footer><el-button v-if="form.id" type="primary" @click="openDrafts(form.id)">版本与文件</el-button><el-button @click="visible=false">关闭</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
     </el-dialog>
     <DraftPanel :scene-id="draftScene" @close="closeDrafts" @scene-updated="load" />
   </div>

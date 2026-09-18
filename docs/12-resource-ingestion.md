@@ -1,14 +1,15 @@
 # 资源入库闭环
 
-本轮完成管理员私有入库：选择场景 → 创建版本草稿 → 登记文件 → 上传并校验 → 正式存储确认 → 后台查询 → 发布或替换发布。文件“可用”仅表示已可靠入库。同一场景只有一份当前发布版本；已发布版本文件冻结、说明可改。客户端加载仍未实现。
+本轮完成管理员私有入库：选择场景 → 创建版本草稿 → 登记文件或选择文件夹替换 → 上传并校验 → 正式存储确认 → 后台查询 → 发布或替换发布 → 管理员按完整清单或 ZIP 下载。文件“可用”仅表示已可靠入库。同一场景只有一份当前发布版本；已发布版本文件冻结、说明可改。客户端加载仍未实现。
 
 ## 数据与状态
 
-实际迁移为 `backend/ruoyi-admin/src/main/resources/db/demo/V007__resource_ingestion.sql` 起，发布指针为 `V011__scene_publication.sql`，随应用 Flyway 执行；根目录 `database/migrations` 仍是历史候选设计。
+实际迁移为 `backend/ruoyi-admin/src/main/resources/db/demo/V007__resource_ingestion.sql` 起，发布指针为 `V011__scene_publication.sql`，文件集合与 ZIP 缓存为 `V012__folder_collections_and_downloads.sql`，旧文件不安全导出路径由 `V013__safe_export_relative_paths.sql` 改写（保留原 `file_name`）。随应用 Flyway 执行；根目录 `database/migrations` 仍是历史候选设计。 V012 已在需要保留的本机 Demo 库执行，因此不以修改 V012 历史的方式纠正导出路径。
 
 - `ar_scene` 一对多 `ar_draft`：UUID、版本说明、所属场景、创建人、创建时间和说明修订号。`ar_scene.published_draft_id` 指向当前发布草稿，未发布为空。
-- `ar_draft` 一对多 `ar_draft_file`：原文件名、文件类型、预期大小/SHA256、服务端生成的存储标识、处理状态、已验证大小/SHA256、尝试次数、失败原因、创建人和最后操作人。
-- 文件内容只写入 `ArtifactStorage`，不保存进数据库。文件名只用于展示，不能指定路径；存储标识为服务端 UUID 加 `.bin`。
+- `ar_draft` 一对多 `ar_draft_collection`：当前 `ACTIVE` 集合、可选 `PENDING` 替换批次；退休或取消的集合等待物理删除。
+- `ar_draft_collection` 一对多 `ar_draft_file`：原文件名、导出相对路径、文件类型、预期大小/SHA256、服务端生成的存储标识、处理状态、已验证大小/SHA256、尝试次数、失败原因、创建人和最后操作人。
+- 文件内容只写入 `ArtifactStorage`，不保存进数据库。相对路径只用于展示、ZIP 条目和按清单还原，不能指定服务器落盘路径；存储标识为服务端 UUID 加 `.bin`。旧文件在 V012 迁入当前集合；V013 只改写不安全或冲突的导出路径，保留已有合法相对路径（含嵌套目录）以及原 `file_name` 与存储内容。
 - 新增草稿时锁定有效场景，拒绝不存在或已逻辑删除的场景。删除场景不会物理删除已有草稿、文件或审计；已有草稿可按编号只读查询，禁止继续写入。
 
 | 状态 | 含义 |
@@ -22,18 +23,25 @@
 
 ## 接口与后台
 
-入口：场景列表 → 编辑 → **版本草稿与文件**。可创建草稿、编辑说明、确认后整份删除草稿、分页查看草稿和文件、选择多个文件上传，并将一份草稿发布为该场景的唯一发布版本。页面顶部固定当前发布卡片；无发布时显示尚未发布。页面显示摘要计算进度、传输百分比、等待服务端确认和最终结果。文件表显示文件名、类型、大小、完整 SHA256、状态、失败原因、创建人和重试入口。页面刷新保留当前场景/草稿选择并重新查询数据库。
+入口：场景列表 → 编辑 → **版本与文件**。可创建草稿、编辑说明、确认后整份删除草稿、分页查看草稿和文件、选择多个文件追加上传、选择文件夹替换全部文件，并将一份草稿发布为该场景的唯一发布版本。管理员可下载 ZIP、查看完整清单并按文件下载。页面顶部固定当前发布卡片；无发布时显示尚未发布。页面显示摘要计算进度、传输百分比、等待服务端确认和最终结果。文件表显示相对路径、文件名、类型、大小、完整 SHA256、状态、失败原因、创建人、下载和重试入口。页面刷新保留当前场景/草稿选择并重新查询数据库。
 
 | 方法与路径 | 用途 |
 |---|---|
-| GET `/api/v1/drafts/config` | 单文件大小上限 |
+| GET `/api/v1/drafts/config` | 单文件与集合大小/数量上限 |
 | GET / POST `/api/v1/scenes/{sceneId}/drafts` | 分页查询 / 创建草稿 |
 | GET / PUT `/api/v1/drafts/{draftId}` | 查询 / 编辑说明（expectedVersion） |
 | DELETE `/api/v1/drafts/{draftId}` | 确认后永久删除草稿及全部文件；当前发布版本拒绝 |
 | POST `/api/v1/drafts/{draftId}/publish` | 发布或替换为该场景唯一发布版本 |
-| GET / POST `/api/v1/drafts/{draftId}/files` | 分页查询 / 登记待上传文件 |
+| GET / POST `/api/v1/drafts/{draftId}/files` | 分页查询当前集合 / 追加登记待上传文件 |
 | DELETE `/api/v1/drafts/{draftId}/files/{fileId}` | 永久删除草稿文件与数据库文件行，保留审计及幂等回执 |
 | PUT `/api/v1/drafts/{draftId}/files/{fileId}/content` | `application/octet-stream` 原始文件流 |
+| POST `/api/v1/drafts/{draftId}/replacements` | 登记完整文件夹清单并开始替换 |
+| GET `/api/v1/drafts/{draftId}/replacements/{replacementId}` | 查看替换进度 |
+| POST `/api/v1/drafts/{draftId}/replacements/{replacementId}/cancel` | 取消替换并恢复原集合 |
+| GET `/api/v1/drafts/{draftId}/download-manifest` | 完整文件清单（非分页第一页） |
+| GET/HEAD `/api/v1/drafts/{draftId}/files/{fileId}/content` | 单文件下载，支持 Range |
+| POST `/api/v1/drafts/{draftId}/zip-exports` | 准备或复用 ZIP |
+| GET/HEAD `/api/v1/drafts/{draftId}/zip-exports/{exportId}/content` | 下载已生成的 ZIP |
 
 完整输入输出见生成的 [OpenAPI](../contracts/openapi.yaml)，修改源为 `scripts/generate_contracts.py`。仅登录后的 `ar_admin` 管理员可操作；操作人从登录身份取得，客户端不能指定。关键变更写入现有 `ar_audit`，包含场景、草稿、文件和操作人，可在“场景操作记录”查看。
 
@@ -76,24 +84,34 @@ V008 历史逻辑移除记录不会因 V009 迁移自动物理删除。后续仅
 
 页面在确认成功后从列表隐藏该草稿；若正在查看该草稿的文件，关闭文件区并去掉地址中的草稿选择。
 
+## 文件夹替换与管理员下载
+
+普通“选择文件并上传”仍是向当前集合追加。文件夹入口会登记完整相对路径清单并替换全部文件：新文件全部上传且校验通过后才在事务内切换当前集合，此前继续使用旧集合。同一草稿只允许一个未完成替换批次；替换期间禁止发布、下载和其他增删。取消会清理新集合。重选相同目录按批次、相对路径、大小和摘要识别已完成文件；清单变化不得拼成另一套目录。
+
+发布、清单、单文件和 ZIP 共用完整性门槛。下载绑定集合标识和 generation，集合变化后旧请求失败，不返回新旧混合内容。ZIP 按需生成，可复用，条目使用清单中的相对路径。单文件和 ZIP 均支持强 ETag 与 Range。
+
 ## 场景发布
 
 `ar_scene.published_draft_id` 指向当前发布草稿，同一场景只有这一份。冻结由指针推导，不另存草稿状态。
 
-1. 发布条件：至少 1 个 `AVAILABLE` 文件；存在 `UPLOADING` 或未完成删除则 409。`PENDING`/`FAILED` 可以留着，发布后一并冻结。
+1. 发布条件：当前集合非空，全部文件 `AVAILABLE`，无未完成替换/上传/删除，正式存储大小和 SHA256 校验通过。任一待上传、失败、缺失或损坏的文件都会拒绝发布和所有下载。存在 `UPLOADING` 或未完成删除则 409。
 2. `POST /api/v1/drafts/{draftId}/publish` 携带 `expectedSceneVersion`（场景 `lock_version`）。同一草稿重复发布 200 幂等，不重复审计。
 3. 替换指针后，原发布版本回到普通草稿，可再发布或删除。新发布版本文件冻结，说明仍可用原接口修改。
 4. 当前发布版本禁止整份删除、禁止登记/上传/删除文件，返回 409。
 5. 列表返回 `sceneLockVersion` 以及每条 `published` 布尔值；有当前发布时另含 `published` 对象，未发布时省略该字段。审计动作为 `DRAFT_PUBLISH`，详情含 `fromDraftId`/`toDraftId`。发布成功后递增场景 `lock_version`。
-6. 页面首次发布与替换使用不同确认文案；取消不发请求。不做单独下线、预览或客户端下载。
+6. 页面首次发布与替换使用不同确认文案；取消不发请求。不做单独下线、预览或客户端加载。管理员可下载已发布或草稿版本，前提是整份集合完整。
 
 ## 配置与运行
 
 - `AR_STORAGE_ENABLED=true` 开启草稿入库接口；关闭时路由不注册。
 - `AR_STORAGE_ROOT` 指向本机私有目录或容器持久卷。
 - `AR_STORAGE_MAX_BYTES` 为正整数，后端登记和实际流式写入共同检查。Compose 必填；本机 `scripts/local_demo.py` 默认 256 MiB，可用环境变量或私密配置覆盖。此默认值不代表客户端成品已验证的包体限制。
+- `AR_STORAGE_COLLECTION_MAX_FILES` 默认 200，`AR_STORAGE_COLLECTION_MAX_BYTES` 默认 500 MiB，作为建议规模上限的配置项，不是永久产品硬限制。
+- ZIP 缓存默认保留 24 小时、总量上限 2 GiB（`AR_STORAGE_ZIP_TTL_HOURS`、`AR_STORAGE_ZIP_CACHE_MAX_BYTES`）。集合变化后旧包失效。
 - 浏览器使用后台线程按 2 MiB 分块计算 SHA256，支持局域网 HTTP，不依赖安全上下文的 `crypto.subtle`。
-- Nginx 的草稿文件上传路径使用流式转发，其余业务接口保持既有 20m 网关限制。鉴权后服务端检查文件上限，不开放文件目录和下载。
+- Nginx 对草稿文件内容与 ZIP 下载路径使用流式转发，其余业务接口保持既有 20m 网关限制。鉴权后服务端检查文件上限，不开放匿名文件目录。下载必须携带登录身份，令牌不放进 URL。
+- 选择文件夹会保留顶层目录名。当前草稿已有文件时必须确认：新目录完整成功后才永久替换；失败可重试或取消。取消确认不发起替换。替换期间禁止发布、下载和其他增删。
+- 按清单还原目录使用 `scripts/artifact_transfer.py restore-manifest`；认证信息只从环境变量 `AR_TOKEN` 读取，不写入文档或日志。
 
 更新代码后按 [本机运行手册](08-demo-runbook.md)停止、构建并重新启动后端，刷新前端；本轮验收未修改既有 Demo 数据，也未代替用户重启现有 Demo。
 
@@ -107,10 +125,10 @@ python scripts/generate_contracts.py
 python scripts/verify_design.py
 ```
 
-验收覆盖双文件关联、刷新持久化、正式存储重新读取、大小/摘要错误、重复及并发请求、真实连接中断、上传中强制结束服务、重启恢复、草稿整份删除确认/取消、空草稿拒绝发布、发布/替换指针、已发布文件冻结、当前发布禁止删除、说明仍可修改、发布确认取消、匿名和非管理员拒绝，以及操作审计归属。另有`LocalArtifactStorageTest` 存储单元测试和前后端构建。
+验收覆盖双文件关联、刷新持久化、正式存储重新读取、大小/摘要错误、重复及并发请求、真实连接中断、上传中强制结束服务、重启恢复、草稿整份删除确认/取消、空草稿拒绝发布、失败文件拒绝发布和下载、文件夹替换确认/取消、清单与 ZIP 下载及 Range、发布/替换指针、已发布文件冻结、当前发布禁止删除、说明仍可修改、发布确认取消、匿名和非管理员拒绝，以及操作审计归属。另有`LocalArtifactStorageTest`、`RelativePathTest` 和前后端构建。
 
 端到端写操作验收使用本机独立进程。Docker 构建、迁移和健康检查另行验证，不把本机测试当作容器全链路验收。未测试磁盘写满、物理断电或服务器迁移；原子文件提交与进程重启验证不能替代断电耐久性验证。
 
 ## 明确未实现
 
-场景资源预览、单独下线、昼夜双指针、游客下载、Addressables/catalog 解析、共享依赖、对象存储、CDN。客户端加载规则留到取得真实 Addressables 样包后确认。管理员发布指针与替换已实现；替换上一份发布版本即回到可再发布的草稿，不另做回滚接口。
+场景资源预览、单独下线、昼夜双指针、游客/客户端下载认证、Addressables/catalog 解析、共享依赖、对象存储、CDN。客户端加载规则留到取得真实 Addressables 样包后确认。管理员发布指针、文件夹替换和清单/ZIP 下载已实现；替换上一份发布版本即回到可再发布的草稿，不另做回滚接口。空目录不保留。

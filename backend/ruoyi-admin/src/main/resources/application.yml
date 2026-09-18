@@ -20,6 +20,10 @@ ar:
     root: ${AR_STORAGE_ROOT:./.local/artifacts}
     # Zero is deliberately invalid when enabled. Choose a test limit explicitly.
     max-bytes: ${AR_STORAGE_MAX_BYTES:0}
+    collection-max-files: ${AR_STORAGE_COLLECTION_MAX_FILES:200}
+    collection-max-bytes: ${AR_STORAGE_COLLECTION_MAX_BYTES:524288000}
+    zip-ttl-hours: ${AR_STORAGE_ZIP_TTL_HOURS:24}
+    zip-cache-max-bytes: ${AR_STORAGE_ZIP_CACHE_MAX_BYTES:2147483648}
 
 # 开发环境配置
 server:

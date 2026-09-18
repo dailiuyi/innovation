@@ -3,6 +3,7 @@ package com.ruoyi.ar.storage;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.channels.Channels;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
 import java.nio.channels.OverlappingFileLockException;
@@ -146,6 +147,24 @@ public final class LocalArtifactStorage implements ArtifactStorage {
     }
 
     @Override
+    public long size(UUID id) throws IOException {
+        Path path = file(committed, id, ".bin");
+        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) throw new IOException("Artifact missing");
+        return Files.size(path);
+    }
+
+    @Override
+    public InputStream open(UUID id, long offset, long length) throws IOException {
+        Path path = file(committed, id, ".bin");
+        if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) throw new IOException("Artifact missing");
+        long size = Files.size(path);
+        if (offset < 0 || length < 0 || offset > size || offset + length > size) throw new IOException("Invalid range");
+        FileChannel channel = FileChannel.open(path, StandardOpenOption.READ, LinkOption.NOFOLLOW_LINKS);
+        channel.position(offset);
+        return new BoundedInputStream(Channels.newInputStream(channel), length);
+    }
+
+    @Override
     public void delete(UUID id) throws IOException {
         locked(id, () -> {
             // Validate every exact UUID path before deleting any entry. Never recurse or follow links.
@@ -204,4 +223,23 @@ public final class LocalArtifactStorage implements ArtifactStorage {
 
     @FunctionalInterface
     private interface IoOperation { void run() throws IOException; }
+
+    static final class BoundedInputStream extends InputStream {
+        private final InputStream in;
+        private long remaining;
+        BoundedInputStream(InputStream in, long remaining) { this.in = in; this.remaining = remaining; }
+        @Override public int read() throws IOException {
+            if (remaining <= 0) return -1;
+            int value = in.read();
+            if (value >= 0) remaining--;
+            return value;
+        }
+        @Override public int read(byte[] buffer, int offset, int length) throws IOException {
+            if (remaining <= 0) return -1;
+            int count = in.read(buffer, offset, (int)Math.min(length, remaining));
+            if (count > 0) remaining -= count;
+            return count;
+        }
+        @Override public void close() throws IOException { in.close(); }
+    }
 }

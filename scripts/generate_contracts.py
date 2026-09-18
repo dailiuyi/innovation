@@ -197,7 +197,11 @@ schemas['DraftCreate'] = obj({'requestKey':uuid,'description':string(maxLength=2
 schemas['DraftEdit'] = obj({'description':string(maxLength=2000),'expectedVersion':integer(minimum=0)})
 schemas['DraftView'] = obj({'id':uuid,'sceneId':uuid,'description':string(maxLength=2000),
     'lockVersion':integer(minimum=0),'creatorId':integer(format='int64'),'creatorName':string(),
-    'createdAt':string(format='date-time'),'updatedAt':string(format='date-time'),'published':{'type':'boolean'}})
+    'createdAt':string(format='date-time'),'updatedAt':string(format='date-time'),'published':{'type':'boolean'},
+    'currentCollectionId':dict(uuid,nullable=True),'collectionGeneration':integer(minimum=1,nullable=True),
+    'fileCount':integer(minimum=0),'availableCount':integer(minimum=0),'totalBytes':integer(format='int64',minimum=0),
+    'pendingReplacement':ref('ReplacementView'),'downloadBlockedReason':string()},
+    ['id','sceneId','description','lockVersion','creatorId','creatorName','createdAt','updatedAt','published'])
 schemas['PublishedDraft'] = obj({'id':uuid,'description':string(maxLength=2000),
     'publishedAt':string(format='date-time'),'publishedByName':string()})
 schemas['DraftList'] = obj({'items':array(ref('DraftView')),'total':integer(minimum=0),
@@ -205,16 +209,36 @@ schemas['DraftList'] = obj({'items':array(ref('DraftView')),'total':integer(mini
     ['items','total','sceneLockVersion'])
 schemas['DraftPublish'] = obj({'expectedSceneVersion':integer(minimum=0)})
 schemas['DraftFileCreate'] = obj({'requestKey':uuid,'fileName':string(minLength=1,maxLength=255),
-    'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),'bytes':integer(format='int64',minimum=0),'sha256':sha})
-schemas['DraftFileView'] = obj({'id':uuid,'draftId':uuid,'fileName':string(),'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),
+    'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),'bytes':integer(format='int64',minimum=0),'sha256':sha,
+    'relativePath':string(minLength=1,maxLength=1024)},
+    ['requestKey','fileName','kind','bytes','sha256'])
+schemas['DraftFileView'] = obj({'id':uuid,'draftId':uuid,'collectionId':uuid,'fileName':string(),'relativePath':string(),
+    'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),
     'bytes':integer(format='int64',minimum=0),'sha256':sha,'storageKey':string(),
     'status':enum('PENDING','UPLOADING','AVAILABLE','FAILED','DELETING','DELETE_FAILED'),'verifiedBytes':integer(format='int64',minimum=0,nullable=True),
     'verifiedSha256':dict(sha,nullable=True),'failureReason':string(nullable=True),'attempts':integer(minimum=0),
     'creatorId':integer(format='int64'),'creatorName':string(),'lastActorId':integer(format='int64'),'lastActorName':string(),
     'createdAt':string(format='date-time'),'updatedAt':string(format='date-time')},
-    ['id','draftId','fileName','kind','bytes','sha256','storageKey','status','attempts','creatorId','creatorName','lastActorId','lastActorName','createdAt','updatedAt'])
+    ['id','draftId','collectionId','fileName','relativePath','kind','bytes','sha256','storageKey','status','attempts','creatorId','creatorName','lastActorId','lastActorName','createdAt','updatedAt'])
 schemas['DraftFileList'] = obj({'items':array(ref('DraftFileView')),'total':integer(minimum=0)})
-schemas['IngestionConfig'] = obj({'maxBytes':integer(format='int64',minimum=1)})
+schemas['ReplacementFileCreate'] = obj({'requestKey':uuid,'relativePath':string(minLength=1,maxLength=1024),
+    'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),'bytes':integer(format='int64',minimum=0),'sha256':sha})
+schemas['ReplacementCreate'] = obj({'requestKey':uuid,'files':array(ref('ReplacementFileCreate'),minItems=1,maxItems=1000)})
+schemas['ReplacementView'] = obj({'id':uuid,'draftId':uuid,'requestKey':uuid,'status':enum('PENDING','ACTIVE','RETIRED','CANCELLED'),
+    'generation':integer(minimum=1),'fileCount':integer(minimum=0),'totalBytes':integer(format='int64',minimum=0),
+    'availableCount':integer(minimum=0),'failedCount':integer(minimum=0),'fingerprint':string(),
+    'items':array(ref('DraftFileView'))},
+    ['id','draftId','requestKey','status','generation','fileCount','totalBytes','availableCount','failedCount'])
+schemas['DownloadManifestFile'] = obj({'fileId':uuid,'relativePath':string(),'fileName':string(),
+    'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),'bytes':integer(format='int64',minimum=0),'sha256':sha,
+    'downloadPath':string()})
+schemas['DownloadManifest'] = obj({'draftId':uuid,'collectionId':uuid,'generation':integer(minimum=1),
+    'fileCount':integer(minimum=1),'totalBytes':integer(format='int64',minimum=0),'files':array(ref('DownloadManifestFile'))})
+schemas['ZipExportCreate'] = obj({'collectionId':uuid,'generation':integer(minimum=1)})
+schemas['ZipExportView'] = obj({'id':uuid,'collectionId':uuid,'generation':integer(minimum=1),'status':enum('AVAILABLE'),
+    'bytes':integer(format='int64',minimum=0),'sha256':sha,'downloadPath':string()})
+schemas['IngestionConfig'] = obj({'maxBytes':integer(format='int64',minimum=1),
+    'collectionMaxFiles':integer(minimum=1),'collectionMaxBytes':integer(format='int64',minimum=1)})
 paging=[query('limit',integer(minimum=1,maximum=100,default=20),False),query('offset',integer(minimum=0,default=0),False)]
 add('/api/v1/drafts/config','get','ingestionConfig','查看单文件上传上限',response='IngestionConfig')
 add('/api/v1/scenes/{sceneId}/drafts','get','listDrafts','列出场景版本草稿',response='DraftList',query=paging,
@@ -225,15 +249,48 @@ add('/api/v1/drafts/{draftId}','get','getDraft','查看草稿',response='DraftVi
 add('/api/v1/drafts/{draftId}','put','editDraft','编辑草稿说明','DraftEdit','DraftView')
 add('/api/v1/drafts/{draftId}','delete','removeDraft','永久删除草稿',status='204',description='确认后删除草稿及其全部文件的实际内容和文件行，保留审计及文件删除回执。成功/重复删除204；当前发布版本409；任一文件处理中409；存储删除失败503，草稿保留，失败文件可重试删除草稿。')
 add('/api/v1/drafts/{draftId}/publish','post','publishDraft','将草稿发布为场景的唯一发布版本','DraftPublish','DraftView',
-    description='同一场景仅一份当前发布。至少1个AVAILABLE文件；处理中文件409。重复发布同一草稿幂等。发布后文件冻结、说明可改。替换后原发布版本回到草稿。当前发布版本不能删除。expectedSceneVersion 为场景 lockVersion。')
+    description='同一场景仅一份当前发布。当前集合必须非空且全部AVAILABLE，无未完成替换/上传/删除，存储大小和SHA256校验通过。处理中409。重复发布同一草稿幂等。发布后文件冻结、说明可改。替换后原发布版本回到草稿。当前发布版本不能删除。expectedSceneVersion 为场景 lockVersion。')
 add('/api/v1/drafts/{draftId}/files','get','listDraftFiles','分页查看文件及处理状态',response='DraftFileList',query=paging)
 add('/api/v1/drafts/{draftId}/files','post','registerDraftFile','登记待上传文件','DraftFileCreate','DraftFileView',
-    description='requestKey 在草稿内唯一；重复同元数据返回原记录，不同元数据409。大小超限413。AAR必须为CLIENT_LIBRARY。登记本身不代表文件可用。')
+    description='追加到当前文件集合。requestKey 在草稿内唯一；重复同元数据返回原记录，不同元数据409。相对路径默认等于文件名。大小超限413。AAR必须为CLIENT_LIBRARY。登记本身不代表文件可用。替换进行中禁止追加。')
 add('/api/v1/drafts/{draftId}/files/{fileId}','delete','removeDraftFile','永久删除草稿文件',status='204',description='删除实际文件和草稿文件行，保留审计及最小幂等回执。成功/重复删除204，处理中409；存储删除失败503，列表显示DELETE_FAILED可重试。启动恢复未完成删除。旧登记请求键410，重新添加须用新键。')
 add('/api/v1/drafts/{draftId}/files/{fileId}/content','put','uploadDraftFile','流式上传并校验文件',response='DraftFileView',
     description='原始字节流。校验实际大小、SHA256，正式存储重新校验后才AVAILABLE。重复可用文件请求核验已存文件并返回原记录；不覆盖正式文件。中断后全量重传，无分片续传。同文件处理中409，校验/存储失败422；失败记录可查。')
 paths['/api/v1/drafts/{draftId}/files/{fileId}/content']['put']['requestBody'] = {
     'required':True,'content':{'application/octet-stream':{'schema':{'type':'string','format':'binary'}}}}
+add('/api/v1/drafts/{draftId}/replacements','post','startDraftReplacement','开始用文件夹清单替换当前草稿全部文件','ReplacementCreate','ReplacementView',
+    description='先登记完整相对路径清单再上传。同一草稿仅一个未完成替换批次。替换期间禁止发布、下载和其他文件增删。同requestKey同清单返回原批次，清单变化409。')
+add('/api/v1/drafts/{draftId}/replacements/{replacementId}','get','getDraftReplacement','查看替换批次进度',response='ReplacementView')
+add('/api/v1/drafts/{draftId}/replacements/{replacementId}/cancel','post','cancelDraftReplacement','取消未完成的文件夹替换',response='DraftView',
+    description='清理新集合并恢复原集合。上传处理中409。取消确认框不得调用本接口。')
+collection_query=[query('collectionId',uuid,False),query('generation',integer(minimum=1),False)]
+add('/api/v1/drafts/{draftId}/download-manifest','get','downloadDraftManifest','获取当前完整文件清单',response='DownloadManifest',query=collection_query,
+    description='返回集合标识、全部相对路径、大小、SHA256和单文件下载路径。不使用分页文件表的第一页。集合变化后旧请求409。整份集合不完整时拒绝。')
+add('/api/v1/drafts/{draftId}/files/{fileId}/content','get','downloadDraftFile','下载单个草稿文件',
+    query=[query('collectionId',uuid),query('generation',integer(minimum=1))],
+    description='管理员下载。必须绑定集合标识。支持强ETag、Range、If-Range。整份集合不完整时拒绝。不把令牌放入URL。')
+binary={'application/octet-stream':{'schema':{'type':'string','format':'binary'}}}
+for method in ('get','head'):
+    if method=='head':
+        paths['/api/v1/drafts/{draftId}/files/{fileId}/content']['head']=dict(paths['/api/v1/drafts/{draftId}/files/{fileId}/content']['get'])
+        paths['/api/v1/drafts/{draftId}/files/{fileId}/content']['head']['operationId']='headDraftFile'
+        paths['/api/v1/drafts/{draftId}/files/{fileId}/content']['head']['summary']='查询单文件下载头'
+    paths['/api/v1/drafts/{draftId}/files/{fileId}/content'][method]['responses']['200']={'description':'完整文件','content':binary}
+    paths['/api/v1/drafts/{draftId}/files/{fileId}/content'][method]['responses']['206']={'description':'断点续传分片','content':binary}
+    paths['/api/v1/drafts/{draftId}/files/{fileId}/content'][method]['responses']['416']={'description':'Range 越界'}
+add('/api/v1/drafts/{draftId}/zip-exports','post','createDraftZipExport','准备或复用当前集合的ZIP包','ZipExportCreate','ZipExportView',
+    description='按需生成。同一集合生成可复用。先写临时文件，完成并校验后才可供下载。集合变化后旧包失效。')
+add('/api/v1/drafts/{draftId}/zip-exports/{exportId}/content','get','downloadDraftZip','下载已准备完成的ZIP',
+    description='管理员下载已完整生成的ZIP。支持强ETag、Range、If-Range。失效后需重新准备。')
+zip_binary={'application/zip':{'schema':{'type':'string','format':'binary'}}}
+for method in ('get','head'):
+    if method=='head':
+        paths['/api/v1/drafts/{draftId}/zip-exports/{exportId}/content']['head']=dict(paths['/api/v1/drafts/{draftId}/zip-exports/{exportId}/content']['get'])
+        paths['/api/v1/drafts/{draftId}/zip-exports/{exportId}/content']['head']['operationId']='headDraftZip'
+        paths['/api/v1/drafts/{draftId}/zip-exports/{exportId}/content']['head']['summary']='查询ZIP下载头'
+    paths['/api/v1/drafts/{draftId}/zip-exports/{exportId}/content'][method]['responses']['200']={'description':'完整ZIP','content':zip_binary}
+    paths['/api/v1/drafts/{draftId}/zip-exports/{exportId}/content'][method]['responses']['206']={'description':'断点续传分片','content':zip_binary}
+    paths['/api/v1/drafts/{draftId}/zip-exports/{exportId}/content'][method]['responses']['416']={'description':'Range 越界'}
 for path, methods in paths.items():
     if '/drafts' in path:
         for operation in methods.values():
@@ -248,7 +305,7 @@ for methods in paths.values():
         if operation['x-implementation']=='candidate':
             operation['description'] = '尚未实现，文件格式待确认；当前服务不开放此接口。'+operation['description']
 spec = {'openapi': '3.0.3', 'info': {'title': 'AR Demo and candidate API', 'version': '0.3.0',
-         'description': 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Private draft ingestion supports multi-file registration, size/SHA256 verification, retry, restart reconciliation and one published draft pointer per scene. Preview, public download and client loading are not implemented. Historical cloud/day-night resource and publication contracts below await a real deliverable and client loading agreement; they are not implemented.'},
+         'description': 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Private draft ingestion supports multi-file registration, folder replacement, size/SHA256 verification, retry, restart reconciliation, one published draft pointer per scene, and administrator ZIP/manifest downloads. Preview, anonymous download and client loading are not implemented. Historical cloud/day-night resource and publication contracts below await a real deliverable and client loading agreement; they are not implemented.'},
         'servers': [{'url': 'https://api.example.invalid', 'description': 'placeholder'}], 'paths': paths,
         'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat':'JWT'}}, 'schemas': schemas}}
 example = {'schemaVersion': 1, 'sceneId': '10000000-0000-4000-8000-000000000001',

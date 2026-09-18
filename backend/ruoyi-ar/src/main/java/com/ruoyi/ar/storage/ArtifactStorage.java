@@ -33,6 +33,11 @@ public interface ArtifactStorage {
     /** Caller must authorize access and close the returned stream. No HTTP exposure here. */
     InputStream open(UUID id) throws IOException;
 
+    /** Range open; offset+length must lie within the committed file. */
+    InputStream open(UUID id, long offset, long length) throws IOException;
+
+    long size(UUID id) throws IOException;
+
     /** Permanently removes this ID's partial, staged and committed bytes; idempotent under the file lock. */
     void delete(UUID id) throws IOException;
 

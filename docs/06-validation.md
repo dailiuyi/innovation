@@ -1,5 +1,42 @@
 # V0.1 验证记录
 
+## 2026-09-18 Docker 内网更新
+
+- 本次 quick doctor/check 与 ingestion profile 通过，164 项隔离 HTTP/Edge 检查通过；PostgreSQL 17.6 路径迁移回归通过。报告位于 `.local/harness/20260918T075547Z-bheby8t8/report.json`，源码指纹 `5f81da05afdf8a7b2686aa5be61ab073927f0c26bab517a05631d7602656a68f`，sourceUnchanged=true。浏览器退出时出现 Playwright CancelledError 回调日志，进程退出码 0，结构化检查全部通过。
+- `docker compose --env-file config/compose.env build backend gateway` 成功，Linux Java 21 构建含 17 项测试通过，Vue 生产构建通过。随后执行 `up -d --no-deps backend gateway --wait --wait-timeout 180`，四个服务均 healthy；保留原 PostgreSQL、Redis 与命名卷。
+- 后端镜像 ID：`sha256:d70abbab5d9821f95928a919029673d0c6bf8883afbb7cfc044cdcdd30958f3b`；网关镜像 ID：`sha256:90817d9152903894dcc9f2f80933ecf32f1864f29e2b619ca15916f112479f6d`。
+- LAN PostgreSQL 的 V012/V013 均成功；升级前数据库备份保存在忽略目录 `.local/deployment-20260918/database.dump`。Nginx 配置检查通过。本机不经代理访问 `http://192.168.0.12:43174/` 返回 200，`/prod-api/captchaImage` 返回 code 200。
+- 未重启 Windows Demo，未推送远程仓库。未执行 LAN 账号登录与另一台设备访问验证；系统拒绝读取防火墙端口规则，不能据本机 HTTP 成功宣称跨设备验收通过。
+
+## 2026-09-18 V013 LIKE 通配符与日常库升级
+
+前缀冲突三处改为 `starts_with`，避免路径中的 `_`、`%` 被 LIKE 当成通配符。独立 PostgreSQL 17.6 升级回归通过：`safe/asset_1` 与 `safe/assetA1/data.bin`、`dir%/x.bin` 与 `dirX/y.bin` 均保留。本机 Demo 已执行 V013，Flyway 现为 v013，`/captchaImage` 返回 200。
+
+## 2026-09-18 V013 导出路径迁移修正
+
+V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V013，未增加 V014、未改 Flyway 历史。迁移只保留已有合法相对路径，改写不安全或冲突路径；先删除唯一索引再写回，避免中间态 23505。
+
+- 独立 PostgreSQL 17.6 带旧数据升级 15 项通过，见 [报告](validation-export-path-migration.json)。覆盖嵌套目录保持、不同目录同名、CON.txt、冒号/问号清洗碰撞、已有 `report_2026-22222222.txt` 不被覆盖、file_name 与 storage_key 不变。
+- 隔离 ingestion 164 项通过，含浏览器取消后重选同一目录。Harness `.local/harness/20260918T073111Z-wiqycldx/report.json`，源码指纹 `6a99f7c8dd5128ed67f0ca57759553a90ea5cbaeec2d5b4245aadf44ab0842cf`，`sourceUnchanged=true`。
+- `python scripts/harness.py doctor --profile quick` 与 `check --profile quick`、`check --profile ingestion` 通过。未操作日常 Demo、未重启日常服务。日常库没有被压平的目录需要恢复。
+
+## 2026-09-18 文件夹上传审查修复
+
+修复五项：启动恢复使用集合创建人并标明 SYSTEM_RECONCILIATION；删除持有草稿写锁；取消后新批次使用新 requestKey；路径前缀冲突按大小写折叠；V013 改写不安全导出路径且不改 V012 历史。
+
+- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 164 项通过，见 [报告](validation-ingestion.json)。Harness `.local/harness/20260918T070751Z-mxe5zmb4/report.json`。源码指纹 `1c0a772ae672a8ff14ce875140411bb52779afcd290493f3691c72d6d9cbb7a1`，`sourceUnchanged=true`。
+- 新增覆盖：启动时完成未切换替换、系统恢复审计、下载/打包期间删除 409、取消批次键不能重开、大小写前缀冲突、`ar_safe_export_path`、浏览器取消后重选同一目录。
+- `python scripts/harness.py doctor --profile quick`、`check --profile quick`、`check --profile frontend`、`check --profile ingestion` 通过。未操作日常 Demo、未重启日常服务。
+
+## 2026-09-18 文件夹上传与双下载
+
+管理员草稿支持选择文件夹替换全部文件，以及 ZIP 整包和完整清单逐文件下载。V012 增加文件集合、相对路径和 ZIP 缓存。发布与所有下载共用完整性门槛：集合非空、无未完成替换/上传/删除、全部 AVAILABLE 且存储校验通过。
+
+- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 149 项通过，见 [报告](validation-ingestion.json)。Harness 报告 `.local/harness/20260918T041339Z-fdjg783q/report.json`。HEAD `b2e11821cce03f20400fcb98e04f9e4b82713cd8`，源码指纹 `05d7182833ceb228e36bbdaed1496e9df30957b1b19ceaf899d166eca53f3cf8`（工作区有未提交修改），构建 Jar SHA256 `1a3711e085cf26e840f4af17829461658e7d5f3a14a185052d22fd33c1a543e4`。
+- 覆盖：失败文件拒绝发布和下载、路径穿越拒绝、文件夹替换开始/续传/清单变化 409、替换期间禁止发布下载追加、取消后恢复旧集合、切换后旧文件删除、清单还原目录、单文件与 ZIP 的 206/416/HEAD、ZIP 复用、匿名拒绝、浏览器文件夹上传与 ZIP 下载。
+- `python scripts/harness.py doctor --profile quick` 与 `check --profile quick`、`check --profile frontend`、`check --profile ingestion` 均通过。契约 57 个操作、358 项设计检查。`RelativePathTest` 3 项、存储测试 13 项。
+- 未执行：日常 Demo 迁移/重启、Docker 网关、磁盘写满、物理断电、客户端加载认证。空目录不保留。集合默认 200 个文件 / 500 MiB、ZIP 缓存 24 小时 / 2 GiB 为配置默认值。
+
 ## 2026-09-18 Review 默认规则
 
 将独立 Code Review 的范围、缺陷标准、验证边界与输出约定写入 `docs/14-code-review.md`，由 AGENTS 和知识入口链接。简短的“review 当前未提交改动”默认包含暂存、未暂存及相关新增文件；功能名称作为重点，不静默忽略其他改动。默认只审查，具体调查和必要验证由 Agent 决定。
@@ -15,7 +52,7 @@
 
 ## 2026-09-17 场景发布指针
 
-同一场景一份当前发布版本：发布后文件冻结、说明可改；替换后原版本回到草稿；当前发布禁止删除。V011 增加 `ar_scene` 发布指针。入口仍是场景编辑 → 版本草稿与文件。
+同一场景一份当前发布版本：发布后文件冻结、说明可改；替换后原版本回到草稿；当前发布禁止删除。V011 增加 `ar_scene` 发布指针。入口仍是场景编辑 → 版本与文件。
 
 - 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 113 项通过，见 [报告](validation-ingestion.json)。覆盖空草稿拒绝发布、过期场景版本 409、重复发布幂等、已发布文件冻结、当前发布不能删、说明可改、替换后解冻可删、发布审计、浏览器首次发布/替换确认与取消。
 - 契约检查 313 项、48 个操作；草稿面板乱序回归与 Vue 生产构建通过。Maven package 含 12 项存储测试。

@@ -8,7 +8,7 @@ import unittest
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from artifact_transfer import download, reference_server, digest
+from artifact_transfer import download, reference_server, digest, validate_relative_path, restore_tree
 
 
 class TransferTest(unittest.TestCase):
@@ -179,6 +179,19 @@ class TransferTest(unittest.TestCase):
         self.partial(etag='W/"old"')
         self.get()
         self.assertNotIn("Range", self.requests[0])
+
+    def test_restore_rejects_unsafe_relative_paths(self):
+        self.assertEqual(validate_relative_path("场景A/models/a.bundle"), "场景A/models/a.bundle")
+        with self.assertRaises(ValueError):
+            validate_relative_path("../escape.bin")
+        with self.assertRaises(ValueError):
+            restore_tree({"files": [{"relativePath": "a/../b.bin", "downloadPath": self.url,
+                                     "bytes": 1, "sha256": "0" * 64}]}, self.root / "out")
+        with self.assertRaises(ValueError):
+            restore_tree({"files": [
+                {"relativePath": "root/A", "downloadPath": self.url, "bytes": 1, "sha256": "0" * 64},
+                {"relativePath": "root/a/b.bin", "downloadPath": self.url, "bytes": 1, "sha256": "0" * 64},
+            ]}, self.root / "case-prefix")
 
 
 if __name__ == "__main__":

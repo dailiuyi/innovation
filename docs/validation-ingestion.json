@@ -2,8 +2,8 @@
   "passed": true,
   "postgres": "postgres (PostgreSQL) 17.6",
   "runtime": "isolated native PostgreSQL 17 / Redis / Spring Boot / Vite / Edge",
-  "backendJar": "E:\\code\\java\\innovation\\.local\\harness\\20260918T021344Z-ru8pjyhf\\backend\\ruoyi-admin\\target\\ruoyi-admin.jar",
-  "backendJarSha256": "3d72486cfef0799e9e8f79cdf12b4256b6c763051d0c4da5f97d30bcbe4e51ed",
+  "backendJar": "E:\\code\\java\\innovation\\.local\\harness\\20260918T073111Z-wiqycldx\\backend\\ruoyi-admin\\target\\ruoyi-admin.jar",
+  "backendJarSha256": "fe1e81e7e1eae67bc744dbb968c8689093a82522ecf6aeeed0251feab83b1dfc",
   "checks": [
     {
       "name": "real PostgreSQL 17 runtime",
@@ -334,6 +334,10 @@
       "passed": true
     },
     {
+      "name": "empty draft cannot download",
+      "passed": true
+    },
+    {
       "name": "publication source file available",
       "passed": true
     },
@@ -395,6 +399,186 @@
     },
     {
       "name": "publish audit is attributable",
+      "passed": true
+    },
+    {
+      "name": "failed files cannot publish",
+      "passed": true
+    },
+    {
+      "name": "failed files cannot download",
+      "passed": true
+    },
+    {
+      "name": "replacement source available",
+      "passed": true
+    },
+    {
+      "name": "path traversal rejected",
+      "passed": true
+    },
+    {
+      "name": "folder replacement starts",
+      "passed": true
+    },
+    {
+      "name": "same replacement resume",
+      "passed": true
+    },
+    {
+      "name": "changed replacement fingerprint rejected",
+      "passed": true
+    },
+    {
+      "name": "download blocked during replacement",
+      "passed": true
+    },
+    {
+      "name": "publish blocked during replacement",
+      "passed": true
+    },
+    {
+      "name": "append blocked during replacement",
+      "passed": true
+    },
+    {
+      "name": "current files remain during replacement",
+      "passed": true
+    },
+    {
+      "name": "cancel replacement restores old collection",
+      "passed": true
+    },
+    {
+      "name": "cancelled batch key cannot restart",
+      "passed": true
+    },
+    {
+      "name": "case-insensitive path prefix rejected",
+      "passed": true
+    },
+    {
+      "name": "replacement after cancel",
+      "passed": true
+    },
+    {
+      "name": "replacement file available 场景A/models/a.bundle",
+      "passed": true
+    },
+    {
+      "name": "replacement file available 场景A/models/zero.bin",
+      "passed": true
+    },
+    {
+      "name": "replacement file available 场景A/other/a.bundle",
+      "passed": true
+    },
+    {
+      "name": "replacement switched current files",
+      "passed": true
+    },
+    {
+      "name": "old collection file removed",
+      "passed": true
+    },
+    {
+      "name": "manifest lists all relative paths",
+      "passed": true
+    },
+    {
+      "name": "restored tree matches manifest",
+      "passed": true
+    },
+    {
+      "name": "single file range 206",
+      "passed": true
+    },
+    {
+      "name": "single file range 416",
+      "passed": true
+    },
+    {
+      "name": "single file head",
+      "passed": true
+    },
+    {
+      "name": "zip export available",
+      "passed": true
+    },
+    {
+      "name": "zip download bytes",
+      "passed": true
+    },
+    {
+      "name": "zip entries match manifest",
+      "passed": true
+    },
+    {
+      "name": "zip export reused",
+      "passed": true
+    },
+    {
+      "name": "zip range 206",
+      "passed": true
+    },
+    {
+      "name": "anonymous manifest rejected",
+      "passed": true
+    },
+    {
+      "name": "anonymous zip rejected",
+      "passed": true
+    },
+    {
+      "name": "anonymous file download rejected",
+      "passed": true
+    },
+    {
+      "name": "legacy reserved name gets safe export path",
+      "passed": true
+    },
+    {
+      "name": "legacy colon name is sanitized",
+      "passed": true
+    },
+    {
+      "name": "startup replacement seed",
+      "passed": true
+    },
+    {
+      "name": "pending replacement complete before restart",
+      "passed": true
+    },
+    {
+      "name": "startup recovers completed replacement without login",
+      "passed": true
+    },
+    {
+      "name": "startup switch audit marks system recovery",
+      "passed": true
+    },
+    {
+      "name": "download lock fixture uploaded",
+      "passed": true
+    },
+    {
+      "name": "download started before delete",
+      "passed": true
+    },
+    {
+      "name": "delete during download conflicts",
+      "passed": true
+    },
+    {
+      "name": "held download did not fail the server",
+      "passed": true
+    },
+    {
+      "name": "download held for zip concurrency",
+      "passed": true
+    },
+    {
+      "name": "delete during zip pack conflicts",
       "passed": true
     },
     {
@@ -463,6 +647,18 @@
     },
     {
       "name": "browser shows failure reason and retry action",
+      "passed": true
+    },
+    {
+      "name": "browser zip contains folder path",
+      "passed": true
+    },
+    {
+      "name": "browser folder upload restores top-level directory",
+      "passed": true
+    },
+    {
+      "name": "browser reselects same folder after cancel",
       "passed": true
     }
   ],

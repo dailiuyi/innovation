@@ -4,7 +4,7 @@
 
 只搭可替换框架，资源格式尚未确定。不指定 ZIP、Unity AssetBundle、目录层级、内部清单、平台枚举或 AR 加载入口，也不冻结业务表及生产 HTTP API。
 
-本轮交付是 Python 3.11+ 标准库参考工具，便于前后端对照协议联调，不是手机 SDK。现有 Spring Boot、ArtifactStorage、Nginx 和业务数据保持原状，没有新增公开下载入口。后台上传继续按整包重试，暂不增加分片上传。
+本轮交付是 Python 3.11+ 标准库参考工具，便于对照管理员下载接口联调，不是手机 SDK。管理员清单/ZIP 下载已由草稿接口提供；本工具负责 Range 续传和按清单还原目录。后台上传继续按整包重试，暂不增加分片上传。游客或客户端下载认证尚未实现。
 
 ## 三个独立边界
 
@@ -42,6 +42,9 @@
 python scripts/artifact_transfer.py serve .local/sample.bin --port 18083
 # 另一终端；填写可信来源提供的实际大小与 SHA-256。
 python scripts/artifact_transfer.py download http://127.0.0.1:18083/artifact .local/client/sample.bin --bytes <BYTES> --sha256 <SHA256>
+# 管理员按清单还原目录时，令牌只从环境变量读取。
+$env:AR_TOKEN='<session-token>'
+python scripts/artifact_transfer.py restore-manifest .local/manifest.json .local/restored --base-url http://127.0.0.1:18080
 python scripts/test_artifact_transfer.py
 ```
 

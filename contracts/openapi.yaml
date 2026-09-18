@@ -3,11 +3,12 @@ info:
   title: AR Demo and candidate API
   version: 0.3.0
   description: 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Private
-    draft ingestion supports multi-file registration, size/SHA256 verification, retry,
-    restart reconciliation and one published draft pointer per scene. Preview, public
-    download and client loading are not implemented. Historical cloud/day-night resource
-    and publication contracts below await a real deliverable and client loading agreement;
-    they are not implemented.'
+    draft ingestion supports multi-file registration, folder replacement, size/SHA256
+    verification, retry, restart reconciliation, one published draft pointer per scene,
+    and administrator ZIP/manifest downloads. Preview, anonymous download and client
+    loading are not implemented. Historical cloud/day-night resource and publication
+    contracts below await a real deliverable and client loading agreement; they are
+    not implemented.'
 servers:
 - url: https://api.example.invalid
   description: placeholder
@@ -1536,7 +1537,7 @@ paths:
         name: platform
         in: query
         required: true
-        schema: &id013
+        schema: &id021
           type: string
           enum:
           - ANDROID
@@ -3601,7 +3602,7 @@ paths:
     post:
       operationId: publishDraft
       summary: 将草稿发布为场景的唯一发布版本
-      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。同一场景仅一份当前发布。至少1个AVAILABLE文件；处理中文件409。重复发布同一草稿幂等。发布后文件冻结、说明可改。替换后原发布版本回到草稿。当前发布版本不能删除。expectedSceneVersion
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。同一场景仅一份当前发布。当前集合必须非空且全部AVAILABLE，无未完成替换/上传/删除，存储大小和SHA256校验通过。处理中409。重复发布同一草稿幂等。发布后文件冻结、说明可改。替换后原发布版本回到草稿。当前发布版本不能删除。expectedSceneVersion
         为场景 lockVersion。
       security:
       - bearerAuth: []
@@ -3781,7 +3782,8 @@ paths:
     post:
       operationId: registerDraftFile
       summary: 登记待上传文件
-      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。requestKey 在草稿内唯一；重复同元数据返回原记录，不同元数据409。大小超限413。AAR必须为CLIENT_LIBRARY。登记本身不代表文件可用。
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。追加到当前文件集合。requestKey
+        在草稿内唯一；重复同元数据返回原记录，不同元数据409。相对路径默认等于文件名。大小超限413。AAR必须为CLIENT_LIBRARY。登记本身不代表文件可用。替换进行中禁止追加。
       security:
       - bearerAuth: []
       parameters:
@@ -4052,6 +4054,687 @@ paths:
               format: binary
       tags:
       - Demo 已实现
+    get:
+      operationId: downloadDraftFile
+      summary: 下载单个草稿文件
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。管理员下载。必须绑定集合标识。支持强ETag、Range、If-Range。整份集合不完整时拒绝。不把令牌放入URL。
+      security: &id008
+      - bearerAuth: []
+      parameters: &id009
+      - name: draftId
+        in: path
+        required: true
+        schema: *id001
+      - name: fileId
+        in: path
+        required: true
+        schema: *id001
+      - name: collectionId
+        in: query
+        required: true
+        schema: *id001
+      - name: generation
+        in: query
+        required: true
+        schema:
+          type: integer
+          minimum: 1
+      responses: &id010
+        '200':
+          description: 完整文件
+          content: &id007
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '206':
+          description: 断点续传分片
+          content: *id007
+        '416':
+          description: Range 越界
+        '410':
+          description: 登记请求键对应文件已移除；重新添加须使用新请求键
+        '422':
+          description: 文件校验或存储失败；查看持久化文件记录中的失败原因
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+    head:
+      operationId: headDraftFile
+      summary: 查询单文件下载头
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。管理员下载。必须绑定集合标识。支持强ETag、Range、If-Range。整份集合不完整时拒绝。不把令牌放入URL。
+      security: *id008
+      parameters: *id009
+      responses: *id010
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /api/v1/drafts/{draftId}/replacements:
+    post:
+      operationId: startDraftReplacement
+      summary: 开始用文件夹清单替换当前草稿全部文件
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。先登记完整相对路径清单再上传。同一草稿仅一个未完成替换批次。替换期间禁止发布、下载和其他文件增删。同requestKey同清单返回原批次，清单变化409。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: draftId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplacementView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 登记请求键对应文件已移除；重新添加须使用新请求键
+        '422':
+          description: 文件校验或存储失败；查看持久化文件记录中的失败原因
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReplacementCreate'
+      tags:
+      - Demo 已实现
+  /api/v1/drafts/{draftId}/replacements/{replacementId}:
+    get:
+      operationId: getDraftReplacement
+      summary: 查看替换批次进度
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。查看替换批次进度
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: draftId
+        in: path
+        required: true
+        schema: *id001
+      - name: replacementId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReplacementView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 登记请求键对应文件已移除；重新添加须使用新请求键
+        '422':
+          description: 文件校验或存储失败；查看持久化文件记录中的失败原因
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /api/v1/drafts/{draftId}/replacements/{replacementId}/cancel:
+    post:
+      operationId: cancelDraftReplacement
+      summary: 取消未完成的文件夹替换
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。清理新集合并恢复原集合。上传处理中409。取消确认框不得调用本接口。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: draftId
+        in: path
+        required: true
+        schema: *id001
+      - name: replacementId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 登记请求键对应文件已移除；重新添加须使用新请求键
+        '422':
+          description: 文件校验或存储失败；查看持久化文件记录中的失败原因
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /api/v1/drafts/{draftId}/download-manifest:
+    get:
+      operationId: downloadDraftManifest
+      summary: 获取当前完整文件清单
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。返回集合标识、全部相对路径、大小、SHA256和单文件下载路径。不使用分页文件表的第一页。集合变化后旧请求409。整份集合不完整时拒绝。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: draftId
+        in: path
+        required: true
+        schema: *id001
+      - name: collectionId
+        in: query
+        required: false
+        schema: *id001
+      - name: generation
+        in: query
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DownloadManifest'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 登记请求键对应文件已移除；重新添加须使用新请求键
+        '422':
+          description: 文件校验或存储失败；查看持久化文件记录中的失败原因
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /api/v1/drafts/{draftId}/zip-exports:
+    post:
+      operationId: createDraftZipExport
+      summary: 准备或复用当前集合的ZIP包
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。按需生成。同一集合生成可复用。先写临时文件，完成并校验后才可供下载。集合变化后旧包失效。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: draftId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ZipExportView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 登记请求键对应文件已移除；重新添加须使用新请求键
+        '422':
+          description: 文件校验或存储失败；查看持久化文件记录中的失败原因
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ZipExportCreate'
+      tags:
+      - Demo 已实现
+  /api/v1/drafts/{draftId}/zip-exports/{exportId}/content:
+    get:
+      operationId: downloadDraftZip
+      summary: 下载已准备完成的ZIP
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。管理员下载已完整生成的ZIP。支持强ETag、Range、If-Range。失效后需重新准备。
+      security: &id012
+      - bearerAuth: []
+      parameters: &id013
+      - name: draftId
+        in: path
+        required: true
+        schema: *id001
+      - name: exportId
+        in: path
+        required: true
+        schema: *id001
+      responses: &id014
+        '200':
+          description: 完整ZIP
+          content: &id011
+            application/zip:
+              schema:
+                type: string
+                format: binary
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '206':
+          description: 断点续传分片
+          content: *id011
+        '416':
+          description: Range 越界
+        '410':
+          description: 登记请求键对应文件已移除；重新添加须使用新请求键
+        '422':
+          description: 文件校验或存储失败；查看持久化文件记录中的失败原因
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
+    head:
+      operationId: headDraftZip
+      summary: 查询ZIP下载头
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。管理员下载已完整生成的ZIP。支持强ETag、Range、If-Range。失效后需重新准备。
+      security: *id012
+      parameters: *id013
+      responses: *id014
+      x-implementation: implemented
+      tags:
+      - Demo 已实现
 components:
   securitySchemes:
     bearerAuth:
@@ -4097,25 +4780,25 @@ components:
       type: object
       additionalProperties: false
       properties:
-        name: &id007
+        name: &id015
           type: string
           minLength: 1
           maxLength: 200
-        address: &id008
+        address: &id016
           type: string
           maxLength: 1000
           nullable: true
-        longitude: &id009
+        longitude: &id017
           type: number
           minimum: -180
           maximum: 180
           nullable: true
-        latitude: &id010
+        latitude: &id018
           type: number
           minimum: -90
           maximum: 90
           nullable: true
-        geoCrs: &id011
+        geoCrs: &id019
           type: string
           enum:
           - WGS84
@@ -4128,11 +4811,11 @@ components:
       type: object
       additionalProperties: false
       properties:
-        name: *id007
-        address: *id008
-        longitude: *id009
-        latitude: *id010
-        geoCrs: *id011
+        name: *id015
+        address: *id016
+        longitude: *id017
+        latitude: *id018
+        geoCrs: *id019
         id: *id001
         enabled:
           type: boolean
@@ -4177,13 +4860,13 @@ components:
         heightMeters:
           type: number
           minimum: 1.0e-06
-        position: &id014
+        position: &id022
           type: array
           items:
             type: number
           minItems: 3
           maxItems: 3
-        rotation: &id015
+        rotation: &id023
           type: array
           items:
             type: number
@@ -4251,16 +4934,16 @@ components:
         id: *id001
         sceneId: *id001
         variant: *id004
-        versionNo: &id018
+        versionNo: &id026
           type: integer
           minimum: 1
-        state: &id019
+        state: &id027
           type: string
           enum:
           - DRAFT
           - READY
           - REVOKED
-        lockVersion: &id020
+        lockVersion: &id028
           type: integer
           minimum: 0
       required:
@@ -4280,8 +4963,8 @@ components:
         packages:
           type: object
           additionalProperties: false
-          properties: &id021
-            ANDROID: &id012
+          properties: &id029
+            ANDROID: &id020
               type: object
               additionalProperties: false
               properties:
@@ -4305,10 +4988,10 @@ components:
               - runtimeVersion
               - minClientBuild
               - entrypoint
-            IOS: *id012
-            MINIPROGRAM: *id012
+            IOS: *id020
+            MINIPROGRAM: *id020
           minProperties: 1
-        playback: &id017
+        playback: &id025
           type: object
           additionalProperties: false
           properties:
@@ -4337,7 +5020,7 @@ components:
             additionalProperties: false
             properties:
               assetId: *id001
-              platform: *id013
+              platform: *id021
               logicalPath:
                 type: string
                 minLength: 1
@@ -4417,7 +5100,7 @@ components:
           type: integer
           format: int64
           minimum: 1
-        sha256: &id016
+        sha256: &id024
           type: string
           pattern: ^[0-9a-f]{64}$
       required:
@@ -4489,7 +5172,7 @@ components:
           type: integer
           minimum: 1
         variant: *id004
-        platform: *id013
+        platform: *id021
         format:
           type: string
           minLength: 1
@@ -4529,8 +5212,8 @@ components:
                 type: object
                 additionalProperties: false
                 properties:
-                  position: *id014
-                  rotation: *id015
+                  position: *id022
+                  rotation: *id023
                 required:
                 - position
                 - rotation
@@ -4550,7 +5233,7 @@ components:
               logicalPath:
                 type: string
                 minLength: 1
-              sha256: *id016
+              sha256: *id024
               bytes:
                 type: integer
                 format: int64
@@ -4574,7 +5257,7 @@ components:
         entrypoint:
           type: string
           minLength: 1
-        playback: *id017
+        playback: *id025
       required:
       - schemaVersion
       - sceneId
@@ -4607,14 +5290,14 @@ components:
         id: *id001
         sceneId: *id001
         variant: *id004
-        versionNo: *id018
-        state: *id019
-        lockVersion: *id020
+        versionNo: *id026
+        state: *id027
+        lockVersion: *id028
         packages:
           type: object
           additionalProperties: false
-          properties: *id021
-        playback: *id017
+          properties: *id029
+        playback: *id025
         note:
           type: string
         files:
@@ -4624,7 +5307,7 @@ components:
             additionalProperties: false
             properties:
               assetId: *id001
-              platform: *id013
+              platform: *id021
               logicalPath:
                 type: string
                 minLength: 1
@@ -4647,11 +5330,11 @@ components:
       type: object
       additionalProperties: false
       properties:
-        name: *id007
-        address: *id008
-        longitude: *id009
-        latitude: *id010
-        geoCrs: *id011
+        name: *id015
+        address: *id016
+        longitude: *id017
+        latitude: *id018
+        geoCrs: *id019
         expectedVersion:
           type: integer
           minimum: 0
@@ -4810,6 +5493,28 @@ components:
           format: date-time
         published:
           type: boolean
+        currentCollectionId:
+          type: string
+          format: uuid
+          nullable: true
+        collectionGeneration:
+          type: integer
+          minimum: 1
+          nullable: true
+        fileCount:
+          type: integer
+          minimum: 0
+        availableCount:
+          type: integer
+          minimum: 0
+        totalBytes:
+          type: integer
+          format: int64
+          minimum: 0
+        pendingReplacement:
+          $ref: '#/components/schemas/ReplacementView'
+        downloadBlockedReason:
+          type: string
       required:
       - id
       - sceneId
@@ -4885,7 +5590,11 @@ components:
           type: integer
           format: int64
           minimum: 0
-        sha256: *id016
+        sha256: *id024
+        relativePath:
+          type: string
+          minLength: 1
+          maxLength: 1024
       required:
       - requestKey
       - fileName
@@ -4898,7 +5607,10 @@ components:
       properties:
         id: *id001
         draftId: *id001
+        collectionId: *id001
         fileName:
+          type: string
+        relativePath:
           type: string
         kind:
           type: string
@@ -4909,7 +5621,7 @@ components:
           type: integer
           format: int64
           minimum: 0
-        sha256: *id016
+        sha256: *id024
         storageKey:
           type: string
         status:
@@ -4955,7 +5667,9 @@ components:
       required:
       - id
       - draftId
+      - collectionId
       - fileName
+      - relativePath
       - kind
       - bytes
       - sha256
@@ -4982,6 +5696,186 @@ components:
       required:
       - items
       - total
+    ReplacementFileCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        requestKey: *id001
+        relativePath:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        kind:
+          type: string
+          enum:
+          - RESOURCE_FILE
+          - CLIENT_LIBRARY
+        bytes:
+          type: integer
+          format: int64
+          minimum: 0
+        sha256: *id024
+      required:
+      - requestKey
+      - relativePath
+      - kind
+      - bytes
+      - sha256
+    ReplacementCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        requestKey: *id001
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReplacementFileCreate'
+          minItems: 1
+          maxItems: 1000
+      required:
+      - requestKey
+      - files
+    ReplacementView:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        draftId: *id001
+        requestKey: *id001
+        status:
+          type: string
+          enum:
+          - PENDING
+          - ACTIVE
+          - RETIRED
+          - CANCELLED
+        generation:
+          type: integer
+          minimum: 1
+        fileCount:
+          type: integer
+          minimum: 0
+        totalBytes:
+          type: integer
+          format: int64
+          minimum: 0
+        availableCount:
+          type: integer
+          minimum: 0
+        failedCount:
+          type: integer
+          minimum: 0
+        fingerprint:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/DraftFileView'
+      required:
+      - id
+      - draftId
+      - requestKey
+      - status
+      - generation
+      - fileCount
+      - totalBytes
+      - availableCount
+      - failedCount
+    DownloadManifestFile:
+      type: object
+      additionalProperties: false
+      properties:
+        fileId: *id001
+        relativePath:
+          type: string
+        fileName:
+          type: string
+        kind:
+          type: string
+          enum:
+          - RESOURCE_FILE
+          - CLIENT_LIBRARY
+        bytes:
+          type: integer
+          format: int64
+          minimum: 0
+        sha256: *id024
+        downloadPath:
+          type: string
+      required:
+      - fileId
+      - relativePath
+      - fileName
+      - kind
+      - bytes
+      - sha256
+      - downloadPath
+    DownloadManifest:
+      type: object
+      additionalProperties: false
+      properties:
+        draftId: *id001
+        collectionId: *id001
+        generation:
+          type: integer
+          minimum: 1
+        fileCount:
+          type: integer
+          minimum: 1
+        totalBytes:
+          type: integer
+          format: int64
+          minimum: 0
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/DownloadManifestFile'
+      required:
+      - draftId
+      - collectionId
+      - generation
+      - fileCount
+      - totalBytes
+      - files
+    ZipExportCreate:
+      type: object
+      additionalProperties: false
+      properties:
+        collectionId: *id001
+        generation:
+          type: integer
+          minimum: 1
+      required:
+      - collectionId
+      - generation
+    ZipExportView:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        collectionId: *id001
+        generation:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - AVAILABLE
+        bytes:
+          type: integer
+          format: int64
+          minimum: 0
+        sha256: *id024
+        downloadPath:
+          type: string
+      required:
+      - id
+      - collectionId
+      - generation
+      - status
+      - bytes
+      - sha256
+      - downloadPath
     IngestionConfig:
       type: object
       additionalProperties: false
@@ -4990,5 +5884,14 @@ components:
           type: integer
           format: int64
           minimum: 1
+        collectionMaxFiles:
+          type: integer
+          minimum: 1
+        collectionMaxBytes:
+          type: integer
+          format: int64
+          minimum: 1
       required:
       - maxBytes
+      - collectionMaxFiles
+      - collectionMaxBytes

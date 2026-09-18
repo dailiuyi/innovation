@@ -3,6 +3,7 @@ Never connects to the running Demo database. Keeps failed evidence under .local.
 """
 import argparse
 import hashlib
+import io
 import json
 import os
 from pathlib import Path
@@ -11,16 +12,20 @@ import socket
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import urllib.error
 import urllib.request
 import uuid
+import zipfile
+
+from artifact_transfer import restore_tree
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'scripts'))
 sys.path.insert(0, str(ROOT / '.local/python'))
 import psycopg
 from playwright.sync_api import sync_playwright
-
 CHECKS = []
 FLAGS = subprocess.CREATE_NO_WINDOW if os.name == 'nt' else 0
 
@@ -88,6 +93,18 @@ def main():
                 content = r.read(); return r.status, json.loads(content) if content else {}
         except urllib.error.HTTPError as e:
             content = e.read(); return e.code, json.loads(content) if content else {}
+    def api_bytes(path, method='GET', body=None, auth=True, headers=None):
+        hdrs = {} if headers is None else dict(headers)
+        if auth and token:
+            hdrs['Authorization'] = 'Bearer ' + token
+        if body is not None:
+            hdrs.setdefault('Content-Type', 'application/octet-stream')
+        req = urllib.request.Request(base + path, data=body, headers=hdrs, method=method)
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return r.status, dict(r.headers), r.read()
+        except urllib.error.HTTPError as e:
+            return e.code, dict(e.headers), e.read()
     def start_backend():
         p = start('backend', [java, '-Duser.timezone=UTC', '-jar', args.backend_jar, '--server.address=127.0.0.1'])
         until = time.monotonic() + 120
@@ -147,7 +164,7 @@ def main():
             return sql('select status from ar_draft_file where id=%s',(record['id'],))[0][0]
         a = b'first synthetic resource\n'; b = b'second resource\x00\x01'
         (code, first), meta = register('first.bin',a)
-        check('register pending file', code == 200 and first['status']=='PENDING')
+        check('register pending file', code == 200 and first['status']=='PENDING' and first.get('relativePath')=='first.bin')
         check('registration retry returns same row', api(dp+'/files','POST',meta)[1]['id'] == first['id'])
         check('idempotency key metadata conflict', api(dp+'/files','POST',{**meta,'bytes':len(a)+1})[0]==409)
         check('first upload available', upload(first,a)[1]['status']=='AVAILABLE')
@@ -290,6 +307,7 @@ def main():
         check('draft list includes publication fields', 'published' not in listed and isinstance(listed.get('sceneLockVersion'),int))
         empty_pub=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'empty-cannot-publish'})[1]
         check('empty draft cannot publish', api('/api/v1/drafts/'+empty_pub['id']+'/publish','POST',{'expectedSceneVersion':listed['sceneLockVersion']})[0]==400)
+        check('empty draft cannot download', api('/api/v1/drafts/'+empty_pub['id']+'/download-manifest')[0]==400)
         api('/api/v1/drafts/'+empty_pub['id'],'DELETE')
         first_pub=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'publish-me'})[1]
         first_pub_path='/api/v1/drafts/'+first_pub['id']
@@ -320,6 +338,128 @@ def main():
         check('unfrozen draft can register files', api(first_pub_path+'/files','POST',frozen)[0]==200)
         check('previous published can be deleted after replace', api(first_pub_path,'DELETE')[0]==204)
         check('publish audit is attributable', sql("select count(*) from ar_audit where action='DRAFT_PUBLISH' and detail->>'toDraftId'=%s and actor_name='bootstrap'",(other['id'],))[0][0]==1)
+        listed=api(pub_path)[1]
+        ingest_listed=api(f'/api/v1/scenes/{scene_id}/drafts')[1]
+        check('failed files cannot publish', api(dp+'/publish','POST',{'expectedSceneVersion':ingest_listed['sceneLockVersion']})[0]==400)
+        check('failed files cannot download', api(dp+'/download-manifest')[0]==400)
+        folder_draft=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'folder-replace'})[1]
+        folder_path='/api/v1/drafts/'+folder_draft['id']
+        keep=b'keep-old\n'
+        keep_file=api(folder_path+'/files','POST',dict(requestKey=str(uuid.uuid4()),fileName='keep.bin',kind='RESOURCE_FILE',bytes=len(keep),sha256=hashlib.sha256(keep).hexdigest()))[1]
+        check('replacement source available', api(folder_path+'/files/'+keep_file['id']+'/content','PUT',keep,raw=True)[1]['status']=='AVAILABLE')
+        nested=b'nested-zh\n'; zero=b''; same=b'same-name\n'
+        folder_items=[
+            dict(requestKey=str(uuid.uuid4()),relativePath='场景A/models/a.bundle',kind='RESOURCE_FILE',bytes=len(nested),sha256=hashlib.sha256(nested).hexdigest()),
+            dict(requestKey=str(uuid.uuid4()),relativePath='场景A/models/zero.bin',kind='RESOURCE_FILE',bytes=0,sha256=hashlib.sha256(zero).hexdigest()),
+            dict(requestKey=str(uuid.uuid4()),relativePath='场景A/other/a.bundle',kind='RESOURCE_FILE',bytes=len(same),sha256=hashlib.sha256(same).hexdigest()),
+        ]
+        payloads={'场景A/models/a.bundle':nested,'场景A/models/zero.bin':zero,'场景A/other/a.bundle':same}
+        check('path traversal rejected', api(folder_path+'/replacements','POST',{'requestKey':str(uuid.uuid4()),'files':[{**folder_items[0],'relativePath':'../escape.bin'}]})[0]==400)
+        batch_key=str(uuid.uuid4())
+        code, batch=api(folder_path+'/replacements','POST',{'requestKey':batch_key,'files':folder_items})
+        check('folder replacement starts', code==200 and batch['status']=='PENDING' and batch['fileCount']==3)
+        check('same replacement resume', api(folder_path+'/replacements','POST',{'requestKey':batch_key,'files':folder_items})[1]['id']==batch['id'])
+        check('changed replacement fingerprint rejected', api(folder_path+'/replacements','POST',{'requestKey':batch_key,'files':folder_items[:1]})[0]==409)
+        check('download blocked during replacement', api(folder_path+'/download-manifest')[0]==409)
+        listed=api(pub_path)[1]
+        check('publish blocked during replacement', api(folder_path+'/publish','POST',{'expectedSceneVersion':listed['sceneLockVersion']})[0]==409)
+        check('append blocked during replacement', api(folder_path+'/files','POST',dict(requestKey=str(uuid.uuid4()),fileName='extra.bin',kind='RESOURCE_FILE',bytes=len(keep),sha256=hashlib.sha256(keep).hexdigest()))[0]==409)
+        check('current files remain during replacement', api(folder_path+'/files')[1]['total']==1 and api(folder_path+'/files')[1]['items'][0]['fileName']=='keep.bin')
+        check('cancel replacement restores old collection', api(folder_path+'/replacements/'+batch['id']+'/cancel','POST')[0]==200 and api(folder_path+'/files')[1]['items'][0]['fileName']=='keep.bin')
+        check('cancelled batch key cannot restart', api(folder_path+'/replacements','POST',{'requestKey':batch_key,'files':folder_items})[0]==409)
+        check('case-insensitive path prefix rejected', api(folder_path+'/replacements','POST',{'requestKey':str(uuid.uuid4()),'files':[
+            dict(requestKey=str(uuid.uuid4()),relativePath='root/A',kind='RESOURCE_FILE',bytes=len(keep),sha256=hashlib.sha256(keep).hexdigest()),
+            dict(requestKey=str(uuid.uuid4()),relativePath='root/a/b.bin',kind='RESOURCE_FILE',bytes=len(keep),sha256=hashlib.sha256(keep).hexdigest()),
+        ]})[0]==400)
+        code, batch=api(folder_path+'/replacements','POST',{'requestKey':str(uuid.uuid4()),'files':folder_items})
+        check('replacement after cancel', code==200)
+        for item in batch['items']:
+            data=payloads[item['relativePath']]
+            check('replacement file available '+item['relativePath'], api(folder_path+'/files/'+item['id']+'/content','PUT',data,raw=True)[1]['status']=='AVAILABLE')
+        check('replacement switched current files', api(folder_path+'/files')[1]['total']==3)
+        check('old collection file removed', sql("select count(*) from ar_draft_file where id=%s",(keep_file['id'],))[0][0]==0)
+        man=api(folder_path+'/download-manifest')[1]
+        check('manifest lists all relative paths', sorted(x['relativePath'] for x in man['files'])==sorted(payloads) and man['fileCount']==3)
+        tree=run/'restored-tree'
+        restore_tree(man, tree, base, {'Authorization':'Bearer '+token})
+        check('restored tree matches manifest', all((tree/p).read_bytes()==payloads[p] and hashlib.sha256((tree/p).read_bytes()).hexdigest()==hashlib.sha256(payloads[p]).hexdigest() for p in payloads))
+        file0=man['files'][0]
+        st, hdrs, body=api_bytes(file0['downloadPath'].split(base)[-1] if file0['downloadPath'].startswith('http') else file0['downloadPath'], headers={'Range':'bytes=0-3'})
+        check('single file range 206', st==206 and body==payloads[file0['relativePath']][:4] and hdrs.get('ETag')=='"'+file0['sha256']+'"')
+        st, hdrs, body=api_bytes(file0['downloadPath'] if file0['downloadPath'].startswith('/') else '/'+file0['downloadPath'], headers={'Range':'bytes=999999-'})
+        check('single file range 416', st==416)
+        st, hdrs, body=api_bytes(file0['downloadPath'], method='HEAD')
+        check('single file head', st==200 and int(hdrs.get('Content-Length','-1'))==file0['bytes'] and body==b'')
+        zip_code, exported=api(folder_path+'/zip-exports','POST',{'collectionId':man['collectionId'],'generation':man['generation']})
+        check('zip export available', zip_code==200 and exported.get('status')=='AVAILABLE' and exported.get('bytes',0)>0)
+        st, hdrs, zbody=api_bytes(exported['downloadPath'])
+        check('zip download bytes', st==200 and hashlib.sha256(zbody).hexdigest()==exported['sha256'] and len(zbody)==exported['bytes'])
+        with zipfile.ZipFile(io.BytesIO(zbody)) as archive:
+            names=set(archive.namelist())
+            check('zip entries match manifest', names==set(payloads) and all(archive.read(name)==payloads[name] for name in payloads))
+        reused=api(folder_path+'/zip-exports','POST',{'collectionId':man['collectionId'],'generation':man['generation']})[1]
+        check('zip export reused', reused['id']==exported['id'])
+        st, hdrs, zpart=api_bytes(exported['downloadPath'], headers={'Range':'bytes=0-10'})
+        check('zip range 206', st==206 and zpart==zbody[:11])
+        check('anonymous manifest rejected', api(folder_path+'/download-manifest',auth=False)[0]==401)
+        check('anonymous zip rejected', api(folder_path+'/zip-exports','POST',{'collectionId':man['collectionId'],'generation':man['generation']},auth=False)[0]==401)
+        check('anonymous file download rejected', api_bytes(file0['downloadPath'], auth=False)[0]==401)
+        reserved_id=uuid.uuid4()
+        check('legacy reserved name gets safe export path', sql("select ar_safe_export_path('CON.txt', %s)",(str(reserved_id),))[0][0]=='export-'+str(reserved_id)[:8]+'.txt')
+        check('legacy colon name is sanitized', sql("select ar_safe_export_path('report:2026.txt', %s)",(str(uuid.uuid4()),))[0][0]=='report_2026.txt')
+        crash_draft=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'startup-switch'})[1]
+        crash_path='/api/v1/drafts/'+crash_draft['id']
+        keep_crash=api(crash_path+'/files','POST',dict(requestKey=str(uuid.uuid4()),fileName='keep-crash.bin',kind='RESOURCE_FILE',bytes=len(keep),sha256=hashlib.sha256(keep).hexdigest()))[1]
+        check('startup replacement seed', api(crash_path+'/files/'+keep_crash['id']+'/content','PUT',keep,raw=True)[1]['status']=='AVAILABLE')
+        crash_items=[
+            dict(requestKey=str(uuid.uuid4()),relativePath='场景C/a.bin',kind='RESOURCE_FILE',bytes=len(nested),sha256=hashlib.sha256(nested).hexdigest()),
+        ]
+        crash_batch=api(crash_path+'/replacements','POST',{'requestKey':str(uuid.uuid4()),'files':crash_items})[1]
+        last=crash_batch['items'][0]
+        (run/'artifacts/committed'/(last['id']+'.bin')).write_bytes(nested)
+        sql("update ar_draft_file set status='AVAILABLE', verified_bytes=expected_bytes, verified_sha256=expected_sha256, failure_reason=null where id=%s",(last['id'],))
+        check('pending replacement complete before restart', sql("select status from ar_draft_collection where id=%s",(crash_batch['id'],))[0][0]=='PENDING')
+        backend.kill();backend.wait(timeout=15)
+        backend=start_backend()
+        check('startup recovers completed replacement without login', api(crash_path+'/files')[1]['total']==1 and api(crash_path+'/files')[1]['items'][0]['relativePath']=='场景C/a.bin')
+        check('startup switch audit marks system recovery', sql("select count(*) from ar_audit where action='COLLECTION_REPLACE_SWITCH' and detail->>'collectionId'=%s and detail->>'performedBy'='SYSTEM_RECONCILIATION'",(crash_batch['id'],))[0][0]==1)
+        blob=os.urandom(2*1024*1024)
+        held_file=api(folder_path+'/files','POST',dict(requestKey=str(uuid.uuid4()),fileName='held.bin',kind='RESOURCE_FILE',bytes=len(blob),sha256=hashlib.sha256(blob).hexdigest()))[1]
+        check('download lock fixture uploaded', api(folder_path+'/files/'+held_file['id']+'/content','PUT',blob,raw=True)[1]['status']=='AVAILABLE')
+        held_man=api(folder_path+'/download-manifest')[1]
+        held_item=next(x for x in held_man['files'] if x['fileName']=='held.bin')
+        held=threading.Event(); consume=threading.Event(); download_error=[]
+        def hold_download():
+            try:
+                req=urllib.request.Request(base+held_item['downloadPath'], headers={'Authorization':'Bearer '+token})
+                with urllib.request.urlopen(req, timeout=60) as resp:
+                    held.set()
+                    consume.wait(timeout=30)
+                    resp.read()
+            except Exception as exc:
+                download_error.append(exc); held.set()
+        worker=threading.Thread(target=hold_download); worker.start()
+        check('download started before delete', held.wait(timeout=15))
+        delete_code=api(folder_path+'/files/'+held_file['id'],'DELETE')[0]
+        check('delete during download conflicts', delete_code==409)
+        consume.set(); worker.join(timeout=15)
+        check('held download did not fail the server', download_error==[])
+        held2=threading.Event(); consume2=threading.Event(); zip_code={'v':None}
+        def hold_then_pack():
+            req=urllib.request.Request(base+held_item['downloadPath'], headers={'Authorization':'Bearer '+token})
+            with urllib.request.urlopen(req, timeout=60) as resp:
+                held2.set()
+                consume2.wait(timeout=30)
+                resp.read()
+        def pack_zip():
+            held2.wait(timeout=15)
+            zip_code['v']=api(folder_path+'/zip-exports','POST',{'collectionId':held_man['collectionId'],'generation':held_man['generation']})[0]
+        holder=threading.Thread(target=hold_then_pack); packer=threading.Thread(target=pack_zip)
+        holder.start(); packer.start()
+        check('download held for zip concurrency', held2.wait(timeout=15))
+        zip_delete=api(folder_path+'/files/'+held_file['id'],'DELETE')[0]
+        consume2.set(); holder.join(timeout=15); packer.join(timeout=30)
+        check('delete during zip pack conflicts', zip_delete==409)
         start('vite',['node',ROOT/'frontend/node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',str(web_port),'--strictPort'],ROOT/'frontend')
         web=f'http://127.0.0.1:{web_port}'
         until=time.monotonic()+30
@@ -336,12 +476,12 @@ def main():
             page.goto(web+'/admin/scenes')
             row=page.get_by_role('row').filter(has_text='ingestion-acceptance')
             row.get_by_role('button',name='编辑',exact=True).click()
-            page.get_by_role('button',name='版本草稿与文件',exact=True).click()
+            page.get_by_role('button',name='版本与文件',exact=True).click()
             page.get_by_placeholder('填写版本说明（可留空）').fill('browser draft')
             page.get_by_role('button',name='创建草稿',exact=True).click()
             page.get_by_role('heading',name='草稿文件',exact=False).wait_for()
             payloads=[{'name':'browser-one.bin','mimeType':'application/octet-stream','buffer':a},{'name':'browser-two.bin','mimeType':'application/octet-stream','buffer':b*(200000)}]
-            page.locator('input[type=file]').set_input_files(payloads)
+            page.locator('#draft-file-picker').set_input_files(payloads)
             page.get_by_role('row').filter(has_text='browser-two.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
             check('browser creates draft and uploads two files',page.get_by_role('row').filter(has_text='browser-one.bin').get_by_text('已校验入库',exact=True).count()==1)
             browser_draft=page.url.split('draftId=')[1].split('&')[0]
@@ -350,7 +490,7 @@ def main():
             page.get_by_role('heading',name='内容版本草稿').wait_for()
             page.get_by_role('row').filter(has_text='browser-two.bin').get_by_text('已校验入库',exact=True).wait_for()
             check('browser refresh preserves selected draft and files',page.get_by_role('row').filter(has_text='browser-one.bin').count()==1)
-            page.locator('input[type=file]').set_input_files(payloads[0])
+            page.locator('#draft-file-picker').set_input_files(payloads[0])
             page.get_by_role('status').filter(has_text='已校验入库').wait_for(timeout=30000)
             check('browser repeated file selection does not duplicate row',page.get_by_role('row').filter(has_text='browser-one.bin').count()==1)
             row=page.get_by_role('row').filter(has_text='browser-one.bin')
@@ -365,7 +505,7 @@ def main():
             page.get_by_role('heading',name='草稿文件',exact=False).wait_for()
             page.get_by_role('row').filter(has_text='browser-two.bin').wait_for()
             check('browser removal remains hidden after refresh',page.get_by_role('row').filter(has_text='browser-one.bin').count()==0)
-            page.locator('input[type=file]').set_input_files(payloads[0])
+            page.locator('#draft-file-picker').set_input_files(payloads[0])
             page.get_by_role('row').filter(has_text='browser-one.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
             check('browser can explicitly readd removed file',sql("select count(*) from ar_draft_file where draft_id=%s and file_name='browser-one.bin' and removed_at is null",(browser_draft,))[0][0]==1 and not (run/'artifacts/committed'/(original_id+'.bin')).exists())
             page.get_by_text('该场景尚未发布').wait_for()
@@ -380,12 +520,12 @@ def main():
             ver=api('/api/v1/scenes/'+scene_id)[1]['lockVersion']
             page.get_by_role('row').filter(has_text='ingestion-acceptance').get_by_text(str(ver),exact=True).wait_for()
             check('parent scene revision updates after publish',True)
-            check('browser hides upload on published draft',page.locator('input[type=file]').count()==0)
+            check('browser hides upload on published draft',page.locator('#draft-file-picker').count()==0 and page.locator('#draft-folder-picker').count()==0)
             check('browser disables published draft delete',draft_row.get_by_role('button',name='删除',exact=True).is_disabled())
             page.get_by_placeholder('填写版本说明（可留空）').fill('replacement draft')
             page.get_by_role('button',name='创建草稿',exact=True).click()
             page.get_by_role('heading',name='草稿文件',exact=False).wait_for()
-            page.locator('input[type=file]').set_input_files(payloads[0])
+            page.locator('#draft-file-picker').set_input_files(payloads[0])
             page.get_by_role('row').filter(has_text='browser-one.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
             replacement_id=page.url.split('draftId=')[1].split('&')[0]
             page.get_by_role('row').filter(has_text=replacement_id).get_by_role('button',name='替换发布',exact=True).click()
@@ -407,6 +547,68 @@ def main():
             page.goto(web+'/admin/scenes?draftScene='+scene_id+'&draftId='+draft_id)
             page.get_by_role('row').filter(has_text='mismatch.bin').get_by_text('失败',exact=True).wait_for()
             check('browser shows failure reason and retry action',page.get_by_role('row').filter(has_text='mismatch.bin').get_by_text('SHA256',exact=False).count()>0 and page.get_by_role('row').filter(has_text='mismatch.bin').get_by_role('button',name='重新选择原文件').count()==1)
+            folder_root=run/'browser-folder'/'场景B'/'models'
+            folder_root.mkdir(parents=True)
+            (folder_root/'one.bin').write_bytes(a)
+            before=page.url
+            page.get_by_placeholder('填写版本说明（可留空）').fill('folder browser')
+            page.get_by_role('button',name='创建草稿',exact=True).click()
+            page.wait_for_function('prev => location.href !== prev && location.href.includes("draftId=")', arg=before)
+            page.get_by_role('button',name='选择文件夹并上传',exact=True).wait_for()
+            page.locator('#draft-folder-picker').set_input_files(str(run/'browser-folder'/'场景B'))
+            try:
+                page.get_by_role('button',name='确认替换全部文件',exact=True).click(timeout=3000)
+            except Exception:
+                pass
+            page.get_by_role('row').filter(has_text='one.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
+            page.get_by_role('button',name='查看下载清单',exact=True).click()
+            page.get_by_role('dialog',name='下载清单').get_by_text('场景B/models/one.bin').first.wait_for()
+            page.keyboard.press('Escape')
+            with page.expect_download(timeout=30000) as downloaded:
+                page.get_by_role('button',name='下载 ZIP',exact=True).click()
+            zip_path=run/'browser.zip'; downloaded.value.save_as(zip_path)
+            with zipfile.ZipFile(zip_path) as archive:
+                names=archive.namelist()
+                check('browser zip contains folder path', archive.read('场景B/models/one.bin')==a)
+            check('browser folder upload restores top-level directory',page.get_by_role('row').filter(has_text='场景B/models/one.bin').count()==1)
+            retry_root=run/'browser-retry'/'场景D'/'models'
+            retry_root.mkdir(parents=True)
+            (retry_root/'retry.bin').write_bytes(a)
+            (retry_root/'retry-two.bin').write_bytes(b)
+            before=page.url
+            page.get_by_placeholder('填写版本说明（可留空）').fill('folder retry')
+            page.get_by_role('button',name='创建草稿',exact=True).click()
+            page.wait_for_function('prev => location.href !== prev && location.href.includes("draftId=")', arg=before)
+            page.get_by_role('button',name='选择文件并上传',exact=True).wait_for()
+            page.locator('#draft-file-picker').set_input_files(str(retry_root/'retry.bin'))
+            page.get_by_role('row').filter(has_text='retry.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
+            stalled=[]
+            def stall_put(route):
+                if route.request.method=='PUT' and route.request.url.rstrip('/').endswith('/content'):
+                    stalled.append(route)
+                    return
+                route.continue_()
+            page.route('**/api/v1/drafts/**/content', stall_put)
+            page.get_by_role('button',name='选择文件夹并上传',exact=True).click()
+            page.locator('#draft-folder-picker').set_input_files(str(run/'browser-retry'/'场景D'))
+            page.get_by_text('此次操作会替换当前草稿的全部文件',exact=False).wait_for(timeout=15000)
+            page.get_by_role('button',name='确认替换全部文件',exact=True).click()
+            page.get_by_text('替换进度',exact=False).wait_for(timeout=30000)
+            page.get_by_role('button',name='取消本次上传',exact=True).click()
+            page.unroute('**/api/v1/drafts/**/content')
+            for stalled_route in stalled:
+                try: stalled_route.abort()
+                except Exception: pass
+            page.get_by_role('button',name='取消替换',exact=True).click()
+            page.get_by_role('button',name='确认取消替换',exact=True).click()
+            page.get_by_role('row').filter(has_text='retry.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
+            page.evaluate("document.getElementById('draft-folder-picker').value=''")
+            page.get_by_role('button',name='选择文件夹并上传',exact=True).click()
+            page.locator('#draft-folder-picker').set_input_files(str(run/'browser-retry'/'场景D'))
+            page.get_by_text('此次操作会替换当前草稿的全部文件',exact=False).wait_for(timeout=15000)
+            page.get_by_role('button',name='确认替换全部文件',exact=True).click()
+            page.get_by_role('row').filter(has_text='场景D/models/retry.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
+            check('browser reselects same folder after cancel',page.get_by_role('row').filter(has_text='场景D/models/retry.bin').count()==1)
             browser.close()
         report={'passed':True,'postgres':version,'runtime':'isolated native PostgreSQL 17 / Redis / Spring Boot / Vite / Edge',
                 'backendJar':str(args.backend_jar),'backendJarSha256':hashlib.sha256(args.backend_jar.read_bytes()).hexdigest(),

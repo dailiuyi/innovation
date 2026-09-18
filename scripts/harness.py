@@ -174,6 +174,9 @@ def make_steps(profile, directory, root=ROOT):
     if profile == 'ingestion':
         # Copy source only: never replace the jar held by the running Windows Demo.
         backend = directory / 'backend'
+        steps.append(Step('export-path-migration', [sys.executable, root / 'scripts/verify_export_path_migration.py',
+                                                    '--report-dir', evidence], root, 180,
+                          evidence / 'validation-export-path-migration.json'))
         steps.append(Step('backend-package', ['mvn.cmd', '-f', backend / 'pom.xml',
                                               '-Dmaven.repo.local=' + str(root / '.local/m2'), '-o', 'package', '-B', '-ntp'], root, 600))
         steps.append(Step('ingestion', [sys.executable, root / 'scripts/verify_ingestion.py', '--report-dir', evidence,
