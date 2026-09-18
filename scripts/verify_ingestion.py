@@ -1,6 +1,7 @@
 """Real PostgreSQL 17, HTTP and browser ingestion acceptance in a new private local directory.
 Never connects to the running Demo database. Keeps failed evidence under .local.
 """
+import argparse
 import hashlib
 import json
 import os
@@ -35,8 +36,16 @@ def free_port():
         return s.getsockname()[1]
 
 def main():
-    run = ROOT / '.local' / ('ingestion-check-' + time.strftime('%Y%m%d-%H%M%S'))
-    run.mkdir()
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--report-dir', type=Path, default=ROOT / 'docs')
+    parser.add_argument('--backend-jar', type=Path, default=ROOT / 'backend/ruoyi-admin/target/ruoyi-admin.jar')
+    args = parser.parse_args()
+    args.report_dir = args.report_dir.resolve()
+    args.backend_jar = args.backend_jar.resolve()
+    args.report_dir.mkdir(parents=True, exist_ok=True)
+    evidence_root = ROOT / '.local' if args.report_dir == ROOT / 'docs' else args.report_dir
+    evidence_root.mkdir(parents=True, exist_ok=True)
+    run = Path(tempfile.mkdtemp(prefix='ingestion-check-', dir=evidence_root))
     pg = ROOT / '.local/postgresql17/pgsql/bin'
     java = next((ROOT / '.local/java21').glob('jdk*/bin/java.exe'))
     pg_port, redis_port, api_port, web_port = [free_port() for _ in range(4)]
@@ -80,7 +89,7 @@ def main():
         except urllib.error.HTTPError as e:
             content = e.read(); return e.code, json.loads(content) if content else {}
     def start_backend():
-        p = start('backend', [java, '-Duser.timezone=UTC', '-jar', ROOT / 'backend/ruoyi-admin/target/ruoyi-admin.jar', '--server.address=127.0.0.1'])
+        p = start('backend', [java, '-Duser.timezone=UTC', '-jar', args.backend_jar, '--server.address=127.0.0.1'])
         until = time.monotonic() + 120
         while time.monotonic() < until:
             if p.poll() is not None:
@@ -113,6 +122,7 @@ def main():
         token = api('/login', 'POST', {'username':'bootstrap','password':password}, auth=False)[1].get('token')
         check('administrator login', bool(token))
         check('anonymous config rejected', api('/api/v1/drafts/config', auth=False)[0] == 401)
+        check('anonymous publish rejected', api('/api/v1/drafts/'+str(uuid.uuid4())+'/publish','POST',{'expectedSceneVersion':0},auth=False)[0]==401)
         scene = api('/api/v1/scenes', 'POST', {'name':'ingestion-acceptance'})[1]
         scene_id = scene['id']
         create = {'requestKey':str(uuid.uuid4()),'description':'first draft'}
@@ -268,11 +278,48 @@ def main():
         check('nonadministrator removal forbidden',api(dp+'/files/'+first['id'],'DELETE')[0]==403)
         check('nonadministrator draft removal forbidden',api(dp,'DELETE')[0]==403)
         check('nonadministrator draft access forbidden',api(dp)[0]==403 and api(path,'POST',create)[0]==403)
+        check('nonadministrator publish forbidden',api(dp+'/publish','POST',{'expectedSceneVersion':0})[0]==403)
         # Account creation intentionally retires bootstrap in the application. Restore only this
         # synthetic isolated account for the subsequent browser checks, then obtain a fresh token.
         sql("update sys_user set status='0',del_flag='0' where user_name='bootstrap'")
         token=api('/login','POST',{'username':'bootstrap','password':password},auth=False)[1].get('token')
         check('fresh administrator session for browser',bool(token))
+        pub_scene=api('/api/v1/scenes','POST',{'name':'publication-acceptance'})[1]
+        pub_path=f"/api/v1/scenes/{pub_scene['id']}/drafts"
+        listed=api(pub_path)[1]
+        check('draft list includes publication fields', 'published' not in listed and isinstance(listed.get('sceneLockVersion'),int))
+        empty_pub=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'empty-cannot-publish'})[1]
+        check('empty draft cannot publish', api('/api/v1/drafts/'+empty_pub['id']+'/publish','POST',{'expectedSceneVersion':listed['sceneLockVersion']})[0]==400)
+        api('/api/v1/drafts/'+empty_pub['id'],'DELETE')
+        first_pub=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'publish-me'})[1]
+        first_pub_path='/api/v1/drafts/'+first_pub['id']
+        first_pub_file=api(first_pub_path+'/files','POST',dict(requestKey=str(uuid.uuid4()),fileName='publish.bin',kind='RESOURCE_FILE',bytes=len(a),sha256=hashlib.sha256(a).hexdigest()))[1]
+        check('publication source file available', api(first_pub_path+'/files/'+first_pub_file['id']+'/content','PUT',a,raw=True)[1]['status']=='AVAILABLE')
+        listed=api(pub_path)[1]
+        check('stale scene version rejected', api(first_pub_path+'/publish','POST',{'expectedSceneVersion':listed['sceneLockVersion']+1})[0]==409)
+        code, published_draft=api(first_pub_path+'/publish','POST',{'expectedSceneVersion':listed['sceneLockVersion']})
+        check('publish draft', code==200 and published_draft.get('published') is True)
+        check('publish increments scene lock version', api('/api/v1/scenes/'+pub_scene['id'])[1]['lockVersion']==listed['sceneLockVersion']+1)
+        listed=api(pub_path)[1]
+        check('one published pointer', listed['published']['id']==first_pub['id'] and sum(1 for x in listed['items'] if x['published'])==1)
+        check('repeat publish is idempotent', api(first_pub_path+'/publish','POST',{'expectedSceneVersion':listed['sceneLockVersion']})[1]['published'] is True)
+        frozen=dict(requestKey=str(uuid.uuid4()),fileName='frozen.bin',kind='RESOURCE_FILE',bytes=len(a),sha256=hashlib.sha256(a).hexdigest())
+        check('published files are frozen', api(first_pub_path+'/files','POST',frozen)[0]==409)
+        check('published file cannot be deleted', api(first_pub_path+'/files/'+first_pub_file['id'],'DELETE')[0]==409)
+        check('published draft cannot be deleted', api(first_pub_path,'DELETE')[0]==409)
+        edited=api(first_pub_path,'PUT',{'description':'published-updated','expectedVersion':published_draft['lockVersion']})[1]
+        check('published description can still be edited', edited['description']=='published-updated' and edited['published'] is True)
+        other=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'replacement'})[1]
+        other_path='/api/v1/drafts/'+other['id']
+        other_file=api(other_path+'/files','POST',dict(requestKey=str(uuid.uuid4()),fileName='replacement.bin',kind='RESOURCE_FILE',bytes=len(a),sha256=hashlib.sha256(a).hexdigest()))[1]
+        check('replacement file available', api(other_path+'/files/'+other_file['id']+'/content','PUT',a,raw=True)[1]['status']=='AVAILABLE')
+        listed=api(pub_path)[1]
+        code, replaced=api(other_path+'/publish','POST',{'expectedSceneVersion':listed['sceneLockVersion']})
+        check('replace publication', code==200 and replaced['published'] is True and api(pub_path)[1]['published']['id']==other['id'])
+        check('previous published returns to draft', api(first_pub_path)[1]['published'] is False)
+        check('unfrozen draft can register files', api(first_pub_path+'/files','POST',frozen)[0]==200)
+        check('previous published can be deleted after replace', api(first_pub_path,'DELETE')[0]==204)
+        check('publish audit is attributable', sql("select count(*) from ar_audit where action='DRAFT_PUBLISH' and detail->>'toDraftId'=%s and actor_name='bootstrap'",(other['id'],))[0][0]==1)
         start('vite',['node',ROOT/'frontend/node_modules/vite/bin/vite.js','--host','127.0.0.1','--port',str(web_port),'--strictPort'],ROOT/'frontend')
         web=f'http://127.0.0.1:{web_port}'
         until=time.monotonic()+30
@@ -300,6 +347,7 @@ def main():
             browser_draft=page.url.split('draftId=')[1].split('&')[0]
             check('browser multi-chunk hash matches original',sql("select expected_sha256,verified_bytes from ar_draft_file where draft_id=%s and file_name='browser-two.bin'",(browser_draft,))[0]==(hashlib.sha256(b*200000).hexdigest(),len(b)*200000))
             page.reload()
+            page.get_by_role('heading',name='内容版本草稿').wait_for()
             page.get_by_role('row').filter(has_text='browser-two.bin').get_by_text('已校验入库',exact=True).wait_for()
             check('browser refresh preserves selected draft and files',page.get_by_role('row').filter(has_text='browser-one.bin').count()==1)
             page.locator('input[type=file]').set_input_files(payloads[0])
@@ -313,12 +361,40 @@ def main():
             row.get_by_role('button',name='删除',exact=True).click()
             page.get_by_role('button',name='永久删除',exact=True).click()
             row.wait_for(state='hidden')
-            page.reload()
+            page.get_by_role('button',name='刷新',exact=True).click()
+            page.get_by_role('heading',name='草稿文件',exact=False).wait_for()
             page.get_by_role('row').filter(has_text='browser-two.bin').wait_for()
             check('browser removal remains hidden after refresh',page.get_by_role('row').filter(has_text='browser-one.bin').count()==0)
             page.locator('input[type=file]').set_input_files(payloads[0])
             page.get_by_role('row').filter(has_text='browser-one.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
             check('browser can explicitly readd removed file',sql("select count(*) from ar_draft_file where draft_id=%s and file_name='browser-one.bin' and removed_at is null",(browser_draft,))[0][0]==1 and not (run/'artifacts/committed'/(original_id+'.bin')).exists())
+            page.get_by_text('该场景尚未发布').wait_for()
+            draft_row=page.get_by_role('row').filter(has_text=browser_draft)
+            draft_row.get_by_role('button',name='发布',exact=True).click()
+            page.get_by_role('button',name='取消',exact=True).click()
+            check('browser cancellation keeps unpublished',sql('select published_draft_id from ar_scene where id=%s',(scene_id,))[0][0] is None)
+            draft_row.get_by_role('button',name='发布',exact=True).click()
+            page.get_by_role('button',name='确认发布',exact=True).click()
+            page.get_by_text('该场景尚未发布').wait_for(state='hidden')
+            check('browser publish pins current version',str(sql('select published_draft_id from ar_scene where id=%s',(scene_id,))[0][0])==browser_draft)
+            ver=api('/api/v1/scenes/'+scene_id)[1]['lockVersion']
+            page.get_by_role('row').filter(has_text='ingestion-acceptance').get_by_text(str(ver),exact=True).wait_for()
+            check('parent scene revision updates after publish',True)
+            check('browser hides upload on published draft',page.locator('input[type=file]').count()==0)
+            check('browser disables published draft delete',draft_row.get_by_role('button',name='删除',exact=True).is_disabled())
+            page.get_by_placeholder('填写版本说明（可留空）').fill('replacement draft')
+            page.get_by_role('button',name='创建草稿',exact=True).click()
+            page.get_by_role('heading',name='草稿文件',exact=False).wait_for()
+            page.locator('input[type=file]').set_input_files(payloads[0])
+            page.get_by_role('row').filter(has_text='browser-one.bin').get_by_text('已校验入库',exact=True).wait_for(timeout=30000)
+            replacement_id=page.url.split('draftId=')[1].split('&')[0]
+            page.get_by_role('row').filter(has_text=replacement_id).get_by_role('button',name='替换发布',exact=True).click()
+            page.get_by_role('button',name='取消',exact=True).click()
+            check('browser cancel replace keeps original',str(sql('select published_draft_id from ar_scene where id=%s',(scene_id,))[0][0])==browser_draft)
+            page.get_by_role('row').filter(has_text=replacement_id).get_by_role('button',name='替换发布',exact=True).click()
+            page.get_by_role('button',name='确认替换',exact=True).click()
+            page.get_by_role('row').filter(has_text=replacement_id).get_by_text('已发布',exact=True).wait_for()
+            check('browser replace switches published pointer',str(sql('select published_draft_id from ar_scene where id=%s',(scene_id,))[0][0])==replacement_id)
             draft_row=page.get_by_role('row').filter(has_text=browser_draft)
             draft_row.get_by_role('button',name='删除',exact=True).click()
             page.get_by_role('button',name='取消',exact=True).click()
@@ -333,8 +409,9 @@ def main():
             check('browser shows failure reason and retry action',page.get_by_role('row').filter(has_text='mismatch.bin').get_by_text('SHA256',exact=False).count()>0 and page.get_by_role('row').filter(has_text='mismatch.bin').get_by_role('button',name='重新选择原文件').count()==1)
             browser.close()
         report={'passed':True,'postgres':version,'runtime':'isolated native PostgreSQL 17 / Redis / Spring Boot / Vite / Edge',
+                'backendJar':str(args.backend_jar),'backendJarSha256':hashlib.sha256(args.backend_jar.read_bytes()).hexdigest(),
                 'checks':CHECKS,'limitations':['No Addressables/client-loading validation','No power-loss or disk-full injection','Nginx container route not exercised by this native test']}
-        (ROOT/'docs/validation-ingestion.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+        (args.report_dir/'validation-ingestion.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     finally:
         (run/'checks.json').write_text(json.dumps(CHECKS,ensure_ascii=False,indent=2),encoding='utf-8')
         for p in reversed(processes):

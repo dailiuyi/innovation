@@ -23,6 +23,7 @@ public class DraftController {
     public record FileInput(@NotNull UUID requestKey, @NotBlank @Size(max=255) String fileName,
         @NotNull @Pattern(regexp="RESOURCE_FILE|CLIENT_LIBRARY") String kind,
         @NotNull @Min(0) Long bytes, @NotNull @Pattern(regexp="[0-9a-f]{64}") String sha256) { }
+    public record PublishInput(@NotNull @Min(0) Long expectedSceneVersion) { }
 
     @GetMapping("/drafts/config") public Map<String,Object> config() { return Map.of("maxBytes",service.maxBytes()); }
     @GetMapping("/scenes/{sceneId}/drafts") public Map<String,Object> list(@PathVariable UUID sceneId,
@@ -35,6 +36,10 @@ public class DraftController {
     @DeleteMapping("/drafts/{id}")
     @ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
     public void removeDraft(@PathVariable UUID id) { service.removeDraft(id); }
+    @PostMapping("/drafts/{id}/publish")
+    public Map<String,Object> publish(@PathVariable UUID id,@Valid @RequestBody PublishInput input) {
+        return service.publish(id,input.expectedSceneVersion());
+    }
     @GetMapping("/drafts/{id}/files") public Map<String,Object> files(@PathVariable UUID id,
         @RequestParam(defaultValue="20") @Min(1) @Max(100) int limit,
         @RequestParam(defaultValue="0") @Min(0) int offset) { return service.files(id,limit,offset); }

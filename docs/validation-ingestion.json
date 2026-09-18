@@ -2,6 +2,8 @@
   "passed": true,
   "postgres": "postgres (PostgreSQL) 17.6",
   "runtime": "isolated native PostgreSQL 17 / Redis / Spring Boot / Vite / Edge",
+  "backendJar": "E:\\code\\java\\innovation\\.local\\harness\\20260918T021344Z-ru8pjyhf\\backend\\ruoyi-admin\\target\\ruoyi-admin.jar",
+  "backendJarSha256": "3d72486cfef0799e9e8f79cdf12b4256b6c763051d0c4da5f97d30bcbe4e51ed",
   "checks": [
     {
       "name": "real PostgreSQL 17 runtime",
@@ -13,6 +15,10 @@
     },
     {
       "name": "anonymous config rejected",
+      "passed": true
+    },
+    {
+      "name": "anonymous publish rejected",
       "passed": true
     },
     {
@@ -312,7 +318,83 @@
       "passed": true
     },
     {
+      "name": "nonadministrator publish forbidden",
+      "passed": true
+    },
+    {
       "name": "fresh administrator session for browser",
+      "passed": true
+    },
+    {
+      "name": "draft list includes publication fields",
+      "passed": true
+    },
+    {
+      "name": "empty draft cannot publish",
+      "passed": true
+    },
+    {
+      "name": "publication source file available",
+      "passed": true
+    },
+    {
+      "name": "stale scene version rejected",
+      "passed": true
+    },
+    {
+      "name": "publish draft",
+      "passed": true
+    },
+    {
+      "name": "publish increments scene lock version",
+      "passed": true
+    },
+    {
+      "name": "one published pointer",
+      "passed": true
+    },
+    {
+      "name": "repeat publish is idempotent",
+      "passed": true
+    },
+    {
+      "name": "published files are frozen",
+      "passed": true
+    },
+    {
+      "name": "published file cannot be deleted",
+      "passed": true
+    },
+    {
+      "name": "published draft cannot be deleted",
+      "passed": true
+    },
+    {
+      "name": "published description can still be edited",
+      "passed": true
+    },
+    {
+      "name": "replacement file available",
+      "passed": true
+    },
+    {
+      "name": "replace publication",
+      "passed": true
+    },
+    {
+      "name": "previous published returns to draft",
+      "passed": true
+    },
+    {
+      "name": "unfrozen draft can register files",
+      "passed": true
+    },
+    {
+      "name": "previous published can be deleted after replace",
+      "passed": true
+    },
+    {
+      "name": "publish audit is attributable",
       "passed": true
     },
     {
@@ -341,6 +423,34 @@
     },
     {
       "name": "browser can explicitly readd removed file",
+      "passed": true
+    },
+    {
+      "name": "browser cancellation keeps unpublished",
+      "passed": true
+    },
+    {
+      "name": "browser publish pins current version",
+      "passed": true
+    },
+    {
+      "name": "parent scene revision updates after publish",
+      "passed": true
+    },
+    {
+      "name": "browser hides upload on published draft",
+      "passed": true
+    },
+    {
+      "name": "browser disables published draft delete",
+      "passed": true
+    },
+    {
+      "name": "browser cancel replace keeps original",
+      "passed": true
+    },
+    {
+      "name": "browser replace switches published pointer",
       "passed": true
     },
     {

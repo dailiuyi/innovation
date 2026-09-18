@@ -197,8 +197,13 @@ schemas['DraftCreate'] = obj({'requestKey':uuid,'description':string(maxLength=2
 schemas['DraftEdit'] = obj({'description':string(maxLength=2000),'expectedVersion':integer(minimum=0)})
 schemas['DraftView'] = obj({'id':uuid,'sceneId':uuid,'description':string(maxLength=2000),
     'lockVersion':integer(minimum=0),'creatorId':integer(format='int64'),'creatorName':string(),
-    'createdAt':string(format='date-time'),'updatedAt':string(format='date-time')})
-schemas['DraftList'] = obj({'items':array(ref('DraftView')),'total':integer(minimum=0)})
+    'createdAt':string(format='date-time'),'updatedAt':string(format='date-time'),'published':{'type':'boolean'}})
+schemas['PublishedDraft'] = obj({'id':uuid,'description':string(maxLength=2000),
+    'publishedAt':string(format='date-time'),'publishedByName':string()})
+schemas['DraftList'] = obj({'items':array(ref('DraftView')),'total':integer(minimum=0),
+    'sceneLockVersion':integer(minimum=0),'published':ref('PublishedDraft')},
+    ['items','total','sceneLockVersion'])
+schemas['DraftPublish'] = obj({'expectedSceneVersion':integer(minimum=0)})
 schemas['DraftFileCreate'] = obj({'requestKey':uuid,'fileName':string(minLength=1,maxLength=255),
     'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),'bytes':integer(format='int64',minimum=0),'sha256':sha})
 schemas['DraftFileView'] = obj({'id':uuid,'draftId':uuid,'fileName':string(),'kind':enum('RESOURCE_FILE','CLIENT_LIBRARY'),
@@ -212,12 +217,15 @@ schemas['DraftFileList'] = obj({'items':array(ref('DraftFileView')),'total':inte
 schemas['IngestionConfig'] = obj({'maxBytes':integer(format='int64',minimum=1)})
 paging=[query('limit',integer(minimum=1,maximum=100,default=20),False),query('offset',integer(minimum=0,default=0),False)]
 add('/api/v1/drafts/config','get','ingestionConfig','查看单文件上传上限',response='IngestionConfig')
-add('/api/v1/scenes/{sceneId}/drafts','get','listDrafts','列出场景版本草稿',response='DraftList',query=paging)
+add('/api/v1/scenes/{sceneId}/drafts','get','listDrafts','列出场景版本草稿',response='DraftList',query=paging,
+    description='含 sceneLockVersion 与每条 published 布尔值。当前发布以 published 对象返回；未发布时省略该字段。')
 add('/api/v1/scenes/{sceneId}/drafts','post','createDraft','创建版本草稿','DraftCreate','DraftView',
     description='requestKey 在场景内幂等；重复返回原草稿，不修改说明。不存在或已删除场景返回404。')
 add('/api/v1/drafts/{draftId}','get','getDraft','查看草稿',response='DraftView')
 add('/api/v1/drafts/{draftId}','put','editDraft','编辑草稿说明','DraftEdit','DraftView')
-add('/api/v1/drafts/{draftId}','delete','removeDraft','永久删除草稿',status='204',description='确认后删除草稿及其全部文件的实际内容和文件行，保留审计及文件删除回执。成功/重复删除204；任一文件处理中409；存储删除失败503，草稿保留，失败文件可重试删除草稿。')
+add('/api/v1/drafts/{draftId}','delete','removeDraft','永久删除草稿',status='204',description='确认后删除草稿及其全部文件的实际内容和文件行，保留审计及文件删除回执。成功/重复删除204；当前发布版本409；任一文件处理中409；存储删除失败503，草稿保留，失败文件可重试删除草稿。')
+add('/api/v1/drafts/{draftId}/publish','post','publishDraft','将草稿发布为场景的唯一发布版本','DraftPublish','DraftView',
+    description='同一场景仅一份当前发布。至少1个AVAILABLE文件；处理中文件409。重复发布同一草稿幂等。发布后文件冻结、说明可改。替换后原发布版本回到草稿。当前发布版本不能删除。expectedSceneVersion 为场景 lockVersion。')
 add('/api/v1/drafts/{draftId}/files','get','listDraftFiles','分页查看文件及处理状态',response='DraftFileList',query=paging)
 add('/api/v1/drafts/{draftId}/files','post','registerDraftFile','登记待上传文件','DraftFileCreate','DraftFileView',
     description='requestKey 在草稿内唯一；重复同元数据返回原记录，不同元数据409。大小超限413。AAR必须为CLIENT_LIBRARY。登记本身不代表文件可用。')
@@ -240,7 +248,7 @@ for methods in paths.values():
         if operation['x-implementation']=='candidate':
             operation['description'] = '尚未实现，文件格式待确认；当前服务不开放此接口。'+operation['description']
 spec = {'openapi': '3.0.3', 'info': {'title': 'AR Demo and candidate API', 'version': '0.3.0',
-         'description': 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Private draft ingestion supports multi-file registration, size/SHA256 verification, retry and restart reconciliation. No publication, rollback, public download or client loading is implemented. Historical cloud/day-night resource and publication contracts below await a real deliverable and client loading agreement; they are not implemented.'},
+         'description': 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Private draft ingestion supports multi-file registration, size/SHA256 verification, retry, restart reconciliation and one published draft pointer per scene. Preview, public download and client loading are not implemented. Historical cloud/day-night resource and publication contracts below await a real deliverable and client loading agreement; they are not implemented.'},
         'servers': [{'url': 'https://api.example.invalid', 'description': 'placeholder'}], 'paths': paths,
         'components': {'securitySchemes': {'bearerAuth': {'type': 'http', 'scheme': 'bearer', 'bearerFormat':'JWT'}}, 'schemas': schemas}}
 example = {'schemaVersion': 1, 'sceneId': '10000000-0000-4000-8000-000000000001',

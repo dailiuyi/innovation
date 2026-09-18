@@ -1,12 +1,12 @@
 # PostgreSQL Demo 启动与维护
 
-另有 [Docker Compose 部署与本地存储组件](10-local-infrastructure.md)，使用独立数据库卷和账号，不自动导入本文的本机 Demo。资源入库已接入；发布、回滚和客户端下载仍未接入，见 [资源入库说明](12-resource-ingestion.md)。
+另有 [Docker Compose 部署与本地存储组件](10-local-infrastructure.md)，使用独立数据库卷和账号，不自动导入本文的本机 Demo。资源入库和场景发布指针已接入；预览、单独下线和客户端下载仍未接入，见 [资源入库说明](12-resource-ingestion.md)。
 
 ## 已实现范围
 
-单个 Spring Boot 应用提供若依登录、固定同权账号、登录日志、操作日志、场景管理、版本草稿、文件入库和只读业务审计。Vue3 页面复用若依布局及 Element Plus。
+单个 Spring Boot 应用提供若依登录、固定同权账号、登录日志、操作日志、场景管理、版本草稿、文件入库、场景发布指针和只读业务审计。Vue3 页面复用若依布局及 Element Plus。
 
-本阶段没有对象存储、标记管理、版本冻结、资源预览、发布回滚或游客接口。原七表 PostgreSQL 脚本仍是下一阶段候选材料，不参与 Demo 初始化。
+本阶段没有对象存储、标记管理、资源预览、单独下线或游客接口。原七表 PostgreSQL 脚本仍是下一阶段候选材料，不参与 Demo 初始化。
 
 ## 当前本机入口
 

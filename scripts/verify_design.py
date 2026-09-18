@@ -1,5 +1,6 @@
 """Validate generated contracts, examples, local Markdown links, and SQL/API enums."""
 from pathlib import Path
+import argparse
 import copy
 import importlib.util
 import json
@@ -10,6 +11,9 @@ from openapi_spec_validator import validate
 
 ROOT=Path(__file__).resolve().parents[1]
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--report-dir', type=Path, default=ROOT / 'docs')
+    args = parser.parse_args()
     checks=[]
     def check(name, condition=True):
         assert condition, name
@@ -57,7 +61,7 @@ def main():
     db_states=re.search(r"CHECK\(state IN \(([^)]*)\)\)",block).group(1)
     check('database and API version states agree',set(re.findall(r"'([^']+)'",db_states))==set(api_states))
     check('only seven schema tables',set(re.findall(r'CREATE TABLE (\w+)',sql))=={'admin_user','scene','scene_version','asset','version_asset','marker','audit_log'})
-    docfiles=[ROOT/'README.md',ROOT/'database/README.md',*sorted((ROOT/'docs').glob('*.md'))]
+    docfiles=[ROOT/'AGENTS.md',ROOT/'README.md',ROOT/'database/README.md',*sorted((ROOT/'docs').rglob('*.md'))]
     for file in docfiles:
         content=file.read_text(encoding='utf-8')
         for dest in re.findall(r'\]\(([^)]+)\)',content):
@@ -66,7 +70,8 @@ def main():
             check('local link '+file.name+' -> '+dest,target.is_file() or target==ROOT/'docs/validation-contracts.json')
     report={'passed':True,'operations':len(operations),'checks':checks,
             'limitations':['No HTTP server or client runtime executed','No cloud storage or GPU invoked','Mermaid source checked only as Markdown, not rendered']}
-    output=ROOT/'docs/validation-contracts.json'
+    args.report_dir.mkdir(parents=True, exist_ok=True)
+    output=args.report_dir/'validation-contracts.json'
     output.write_text(json.dumps(report,ensure_ascii=False,indent=2),encoding='utf-8')
     print(f'PASS: {len(checks)} checks, {len(operations)} operations; {output}')
 

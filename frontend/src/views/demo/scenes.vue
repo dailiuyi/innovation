@@ -27,7 +27,7 @@
       </el-form>
       <template #footer><el-button v-if="form.id" type="primary" @click="openDrafts(form.id)">版本草稿与文件</el-button><el-button @click="visible=false">关闭</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
     </el-dialog>
-    <DraftPanel :scene-id="draftScene" @close="closeDrafts" />
+    <DraftPanel :scene-id="draftScene" @close="closeDrafts" @scene-updated="load" />
   </div>
 </template>
 <script setup>
@@ -37,7 +37,7 @@ import { useRoute, useRouter } from 'vue-router'
 const route=useRoute(),router=useRouter()
 const draftScene=computed(()=>String(route.query.draftScene||''))
 function openDrafts(id){visible.value=false;router.replace({query:{...route.query,draftScene:id}})}
-function closeDrafts(){const query={...route.query};delete query.draftScene;delete query.draftId;router.replace({query})}
+function closeDrafts(){const query={...route.query};delete query.draftScene;delete query.draftId;router.replace({query});load()}
 import { ElMessage, ElMessageBox } from 'element-plus'
 const deleting=ref(false)
 const items=ref([]),total=ref(0),page=ref(1),limit=ref(20),name=ref(''),loading=ref(false),visible=ref(false),saving=ref(false),form=ref({})

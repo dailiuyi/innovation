@@ -117,7 +117,7 @@ public class SecurityConfig
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/scenes/{id}").authenticated()
                     .requestMatchers(HttpMethod.PUT, "/api/v1/scenes/{id}", "/api/v1/scenes/{id}/enabled").authenticated()
                     .requestMatchers(HttpMethod.GET, "/api/v1/drafts/config", "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files", "/api/v1/scenes/{id}/drafts").authenticated()
-                    .requestMatchers(HttpMethod.POST, "/api/v1/scenes/{id}/drafts", "/api/v1/drafts/{id}/files").authenticated()
+                    .requestMatchers(HttpMethod.POST, "/api/v1/scenes/{id}/drafts", "/api/v1/drafts/{id}/files", "/api/v1/drafts/{id}/publish").authenticated()
                     .requestMatchers(HttpMethod.PUT, "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files/{fileId}/content").authenticated()
                     .requestMatchers(HttpMethod.DELETE, "/api/v1/drafts/{id}", "/api/v1/drafts/{id}/files/{fileId}").authenticated()
                     .anyRequest().denyAll();

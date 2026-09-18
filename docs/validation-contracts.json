@@ -1,6 +1,6 @@
 {
   "passed": true,
-  "operations": 47,
+  "operations": 48,
   "checks": [
     {
       "name": "OpenAPI 3.0 structural validation",
@@ -731,6 +731,22 @@
       "passed": true
     },
     {
+      "name": "no worker/project API publishDraft",
+      "passed": true
+    },
+    {
+      "name": "implementation boundary publishDraft",
+      "passed": true
+    },
+    {
+      "name": "no legacy CSRF publishDraft",
+      "passed": true
+    },
+    {
+      "name": "admin Bearer publishDraft",
+      "passed": true
+    },
+    {
       "name": "no worker/project API listDraftFiles",
       "passed": true
     },
@@ -807,6 +823,38 @@
       "passed": true
     },
     {
+      "name": "local link AGENTS.md -> docs/index.md",
+      "passed": true
+    },
+    {
+      "name": "local link AGENTS.md -> docs/12-resource-ingestion.md",
+      "passed": true
+    },
+    {
+      "name": "local link AGENTS.md -> docs/development-workflow.md",
+      "passed": true
+    },
+    {
+      "name": "local link AGENTS.md -> docs/13-harness.md",
+      "passed": true
+    },
+    {
+      "name": "local link AGENTS.md -> docs/tasks/template.md",
+      "passed": true
+    },
+    {
+      "name": "local link AGENTS.md -> docs/tasks/README.md",
+      "passed": true
+    },
+    {
+      "name": "local link AGENTS.md -> docs/14-code-review.md",
+      "passed": true
+    },
+    {
+      "name": "local link AGENTS.md -> docs/06-validation.md",
+      "passed": true
+    },
+    {
       "name": "local link README.md -> docs/12-resource-ingestion.md",
       "passed": true
     },
@@ -840,6 +888,14 @@
     },
     {
       "name": "local link README.md -> docs/08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/index.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> docs/13-harness.md",
       "passed": true
     },
     {
@@ -952,6 +1008,18 @@
     },
     {
       "name": "local link 05-review-checklist.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-ingestion.json",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> 13-harness.md",
+      "passed": true
+    },
+    {
+      "name": "local link 06-validation.md -> validation-ingestion.json",
       "passed": true
     },
     {
@@ -1124,6 +1192,82 @@
     },
     {
       "name": "local link 12-resource-ingestion.md -> validation-ingestion.json",
+      "passed": true
+    },
+    {
+      "name": "local link 13-harness.md -> 06-validation.md",
+      "passed": true
+    },
+    {
+      "name": "local link 13-harness.md -> decisions/0001-harness-baseline.md",
+      "passed": true
+    },
+    {
+      "name": "local link 14-code-review.md -> 13-harness.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> 0001-harness-baseline.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> 12-resource-ingestion.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> ../README.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> 11-current-platform-architecture.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> development-workflow.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> 08-demo-runbook.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> 10-local-infrastructure.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> 13-harness.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> 14-code-review.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> 06-validation.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> ../contracts/openapi.yaml",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> ../database/README.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> decisions/README.md",
+      "passed": true
+    },
+    {
+      "name": "local link index.md -> tasks/README.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> template.md",
+      "passed": true
+    },
+    {
+      "name": "local link README.md -> ../decisions/README.md",
       "passed": true
     }
   ],

@@ -24,7 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 @DependsOnDatabaseInitialization
 @ConditionalOnProperty(name="ar.storage.enabled", havingValue="true")
 public class DraftService implements InitializingBean {
-    private static final String DRAFT_COLUMNS = "id::text as id, scene_id::text as \"sceneId\", description, lock_version as \"lockVersion\", creator_id as \"creatorId\", creator_name as \"creatorName\", created_at as \"createdAt\", updated_at as \"updatedAt\"";
+    private static final String DRAFT_COLUMNS = "d.id::text as id, d.scene_id::text as \"sceneId\", d.description, d.lock_version as \"lockVersion\", d.creator_id as \"creatorId\", d.creator_name as \"creatorName\", d.created_at as \"createdAt\", d.updated_at as \"updatedAt\", (s.published_draft_id is not null and s.published_draft_id=d.id) as published";
     private static final String FILE_COLUMNS = "id::text as id, draft_id::text as \"draftId\", file_name as \"fileName\", kind, expected_bytes as bytes, expected_sha256 as sha256, storage_key as \"storageKey\", case when exists(select 1 from ar_file_deletion d where d.file_id=ar_draft_file.id and d.completed_at is null) then case when (select d.failure_reason from ar_file_deletion d where d.file_id=ar_draft_file.id) is null then 'DELETING' else 'DELETE_FAILED' end else status end as status, verified_bytes as \"verifiedBytes\", verified_sha256 as \"verifiedSha256\", coalesce((select d.failure_reason from ar_file_deletion d where d.file_id=ar_draft_file.id),failure_reason) as \"failureReason\", attempts, creator_id as \"creatorId\", creator_name as \"creatorName\", last_actor_id as \"lastActorId\", last_actor_name as \"lastActorName\", created_at as \"createdAt\", updated_at as \"updatedAt\"";
     private final JdbcTemplate db;
     private final TransactionTemplate tx;
@@ -49,9 +49,15 @@ public class DraftService implements InitializingBean {
     private void scene(UUID id,boolean lock) {
         one("select id from ar_scene where id=? and deleted_at is null"+(lock?" for update":""),id);
     }
-    public Map<String,Object> detail(UUID id) { return one("select "+DRAFT_COLUMNS+" from ar_draft where id=?",id); }
+    public Map<String,Object> detail(UUID id) { return one("select "+DRAFT_COLUMNS+" from ar_draft d join ar_scene s on s.id=d.scene_id where d.id=?",id); }
     private UUID sceneOf(UUID id) { return UUID.fromString((String)detail(id).get("sceneId")); }
     private void writable(UUID id) { scene(sceneOf(id),true); }
+    private boolean currentlyPublished(UUID draftId) {
+        return Boolean.TRUE.equals(db.queryForObject("select exists(select 1 from ar_scene where published_draft_id=?)",Boolean.class,draftId));
+    }
+    private void requireUnpublished(UUID draftId) {
+        if(currentlyPublished(draftId)) throw error(HttpStatus.CONFLICT,"已发布版本文件已冻结，仅可修改说明");
+    }
     private void audit(UUID sceneId,UUID draftId,UUID fileId,String action,long actor,String actorName,Map<String,Object> values) {
         var detail=new LinkedHashMap<String,Object>(values);
         detail.put("draftId",draftId.toString());
@@ -65,9 +71,52 @@ public class DraftService implements InitializingBean {
         audit(sceneOf(draftId),draftId,fileId,action,SecurityUtils.getUserId(),SecurityUtils.getUsername(),values);
     }
     public Map<String,Object> list(UUID sceneId,int limit,int offset) {
-        scene(sceneId,false);
-        return Map.of("items",db.queryForList("select "+DRAFT_COLUMNS+" from ar_draft where scene_id=? order by created_at desc,id limit ? offset ?",sceneId,limit,offset),
-            "total",db.queryForObject("select count(*) from ar_draft where scene_id=?",Long.class,sceneId));
+        var sceneRow=one("select lock_version as \"lockVersion\", published_draft_id as \"publishedDraftId\" from ar_scene where id=? and deleted_at is null",sceneId);
+        var result=new LinkedHashMap<String,Object>();
+        result.put("items",db.queryForList("select "+DRAFT_COLUMNS+" from ar_draft d join ar_scene s on s.id=d.scene_id where d.scene_id=? order by d.created_at desc,d.id limit ? offset ?",sceneId,limit,offset));
+        result.put("total",db.queryForObject("select count(*) from ar_draft where scene_id=?",Long.class,sceneId));
+        result.put("sceneLockVersion",sceneRow.get("lockVersion"));
+        if(sceneRow.get("publishedDraftId")!=null)
+            result.put("published",one("select d.id::text as id, d.description, s.published_at as \"publishedAt\", s.published_by_name as \"publishedByName\" from ar_scene s join ar_draft d on d.id=s.published_draft_id where s.id=?",sceneId));
+        return result;
+    }
+    public Map<String,Object> publish(UUID draftId,long expectedSceneVersion) {
+        var draft=detail(draftId);
+        if(Boolean.TRUE.equals(draft.get("published"))) return draft;
+        UUID sceneId=UUID.fromString((String)draft.get("sceneId"));
+        var files=db.queryForList("select id from ar_draft_file where draft_id=? and removed_at is null and not exists(select 1 from ar_file_deletion d where d.file_id=ar_draft_file.id) order by id",draftId);
+        List<ReentrantLock> held=new ArrayList<>();
+        try {
+            for(var row:files) {
+                ReentrantLock guard=lock((UUID)row.get("id"));
+                if(!guard.tryLock()) throw error(HttpStatus.CONFLICT,"文件正在上传或校验，暂不能发布");
+                held.add(guard);
+            }
+            return tx.execute(s -> {
+                scene(sceneId,true);
+                var latest=detail(draftId);
+                if(Boolean.TRUE.equals(latest.get("published"))) return latest;
+                var sceneRow=one("select lock_version as \"lockVersion\", published_draft_id as \"publishedDraftId\" from ar_scene where id=? and deleted_at is null",sceneId);
+                if(((Number)sceneRow.get("lockVersion")).longValue()!=expectedSceneVersion)
+                    throw error(HttpStatus.CONFLICT,"场景已修改，请刷新后重试");
+                long available=db.queryForObject("select count(*) from ar_draft_file where draft_id=? and removed_at is null and status='AVAILABLE' and not exists(select 1 from ar_file_deletion d where d.file_id=ar_draft_file.id)",Long.class,draftId);
+                if(available<1) throw error(HttpStatus.BAD_REQUEST,"至少需要一个已校验入库的文件才能发布");
+                long inflight=db.queryForObject("select count(*) from ar_draft_file where draft_id=? and removed_at is null and (status='UPLOADING' or exists(select 1 from ar_file_deletion d where d.file_id=ar_draft_file.id and d.completed_at is null))",Long.class,draftId);
+                if(inflight>0) throw error(HttpStatus.CONFLICT,"文件正在处理，请稍后刷新再发布");
+                UUID from=(UUID)sceneRow.get("publishedDraftId");
+                if(db.update("update ar_scene set published_draft_id=?,published_at=now(),published_by_id=?,published_by_name=?,lock_version=lock_version+1,updated_at=now() where id=? and deleted_at is null and lock_version=?",
+                        draftId,SecurityUtils.getUserId(),SecurityUtils.getUsername(),sceneId,expectedSceneVersion)!=1)
+                    throw error(HttpStatus.CONFLICT,"场景已修改，请刷新后重试");
+                var values=new LinkedHashMap<String,Object>();
+                values.put("fromDraftId",from==null?null:from.toString());
+                values.put("toDraftId",draftId.toString());
+                values.put("description",latest.get("description"));
+                audit(sceneId,draftId,null,"DRAFT_PUBLISH",SecurityUtils.getUserId(),SecurityUtils.getUsername(),values);
+                return detail(draftId);
+            });
+        } finally {
+            for(int i=held.size()-1;i>=0;i--) held.get(i).unlock();
+        }
     }
     public Map<String,Object> create(UUID sceneId,DraftController.DraftInput input) {
         return tx.execute(s -> {
@@ -94,6 +143,7 @@ public class DraftService implements InitializingBean {
     public void removeDraft(UUID draftId) {
         if(db.queryForList("select id from ar_draft where id=?",draftId).isEmpty()) return;
         writable(draftId);
+        if(currentlyPublished(draftId)) throw error(HttpStatus.CONFLICT,"当前发布版本不能删除，请先发布其他草稿");
         UUID sceneId=sceneOf(draftId);
         var draft=detail(draftId);
         var files=db.queryForList("select id from ar_draft_file where draft_id=? order by id",draftId);
@@ -137,6 +187,7 @@ public class DraftService implements InitializingBean {
             throw error(HttpStatus.BAD_REQUEST,"AAR 必须登记为客户端集成库");
         return tx.execute(s -> {
             writable(draftId);
+            requireUnpublished(draftId);
             if(Boolean.TRUE.equals(db.queryForObject("select exists(select 1 from ar_file_deletion where draft_id=? and request_key=?)",Boolean.class,draftId,input.requestKey())))
                 throw error(HttpStatus.GONE,"该文件已删除或正在删除，重新添加请使用新的请求标识");
             var rows=db.queryForList("select id,removed_at from ar_draft_file where draft_id=? and request_key=?",draftId,input.requestKey());
@@ -162,6 +213,7 @@ public class DraftService implements InitializingBean {
         try {
             boolean completed=Boolean.TRUE.equals(tx.execute(s -> {
                 writable(draftId);
+                requireUnpublished(draftId);
                 var receipts=db.queryForList("select completed_at from ar_file_deletion where file_id=? and draft_id=?",id,draftId);
                 if(!receipts.isEmpty()) {
                     if(receipts.get(0).get("completed_at")!=null) return true;
@@ -226,6 +278,7 @@ public class DraftService implements InitializingBean {
         try {
             var row=tx.execute(s -> {
                 writable(draftId);
+                requireUnpublished(draftId);
                 var current=file(draftId,id);
                 if(!"AVAILABLE".equals(current.get("status"))) {
                     db.update("update ar_draft_file set status='UPLOADING',failure_reason=null,verified_bytes=null,verified_sha256=null,attempts=attempts+1,last_actor_id=?,last_actor_name=?,updated_at=now() where id=?",

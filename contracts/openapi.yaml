@@ -3,10 +3,11 @@ info:
   title: AR Demo and candidate API
   version: 0.3.0
   description: 'Demo: RuoYi + PostgreSQL, fixed-role administrators and scenes. Private
-    draft ingestion supports multi-file registration, size/SHA256 verification, retry
-    and restart reconciliation. No publication, rollback, public download or client
-    loading is implemented. Historical cloud/day-night resource and publication contracts
-    below await a real deliverable and client loading agreement; they are not implemented.'
+    draft ingestion supports multi-file registration, size/SHA256 verification, retry,
+    restart reconciliation and one published draft pointer per scene. Preview, public
+    download and client loading are not implemented. Historical cloud/day-night resource
+    and publication contracts below await a real deliverable and client loading agreement;
+    they are not implemented.'
 servers:
 - url: https://api.example.invalid
   description: placeholder
@@ -3147,7 +3148,8 @@ paths:
     get:
       operationId: listDrafts
       summary: 列出场景版本草稿
-      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。列出场景版本草稿
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。含 sceneLockVersion 与每条
+        published 布尔值。当前发布以 published 对象返回；未发布时省略该字段。
       security:
       - bearerAuth: []
       parameters:
@@ -3517,7 +3519,7 @@ paths:
     delete:
       operationId: removeDraft
       summary: 永久删除草稿
-      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。确认后删除草稿及其全部文件的实际内容和文件行，保留审计及文件删除回执。成功/重复删除204；任一文件处理中409；存储删除失败503，草稿保留，失败文件可重试删除草稿。
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。确认后删除草稿及其全部文件的实际内容和文件行，保留审计及文件删除回执。成功/重复删除204；当前发布版本409；任一文件处理中409；存储删除失败503，草稿保留，失败文件可重试删除草稿。
       security:
       - bearerAuth: []
       parameters:
@@ -3593,6 +3595,99 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
       x-implementation: implemented
+      tags:
+      - Demo 已实现
+  /api/v1/drafts/{draftId}/publish:
+    post:
+      operationId: publishDraft
+      summary: 将草稿发布为场景的唯一发布版本
+      description: 仅 ar_admin 管理员；AR_STORAGE_ENABLED=true 时开放。同一场景仅一份当前发布。至少1个AVAILABLE文件；处理中文件409。重复发布同一草稿幂等。发布后文件冻结、说明可改。替换后原发布版本回到草稿。当前发布版本不能删除。expectedSceneVersion
+        为场景 lockVersion。
+      security:
+      - bearerAuth: []
+      parameters:
+      - name: draftId
+        in: path
+        required: true
+        schema: *id001
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DraftView'
+        '400':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '503':
+          description: Request failed; 409 covers state/version conflict or incompatible
+            client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '410':
+          description: 登记请求键对应文件已移除；重新添加须使用新请求键
+        '422':
+          description: 文件校验或存储失败；查看持久化文件记录中的失败原因
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+      x-implementation: implemented
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DraftPublish'
       tags:
       - Demo 已实现
   /api/v1/drafts/{draftId}/files:
@@ -4713,6 +4808,8 @@ components:
         updatedAt:
           type: string
           format: date-time
+        published:
+          type: boolean
       required:
       - id
       - sceneId
@@ -4722,6 +4819,25 @@ components:
       - creatorName
       - createdAt
       - updatedAt
+      - published
+    PublishedDraft:
+      type: object
+      additionalProperties: false
+      properties:
+        id: *id001
+        description:
+          type: string
+          maxLength: 2000
+        publishedAt:
+          type: string
+          format: date-time
+        publishedByName:
+          type: string
+      required:
+      - id
+      - description
+      - publishedAt
+      - publishedByName
     DraftList:
       type: object
       additionalProperties: false
@@ -4733,9 +4849,24 @@ components:
         total:
           type: integer
           minimum: 0
+        sceneLockVersion:
+          type: integer
+          minimum: 0
+        published:
+          $ref: '#/components/schemas/PublishedDraft'
       required:
       - items
       - total
+      - sceneLockVersion
+    DraftPublish:
+      type: object
+      additionalProperties: false
+      properties:
+        expectedSceneVersion:
+          type: integer
+          minimum: 0
+      required:
+      - expectedSceneVersion
     DraftFileCreate:
       type: object
       additionalProperties: false

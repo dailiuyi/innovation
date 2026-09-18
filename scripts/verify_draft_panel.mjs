@@ -61,4 +61,19 @@ props.sceneId = ''
 pending[0].resolve({ id: 'a', sceneId: 'scene-a' })
 await closed
 assert.equal(run('selected.value'), null)
-console.log('PASS: selection order, file response order, draft response order, scene ownership, closed panel')
+
+pending.length = 0
+props.sceneId = 'scene-a'
+run("selected.value={id:'a',sceneId:'scene-a',published:false,description:'old'};editDescription.value='old'")
+const refreshing = run('refresh()')
+pending[0].resolve({ items: [{ id: 'a', sceneId: 'scene-a', published: true, description: 'live' }], total: 1, sceneLockVersion: 2, published: { id: 'a' } })
+await new Promise(resolve => setImmediate(resolve))
+pending[1].resolve({ id: 'a', sceneId: 'scene-a', published: true, description: 'live' })
+await new Promise(resolve => setImmediate(resolve))
+pending[2].resolve(response('kept.bin'))
+await refreshing
+assert.equal(run('selected.value.published'), true)
+assert.equal(run('selected.value.description'), 'live')
+assert.equal(run('published.value.id'), 'a')
+assert.equal(run('files.value[0].fileName'), 'kept.bin')
+console.log('PASS: selection order, file response order, draft response order, scene ownership, closed panel, refresh syncs published')

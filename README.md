@@ -2,7 +2,7 @@
 
 V0.1 面向第一阶段的 AR 场景展示：团队制作场景内容，管理员上传、预览和发布，用户扫码后下载内容并播放。
 
-当前已实现 PostgreSQL 管理后台、Docker Compose 部署和本地文件存储基础组件。包含若依 Spring Boot 3 后端、Vue3 前端、登录与同权账号、日志、场景管理及审计。资源入库已接入：场景下创建版本草稿、上传多个文件、校验与登记、失败重试、启动对账和后台查询。版本发布、回滚和客户端下载尚未实现。
+当前已实现 PostgreSQL 管理后台、Docker Compose 部署和本地文件存储基础组件。包含若依 Spring Boot 3 后端、Vue3 前端、登录与同权账号、日志、场景管理及审计。资源入库已接入：场景下创建版本草稿、上传多个文件、校验与登记、失败重试、启动对账、后台查询，以及同一场景一份当前发布版本（替换发布、已发布文件冻结）。客户端下载、预览和单独下线尚未实现。
 
 本轮实现范围和验收以 [资源入库闭环](docs/12-resource-ingestion.md)为准；架构背景见 [技术选型、数据库、后端平台与作业流](docs/11-current-platform-architecture.md)。部署和运维操作见 [Docker 部署与存储基础设施](docs/10-local-infrastructure.md)。原云存储、昼夜、AR 坐标和多文件设计保留为历史候选材料，不能直接作为当前实现要求。
 
@@ -35,6 +35,8 @@ V0.1 面向第一阶段的 AR 场景展示：团队制作场景内容，管理�
 
 ## 开发资料
 
+- [仓库知识入口](docs/index.md)
+- [基础 Harness 与验证入口](docs/13-harness.md)
 - [数据库初始化说明](database/README.md)
 - [OpenAPI 接口契约](contracts/openapi.yaml)
 - [运行清单 Schema](contracts/schemas/runtime-manifest.schema.json)与[示例](contracts/examples/runtime-manifest.json)
