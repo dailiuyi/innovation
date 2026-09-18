@@ -1,5 +1,5 @@
 <template><div class="app-container"><h2>账号管理</h2><p>所有管理员具有相同权限。禁用、删除或重置密码会使旧登录凭证失效。删除账号后保留历史操作记录。</p>
-  <el-form inline><el-form-item label="账号"><el-input v-model="name" clearable /></el-form-item><el-button @click="search">查询</el-button><el-button type="primary" @click="open=true">新增账号</el-button></el-form>
+  <el-form inline><el-form-item label="账号"><el-input v-model="name" clearable /></el-form-item><el-form-item><el-button @click="search">查询</el-button><el-button type="primary" @click="open=true">新增账号</el-button></el-form-item></el-form>
   <el-table :data="items" v-loading="loading"><el-table-column prop="userName" label="账号"/><el-table-column prop="nickName" label="姓名"/><el-table-column label="状态"><template #default="{row}">{{row.status==='0'?'正常':'停用'}}</template></el-table-column>
   <el-table-column label="操作"><template #default="{row}"><template v-if="row.userName!=='bootstrap'"><el-button link type="primary" @click="status(row)">{{row.status==='0'?'禁用':'启用'}}</el-button><el-button link type="primary" @click="reset(row)">重置密码</el-button></template><el-button link type="danger" :disabled="deleting" @click="remove(row)">删除</el-button></template></el-table-column></el-table>
   <pagination :total="total" v-model:page="page" v-model:limit="limit" @pagination="load"/>

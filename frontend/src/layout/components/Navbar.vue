@@ -27,9 +27,6 @@
             <el-dropdown-item command="setLayout" v-if="settingsStore.showSettings">
                 <span>布局设置</span>
             </el-dropdown-item>
-            <el-dropdown-item command="lockScreen">
-                <span>锁定屏幕</span>
-            </el-dropdown-item>
             <el-dropdown-item divided command="logout">
               <span>退出登录</span>
             </el-dropdown-item>
@@ -49,14 +46,10 @@ import Logo from './Sidebar/Logo'
 import Hamburger from '@/components/Hamburger'
 import useAppStore from '@/store/modules/app'
 import useUserStore from '@/store/modules/user'
-import useLockStore from '@/store/modules/lock'
 import useSettingsStore from '@/store/modules/settings'
 
-const route = useRoute()
-const router = useRouter()
 const appStore = useAppStore()
 const userStore = useUserStore()
-const lockStore = useLockStore()
 const settingsStore = useSettingsStore()
 const userInitial = computed(() => Array.from((userStore.name || userStore.nickName || '').trim())[0]?.toUpperCase() || '?')
 
@@ -68,9 +61,6 @@ function handleCommand(command) {
   switch (command) {
     case "setLayout":
       setLayout()
-      break
-    case "lockScreen":
-      lockScreen()
       break
     case "logout":
       logout()
@@ -95,12 +85,6 @@ function logout() {
 const emits = defineEmits(['setLayout'])
 function setLayout() {
   emits('setLayout')
-}
-
-function lockScreen() {
-  const currentPath = route.fullPath
-  lockStore.lockScreen(currentPath)
-  router.push('/lock')
 }
 
 </script>

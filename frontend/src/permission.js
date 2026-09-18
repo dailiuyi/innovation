@@ -6,7 +6,6 @@ import { getToken } from '@/utils/auth'
 import { isHttp, isPathMatch } from '@/utils/validate'
 import { isRelogin } from '@/utils/request'
 import useUserStore from '@/store/modules/user'
-import useLockStore from '@/store/modules/lock'
 import useSettingsStore from '@/store/modules/settings'
 import usePermissionStore from '@/store/modules/permission'
 
@@ -22,21 +21,12 @@ router.beforeEach(async (to, from) => {
   NProgress.start()
   if (getToken()) {
     to.meta.title && useSettingsStore().setTitle(to.meta.title)
-    const isLock = useLockStore().isLock
     if (to.path === '/login') {
       NProgress.done()
       return { path: '/' }
     }
     if (isWhiteList(to.path)) {
       return true
-    }
-    if (isLock && to.path !== '/lock') {
-      NProgress.done()
-      return { path: '/lock' }
-    }
-    if (!isLock && to.path === '/lock') {
-      NProgress.done()
-      return { path: '/' }
     }
     if (useUserStore().roles.length === 0) {
       isRelogin.show = true

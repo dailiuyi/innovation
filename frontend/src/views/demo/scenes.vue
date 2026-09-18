@@ -3,7 +3,9 @@
     <h2>场景管理</h2><p>管理场景基本信息与启用状态。</p>
     <el-form inline @submit.prevent="search">
       <el-form-item label="场景名称"><el-input v-model="name" clearable placeholder="搜索场景" /></el-form-item>
-      <el-button @click="search">查询</el-button><el-button type="primary" @click="create">新建场景</el-button>
+      <el-form-item>
+        <el-button @click="search">查询</el-button><el-button type="primary" @click="create">新建场景</el-button>
+      </el-form-item>
     </el-form>
     <el-table :data="items" v-loading="loading">
       <el-table-column prop="name" label="名称" /><el-table-column prop="address" label="地址" />
