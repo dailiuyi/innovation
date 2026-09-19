@@ -31,3 +31,16 @@ python scripts/harness.py check --profile ingestion
 4. 从场景列表选择合成场景，点击“编辑 → 版本与文件”，核对“新草稿说明”“创建草稿”“查看文件”“选择文件并上传”“选择文件夹并上传”“重新选择原文件”“发布/替换发布”。上传、发布及冻结规则由 ingestion 的真实流程结果佐证。
 5. 在浅色与深色模式，分别检查宽窗口和窄窗口；通过浏览器菜单设为 150%，滚动查看全部内容，确认没有重叠、横向溢出或文字截断，键盘 Tab 可访问入口。保存全页截图，注明窗口、主题、缩放、源码提交和测试账号类型（不保存凭据）。
 6. 核对 harness 报告范围、源码指纹及 skipped/blocked；补充真实截图与独立审查后，再判断所有 issue 验收项是否完成。
+
+## 本次检查结果
+
+被测源码对应提交 `70034711e9081a5ab501e671ea9f41339549a0f7` 的文件内容；本地 `.git` 只读，因此报告 HEAD 仍为基线提交，`dirty=true`。quick/frontend 的开始和结束指纹均为 `eab55b1270fbc7ca5df3451d1821541beaed93d5dcaa421eb4a83601de9d74b0`，检查期间源码未变。随后仅追加本节验证记录，未再修改首页。
+
+| 命令 | 结果 | 本地报告 |
+|---|---|---|
+| `.local/venv/bin/python scripts/harness.py doctor --profile quick` | passed，环境探测 | `.local/harness/20260919T142210Z-vy_t8_ha/report.json` |
+| `npm_config_cache=$PWD/.local/npm-cache npm --prefix frontend ci` | passed，锁文件未变 | `.local/npm-ci.log` |
+| `.local/venv/bin/python scripts/harness.py check --profile quick` | passed，harness 回归与 371 项契约/链接检查 | `.local/harness/20260919T142849Z-gn1d_1ct/report.json` |
+| `.local/venv/bin/python scripts/harness.py check --profile frontend` | blocked，前三步通过，Vite 构建在 transforming 阶段超过 300 秒 | `.local/harness/20260919T142850Z-_kwogzxr/report.json` |
+
+frontend 无 skipped 步骤；构建被超时终止，日志未给出编译错误，具体慢点未定位，不能据此断言生产构建通过。另使用已安装的 Vue compiler-sfc 对首页执行 parse、compileScript、compileTemplate、compileStyle 均成功，仅说明单文件编译未报错，不替代完整构建或浏览器验收。ingestion、真实登录/入口点击、视觉检查与截图未执行成功，独立 review 未执行。初次失败的 quick 报告保留在 `.local/harness/20260919T142346Z-pzn5h_i8/report.json`，原因和纠正见上文。
