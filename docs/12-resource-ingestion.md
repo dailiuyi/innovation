@@ -43,7 +43,7 @@
 | POST `/api/v1/drafts/{draftId}/zip-exports` | 准备或复用 ZIP |
 | GET/HEAD `/api/v1/drafts/{draftId}/zip-exports/{exportId}/content` | 下载已生成的 ZIP |
 
-完整输入输出见生成的 [OpenAPI](../contracts/openapi.yaml)，修改源为 `scripts/generate_contracts.py`。仅登录后的 `ar_admin` 管理员可操作；操作人从登录身份取得，客户端不能指定。关键变更写入现有 `ar_audit`，包含场景、草稿、文件和操作人，可在“场景操作记录”查看。
+完整输入输出见生成的 [OpenAPI](../contracts/openapi.yaml)，修改源为 `scripts/generate_contracts.py`。仅登录后的 `ar_admin` 管理员可操作；操作人从登录身份取得，客户端不能指定。关键变更写入现有 `ar_audit`，包含场景、草稿、文件和操作人，可在“场景操作记录”查看。动作列由前端集中映射中文名称，历史记录同样生效；未知代码保留原文，溢出时可悬停查看全文。接口与数据库仍保留原始动作代码。
 
 AAR 强制登记为 `CLIENT_LIBRARY`（客户端集成库）；普通文件为 `RESOURCE_FILE`。系统不检查 AAR 是否能被某个客户端集成，也不把它当作 Addressables 成品。
 
