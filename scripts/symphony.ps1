@@ -9,6 +9,7 @@ $repoRoot = Split-Path $PSScriptRoot -Parent
 $runtimeRoot = Join-Path $repoRoot '.local\symphony'
 $containerName = 'innovation-symphony'
 $imageName = 'innovation-symphony:0.0.3'
+$seccompPath = Join-Path $repoRoot 'deploy\symphony-seccomp.json'
 
 function Invoke-Docker {
     param([string[]]$Arguments)
@@ -42,11 +43,13 @@ New-Item -ItemType Directory -Force -Path $dataRoot, (Join-Path $dataRoot 'codex
 $workflowPath = Join-Path $repoRoot 'WORKFLOW.md'
 if ($Action -eq 'StartOffline') { $workflowPath = Join-Path $runtimeRoot 'smoke.md' }
 if (-not (Test-Path -LiteralPath $workflowPath -PathType Leaf)) { throw "Missing workflow: $workflowPath" }
+if (-not (Test-Path -LiteralPath $seccompPath -PathType Leaf)) { throw "Missing sandbox profile: $seccompPath" }
 
 $dockerArguments = @(
     'run', '-d', '--name', $containerName,
     '--label', 'app=innovation-symphony', '--restart', 'unless-stopped',
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
+    '--security-opt', "seccomp=$seccompPath",
     '--pids-limit', '512', '--memory', '4g', '--cpus', '2',
     '-p', '127.0.0.1:43190:43190',
     '--mount', "type=bind,source=$workflowPath,target=/config/WORKFLOW.md,readonly",

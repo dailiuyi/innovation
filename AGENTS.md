@@ -41,7 +41,7 @@ Read the development workflow before starting/stopping processes: this agent's W
 
 Run `python scripts/harness.py doctor --profile quick`, then `python scripts/harness.py check --profile quick` for repository rules and contracts. Choose `frontend` for frontend behavior/build checks or `ingestion` for the isolated current-source backend/HTTP/browser flow. Inspect the report's scope, source fingerprint and skipped/blocked checks before claiming completion.
 
-No automatic merge, deployment or repair loop is enabled. A failed check must be understood; do not weaken a test or edit a report to make it green. Promote reviewed acceptance evidence to docs explicitly; routine checks keep reports under `.local/harness/`.
+Optional Symphony development-task orchestration is configured in `WORKFLOW.md`; see [its runbook](docs/15-symphony.md). Only explicitly labeled issues are eligible, and delivery stops at a draft PR for human review. No automatic merge, deployment or unscoped repair loop is enabled. A failed check must be understood; do not weaken a test or edit a report to make it green. Promote reviewed acceptance evidence to docs explicitly; routine checks keep reports under `.local/harness/`.
 
 ## Conventions and security
 

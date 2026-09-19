@@ -6,7 +6,10 @@
 - 无凭据 memory tracker 启动成功，本机 `http://127.0.0.1:43190/` 与 `/api/v1/state` 返回 200，运行、重试与阻塞任务均为 0。
 - `python scripts/harness.py doctor --profile quick` 与 `check --profile quick` 通过，检查报告在 `.local/harness/20260919T134505Z-jvxhrkrn/report.json`。此次范围为工作流、脚本和文档集成；未执行 ingestion、浏览器业务验收或数据库迁移。
 - 公开发布前扫描可达历史中的 846 个 blob，检查常见凭据格式与当前本地环境配置中的秘密值，未发现匹配；这不构成任意秘密均不存在的保证。
-- 尚未验证容器内 Codex 认证、GitHub 轮询和真实 Issue 到 draft PR。自动审批拒绝了未获明确授权的宿主机 Codex 登录文件挂载，安装阶段没有共享该文件。
+- 用户明确授权复用本机 GitHub 和 Codex 登录后，容器 `codex login status` 确认 ChatGPT 登录，最小模型请求返回 `SYMPHONY_READY`，容器内 GitHub Issues 读取返回 HTTP 200，当前 open 条目为 0。
+- 首次实际 shell 检查发现 Docker 默认 seccomp 阻止创建用户命名空间。基于官方默认配置补充 8 个嵌套沙箱所需调用后，无凭据临时容器内 bubblewrap 只读沙箱执行 Python 成功；仍保留非 root、cap-drop ALL 和 no-new-privileges。
+- 用户明确授权将该 seccomp 配置应用到持有凭据的常驻容器后，Codex 在 workspace-write 沙箱中通过 shell 实际执行 `python3 -c "print(731942)"`，输出正确且退出码为 0。
+- 真实 Issue 到 draft PR 尚未执行。服务启动、登录与最小模型请求不代替真实任务验收。
 
 ## 2026-09-18 Docker 内网更新
 

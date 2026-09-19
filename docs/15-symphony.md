@@ -12,6 +12,8 @@ Symphony 在独立 Docker 容器中运行，读取 GitHub Issues，使用 Codex 
 - 安装文件、日志和独立工作区位于忽略目录 `.local/symphony/`，不会进入公开仓库。
 - 默认交付 draft PR，等待独立审查；不自动合并或部署。
 
+容器采用非 root 用户、移除所有宿主 capabilities 并启用 no-new-privileges。[seccomp 配置](../deploy/symphony-seccomp.json) 基于 [Docker 官方默认配置](https://github.com/moby/profiles/blob/main/seccomp/default.json)（源文件 blob：77df9d19e844f4403e41e401aca25ab28861e317，保留 [Apache-2.0 许可证](../deploy/symphony-seccomp.LICENSE)），本项目补充允许 clone、unshare、mount、umount2、pivot_root、setns、chroot、mount_setattr，以便 Codex 的 bubblewrap 在容器内建立用户命名空间与文件系统沙箱。其余默认系统调用限制保留；不使用 privileged、seccomp=unconfined 或 danger-full-access。该放行增加容器可用的命名空间调用面，适用范围仅此开发容器，用户已明确授权其在持有凭据的容器中持续使用。
+
 ## 操作
 
 在仓库根目录用 PowerShell 运行：
