@@ -226,3 +226,6 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 ## GH-4 默认展示发布版本文件（2026-09-19）
 
 新增默认发布版本选择、发布成功后的文件切换及场景初始化过期响应防护；保留手动选择和发布冻结规则。[自查范围与 Windows 验收步骤](evidence/issue-4/README.md)记录命令和限制。组件模拟回归已通过；最终 harness 结果见本任务 PR/Issue 进展记录。真实登录点击、Windows ingestion 与独立审查待完成，不代表业务验收通过。无数据库变更，未部署。
+## GH-3 场景操作记录中文动作（2026-09-19）
+
+核对当前后端全部 21 种动作，前端集中映射中文，未知代码保留原文；不修改接口、数据库、刷新或详情处理。实现自查、合成记录组件截图、完整映射和 Windows 待验收步骤见 [GH-3 验证说明](evidence/issue-3/README.md)。真实登录页面、Windows ingestion 和独立审查仍待完成；未合并、未部署。
