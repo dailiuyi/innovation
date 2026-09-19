@@ -38,7 +38,7 @@
     </el-table>
     <pagination v-show="draftTotal>20" :total="draftTotal" v-model:page="draftPage" :limit="20" @pagination="loadDrafts" />
     <section v-if="selected" class="draft-files">
-      <h3>{{selected.published?'发布文件':'草稿文件'}} · {{selected.id}}</h3>
+      <h3>当前查看：{{selected.published?'发布文件':'草稿文件'}} · {{selected.id}}</h3>
       <el-alert v-if="selected.published" title="当前为发布版本，文件已冻结，仅可修改说明" type="info" :closable="false" />
       <el-alert v-if="selected.downloadBlockedReason" :title="selected.downloadBlockedReason" type="warning" :closable="false" />
       <el-alert v-if="replacing" title="正在替换全部文件。新目录完整上传并校验成功后才会永久替换原文件；失败可重试或取消。替换期间不能发布、下载或增删原文件。" type="warning" :closable="false" />
@@ -114,7 +114,7 @@ const replacement=ref(null),zipPreparing=ref(false),manifestVisible=ref(false),m
 const replacing=ref(false)
 const states={PENDING:'待上传',UPLOADING:'处理中',AVAILABLE:'已校验入库',FAILED:'失败',DELETING:'正在删除',DELETE_FAILED:'删除失败'}
 let worker,controller,retryRow,cancelled=false,createKey=null,poll
-let draftRequest=0,fileRequest=0,selectionRequest=0
+let draftRequest=0,fileRequest=0,selectionRequest=0,sceneRequest=0
 function key(text){const h=sha256(text);return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-a${h.slice(17,20)}-${h.slice(20,32)}`}
 function randomKey(){const bytes=new Uint32Array(4);crypto.getRandomValues(bytes);return key(Array.from(bytes).join('-'))}
 function size(n){return n>=1048576?`${(n/1048576).toFixed(1)} MiB`:`${n??0} B`}
@@ -145,8 +145,11 @@ async function loadFiles(){
 async function loadReplacement(draft){
   replacing.value=false;replacement.value=null
   if(!draft?.pendingReplacement?.id)return
-  replacement.value=await request.get(`/api/v1/drafts/${draft.id}/replacements/${draft.pendingReplacement.id}`)
-  replacing.value=replacement.value?.status==='PENDING'
+  const sequence=selectionRequest,sceneSequence=sceneRequest
+  const result=await request.get(`/api/v1/drafts/${draft.id}/replacements/${draft.pendingReplacement.id}`)
+  if(sequence!==selectionRequest||sceneSequence!==sceneRequest)return
+  replacement.value=result
+  replacing.value=result?.status==='PENDING'
 }
 async function selectDraft(id){
   const sequence=++selectionRequest,sceneId=props.sceneId
@@ -157,7 +160,7 @@ async function selectDraft(id){
     if(draft.sceneId!==sceneId)throw new Error('该草稿不属于当前场景，请重新选择')
     selected.value=draft;editDescription.value=draft.description;filePage.value=1
     await router.replace({query:{...route.query,draftScene:sceneId,draftId:id}})
-    if(sequence===selectionRequest){await loadFiles();await loadReplacement(draft)}
+    if(sequence===selectionRequest){await loadFiles();if(sequence===selectionRequest)await loadReplacement(draft)}
   }catch(e){if(sequence===selectionRequest&&sceneId===props.sceneId)error.value=message(e)}
 }
 async function refresh(){
@@ -180,6 +183,7 @@ function uploadKey(file,hash,fileKind){
   return sessionStorage.getItem('draft-file-key:'+stable)||stable
 }
 async function publishDraft(row){
+  const sceneSequence=sceneRequest
   publishing.value=true
   try{
     const label=row.description?.trim()||row.id
@@ -190,9 +194,12 @@ async function publishDraft(row){
         : `确认将草稿「${label}」发布为该场景的唯一发布版本吗？发布后文件冻结，仅可修改说明。`,
       current?'替换发布版本':'发布版本',
       {confirmButtonText:current?'确认替换':'确认发布',cancelButtonText:'取消',type:'warning',closeOnClickModal:false})
+    if(sceneSequence!==sceneRequest)return
     await request.post(`/api/v1/drafts/${row.id}/publish`,{expectedSceneVersion:sceneLockVersion.value})
+    if(sceneSequence!==sceneRequest)return
     await loadDrafts()
-    if(selected.value) await selectDraft(selected.value.id)
+    if(sceneSequence!==sceneRequest)return
+    if(published.value) await selectDraft(published.value.id)
     emit('sceneUpdated')
     ElMessage.success(current?'已替换发布版本':'已发布')
   }catch(e){if(e!=='cancel'&&e!=='close'){error.value=message(e);if(e.response?.status===409)await loadDrafts()}}
@@ -361,7 +368,24 @@ async function downloadZip(){
   finally{zipPreparing.value=false}
 }
 function close(done){if(busy.value || removing.value){ElMessage.warning('请等待上传结束或先取消上传');return}emit('close');done?.()}
-watch(()=>props.sceneId,async id=>{++selectionRequest;++fileRequest;++draftRequest;selected.value=null;files.value=[];drafts.value=[];fileTotal.value=0;draftTotal.value=0;published.value=null;sceneLockVersion.value=0;loadingFiles.value=false;error.value='';draftPage.value=1;replacing.value=false;replacement.value=null;if(!id)return;try{const cfg=await request.get('/api/v1/drafts/config');maxBytes.value=cfg.maxBytes;collectionMaxFiles.value=cfg.collectionMaxFiles;collectionMaxBytes.value=cfg.collectionMaxBytes;if(id!==props.sceneId)return;await loadDrafts();if(id===props.sceneId&&route.query.draftId)await selectDraft(String(route.query.draftId))}catch(e){if(id===props.sceneId)error.value=message(e)}},{immediate:true})
+watch(()=>props.sceneId,async id=>{
+  const sceneSequence=++sceneRequest,selectionSequence=++selectionRequest
+  ++fileRequest;++draftRequest
+  selected.value=null;files.value=[];drafts.value=[];fileTotal.value=0;draftTotal.value=0
+  published.value=null;sceneLockVersion.value=0;loadingFiles.value=false;error.value='';draftPage.value=1
+  replacing.value=false;replacement.value=null;manifestVisible.value=false;manifest.value=null;progressText.value=''
+  if(!id)return
+  const restoredId=route.query.draftScene===id ? route.query.draftId : null
+  try{
+    const cfg=await request.get('/api/v1/drafts/config')
+    if(sceneSequence!==sceneRequest)return
+    maxBytes.value=cfg.maxBytes;collectionMaxFiles.value=cfg.collectionMaxFiles;collectionMaxBytes.value=cfg.collectionMaxBytes
+    await loadDrafts()
+    if(sceneSequence!==sceneRequest||selectionSequence!==selectionRequest)return
+    const initialId=restoredId || published.value?.id
+    if(initialId)await selectDraft(String(initialId))
+  }catch(e){if(sceneSequence===sceneRequest)error.value=message(e)}
+},{immediate:true})
 onBeforeUnmount(()=>{cancel();clearInterval(poll)})
 </script>
 <style scoped>

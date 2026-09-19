@@ -222,3 +222,7 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 - Docker gateway 生产构建通过，镜像 innovation-gateway:pr2-062a149。PR 合并提交 e92ceed746b5c1ee485fae850a6449cd5ecb1ad9；部署用 frontend/deploy/compose 与合并主分支无差异。
 - 保留原镜像 innovation-gateway:before-pr2，以新镜像更新 infra-v1，仅执行 compose up -d --no-deps --no-build gateway。后端、数据库、Redis 未重建。网关 healthy，/healthz 与 /index HTTP 200；实际 HTTP 获取 index-BYBCSCSi.js 含操作步骤、发布前请留意。
 - 地址 http://192.168.0.12:43174/index 。已有 Chrome 页刷新后进入登录页；未绕过登录，登录后真实点击、权限差异及第二台 LAN 设备访问仍未验证。此前人工确认的是隔离组件视觉效果，不等同完整业务验收。本次没有数据库改动或数据库版本验收。
+
+## GH-4 默认展示发布版本文件（2026-09-19）
+
+新增默认发布版本选择、发布成功后的文件切换及场景初始化过期响应防护；保留手动选择和发布冻结规则。[自查范围与 Windows 验收步骤](evidence/issue-4/README.md)记录命令和限制。组件模拟回归已通过；最终 harness 结果见本任务 PR/Issue 进展记录。真实登录点击、Windows ingestion 与独立审查待完成，不代表业务验收通过。无数据库变更，未部署。
