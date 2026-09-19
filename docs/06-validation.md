@@ -203,3 +203,7 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 补充报告的通过状态表示成功复现所描述的行为，不表示这些风险已经修复。运行角色的权限由测试构造，不能视为实际部署配置；应用、目标 PostgreSQL 17、对象存储及客户端仍未验证。
 
 本轮另行核对三份生成产物与生成源一致、接口共 23 个、36 个本地文档链接有效，并通过文风检查。当前 Python 环境缺少完整 Schema 校验依赖，未重新执行完整的 OpenAPI 和 JSON Schema 验证。
+
+## GH-1 首页操作指引（2026-09-19）
+
+首页新增平台用途、四步操作路径、按已有权限与动态路由展示的常用入口和发布提示。核对了当前页面名称与菜单迁移。Linux 实现自查及 Windows 待验收步骤见 [首页验收说明](evidence/issue-1/README.md)。真实登录、目标页面、浏览器菜单 150% 缩放及 Windows ingestion 尚未验收；本次未部署，未操作日常 Demo 或真实账号/存储。
