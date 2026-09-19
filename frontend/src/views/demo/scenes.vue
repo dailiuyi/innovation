@@ -38,7 +38,7 @@ import DraftPanel from './DraftPanel.vue'
 import { useRoute, useRouter } from 'vue-router'
 const route=useRoute(),router=useRouter()
 const draftScene=computed(()=>String(route.query.draftScene||''))
-function openDrafts(id){visible.value=false;router.replace({query:{...route.query,draftScene:id}})}
+function openDrafts(id){visible.value=false;const query={...route.query,draftScene:id};delete query.draftId;router.replace({query})}
 function closeDrafts(){const query={...route.query};delete query.draftScene;delete query.draftId;router.replace({query});load()}
 import { ElMessage, ElMessageBox } from 'element-plus'
 const deleting=ref(false)
