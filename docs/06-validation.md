@@ -214,3 +214,11 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 ## GH-1 首页操作指引（2026-09-19）
 
 首页新增平台用途、四步操作路径、按已有权限与动态路由展示的常用入口和发布提示。核对了当前页面名称与菜单迁移。Linux 实现自查及 Windows 待验收步骤见 [首页验收说明](evidence/issue-1/README.md)。真实登录、目标页面、浏览器菜单 150% 缩放及 Windows ingestion 尚未验收；本次未部署，未操作日常 Demo 或真实账号/存储。
+
+## 2026-09-19 PR #2 简单审查、构建与内网部署
+
+- 用户明确授权 review、构建、合并和部署。审查 head 062a1493a88ff3d4d5c64b97e21fb26e8aaf75d4，与当时 main a0df970 的合并候选；未发现实质缺陷。核对首页三个权限及路由、动态路由加载时机、四步操作名称及发布边界。主工作区其他未提交修改未纳入。
+- Windows 隔离目录 .local/pr2-release：npm ci 成功；使用 PYTHONPATH 指向已有 .local/python 依赖后 doctor quick、check quick、check frontend 均通过。frontend 报告 .local/harness/20260919T145118Z-2kgfytra/report.json，sourceUnchanged=true，包含 draft-panel 和生产构建。首次 doctor 因隔离目录缺 Python 依赖阻塞，未作为通过证据。
+- Docker gateway 生产构建通过，镜像 innovation-gateway:pr2-062a149。PR 合并提交 e92ceed746b5c1ee485fae850a6449cd5ecb1ad9；部署用 frontend/deploy/compose 与合并主分支无差异。
+- 保留原镜像 innovation-gateway:before-pr2，以新镜像更新 infra-v1，仅执行 compose up -d --no-deps --no-build gateway。后端、数据库、Redis 未重建。网关 healthy，/healthz 与 /index HTTP 200；实际 HTTP 获取 index-BYBCSCSi.js 含操作步骤、发布前请留意。
+- 地址 http://192.168.0.12:43174/index 。已有 Chrome 页刷新后进入登录页；未绕过登录，登录后真实点击、权限差异及第二台 LAN 设备访问仍未验证。此前人工确认的是隔离组件视觉效果，不等同完整业务验收。本次没有数据库改动或数据库版本验收。
