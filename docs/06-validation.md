@@ -1,5 +1,12 @@
 # V0.1 验证记录
 
+## 2026-09-19 Symphony 首个真实任务启动修复
+
+- GH-1 暴露安装冒烟检查未覆盖的 App Server 协议问题：`reject` 审批对象被 Codex CLI 0.154.0 拒绝。根据该二进制导出的 schema 改为 `granular`，五类字段均为 false，保留 workspace-write 与拒绝越权的规则。
+- 随后发现工作流换行解析 `~r/\R/` 可能拆断中文 UTF-8 字节，使发送 turn 时出现 Jason.EncodeError；将内部模板改为等义 ASCII，中文任务正文继续由模板变量注入。握手 read_timeout_ms 从默认 5 秒调到 60 秒。
+- 只重启 Symphony，保留 GH-1 工作区。2026-09-19T14:17:39Z 状态 API 显示 running、第 1 轮、有效 session_id、总 Token 16686、retry=null、last_error=null，证明实际 Issue 已进入模型执行。
+- 此记录只确认真实任务成功启动，不代表首页功能完成、PR 交付或业务验收通过。
+
 ## 2026-09-19 Symphony 安装验证
 
 - 官方 Symphony v0.0.3 Linux x86_64 发行包 SHA256 校验通过；运行镜像包含 Codex CLI 0.154.0。仅新建开发工具镜像，未重建业务镜像。

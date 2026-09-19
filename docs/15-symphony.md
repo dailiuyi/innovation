@@ -6,6 +6,8 @@ Symphony 在独立 Docker 容器中运行，读取 GitHub Issues，使用 Codex 
 
 - 官方稳定版 v0.0.3；Linux x86_64 发行包已按官方 SHA256 校验。
 - Codex CLI 0.154.0；镜像 `innovation-symphony:0.0.3`。
+- 审批策略使用当前 App Server 支持的 `granular`，五类审批字段均设为 false，保留拒绝越权的含义；不要直接复制上游示例中的 `reject` 对象，该 CLI 会以 unknown variant 拒绝创建会话。
+- 工作流模板使用 ASCII；v0.0.3 的换行解析使用未启用 Unicode 的正则，可能拆断中文 UTF-8 字节，导致 Jason.EncodeError。中文 Issue 正文在模板解析后注入，进展说明仍要求中文。App Server 握手等待为 60 秒，适应本机首次会话初始化。
 - 看板仓库 `dailiuyi/innovation`；配置见 [WORKFLOW.md](../WORKFLOW.md)。
 - 一次运行一个任务，只领取带 `symphony:ready` 标签的 open Issue。
 - 管理页面绑定宿主机回环地址 `http://127.0.0.1:43190/`。
