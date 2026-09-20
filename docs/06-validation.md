@@ -2,6 +2,15 @@
 
 本文按阶段保留历史结论；各段“当前”“未完成”只对应所记日期与源码。后续记录可能补充验收，但不追改当时结果。正式证据与保留快照的区别见 [证据索引](evidence/README.md)。本机 `.local` 路径仅是查证线索，不保证其他检出环境可访问。
 
+## GH-9 场景列表入口拆分与列宽（2026-09-20）
+
+- 行为：场景列表每行直接提供“场景信息”（名称、地址、坐标）和“版本与文件”两个入口；编辑弹窗底部只保留“关闭、保存”；资源面板标题与首行显示所属场景名称和编号，进入面板不再依赖编辑弹窗。列宽为状态 80、修订号 80、操作 300 且固定在右侧，名称与地址按 min-width 180/320 分配剩余空间、省略显示并悬停看完整值。版本列表与文件列表布局、发布/上传/下载/删除规则未改。
+- 选择器与文档同步更新：`scripts/verify_ingestion.py`（行内两个入口、场景信息弹窗底部按钮、资源面板场景名，并追加 1280/1440/1920 列宽与按钮单行/间距断言）、`scripts/verify_browser.py`、`scripts/verify_draft_panel.mjs`（场景名加载与迟到响应失效）、`docs/12-resource-ingestion.md`、`docs/13-harness.md` 的专项入口说明和首页入口/步骤说明。
+- 新增 `scripts/verify_scene_list_ui.py`：只启动 Vite 与真实浏览器、由 Playwright 返回合成接口响应，不连后端。本容器用 `/tmp` 下自行解包的 Debian 运行库启动 Chrome for Testing 153.0.8010.12 实跑，64 项全部通过：两个入口、四按钮不截断/不换行/不重叠、状态与修订号紧凑、地址宽于名称且随窗口变宽、超长名称与地址省略且悬停显示完整值、1024px 横向滚动时操作列固定在右侧、场景信息弹窗只留关闭与保存、版本与文件直接打开对应场景面板、发布后列表刷新修订号、停用原因填写与删除确认。它使用合成响应，不证明真实发布/上传/下载/删除。结果 [`validation-scene-list-ui.json`](evidence/issue-9/validation-scene-list-ui.json)；截图与逐项日志留在本机 `.local/scene-list-ui/`，未随仓库提交。
+- Linux（Python 3.11.2、Node 22.23.2、npm 10.9.8）：`doctor --profile quick` 与 `check --profile quick` 通过且 `sourceUnchanged=true`，报告 `.local/harness/20260920T075839Z-iplkgd57/report.json`（HEAD `5806c68`，`dirty=true`，源码指纹 `280ee8af2bc0e88c6633c816d253e2ba8f1e6db75cf3954316d4f826d936040f`）。该报告对应写入本段说明之前的树；写入说明后的最终 quick 复核报告路径记在 Issue #9 唯一进展评论。
+- `check --profile frontend`：contracts-and-links 与 draft-panel 通过；`frontend-build` 步骤在 harness 固定的 300 秒超时内未完成，该 profile 记为 blocked，不能算通过。同一命令直接执行 `npm --prefix frontend run build:prod` 退出码 0（墙钟 6 分 56 秒，user 28 秒），产物含 `"min-width":"180"`、`"min-width":"320"`、`width:"80"`、`label:"操作",width:"300",fixed:"right"` 与资源面板场景名文案。
+- 未执行：Windows ingestion、Edge 真实后端登录点击、真实发布/上传/下载/删除业务闭环、数据库、Docker/LAN、部署与客户端加载。详见 [GH-9 证据记录](evidence/issue-9/README.md)。
+
 ## 2026-09-20 文档状态与证据引用整理
 
 - 将旧候选文档标为历史状态，现行手册统一通过 Harness 执行日常检查；归档协作讨论并保留后续验收入口。新增 [证据索引](evidence/README.md)，记录保留 JSON 的 SHA256 和重复引用限制；没有改写报告内容，也没有恢复或补造旧批次证据。
