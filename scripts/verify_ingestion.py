@@ -402,6 +402,22 @@ def main():
         check('zip export reused', reused['id']==exported['id'])
         st, hdrs, zpart=api_bytes(exported['downloadPath'], headers={'Range':'bytes=0-10'})
         check('zip range 206', st==206 and zpart==zbody[:11])
+        # A build that is still running answers 409, and that answer must be distinguishable from other conflicts.
+        preparing_draft=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'zip preparing conflict'})[1]
+        preparing_path='/api/v1/drafts/'+preparing_draft['id']
+        preparing_file=api(preparing_path+'/files','POST',dict(requestKey=str(uuid.uuid4()),fileName='prep.bin',kind='RESOURCE_FILE',bytes=len(a),sha256=hashlib.sha256(a).hexdigest()))[1]
+        check('zip preparing fixture file available', api(preparing_path+'/files/'+preparing_file['id']+'/content','PUT',a,raw=True)[1]['status']=='AVAILABLE')
+        preparing_man=api(preparing_path+'/download-manifest')[1]
+        in_flight=uuid.uuid4()
+        sql("insert into ar_zip_export(id, collection_id, generation, status) values(%s, %s, %s, 'PREPARING')",
+            (str(in_flight), preparing_man['collectionId'], preparing_man['generation']))
+        code, still_preparing=api(preparing_path+'/zip-exports','POST',{'collectionId':preparing_man['collectionId'],'generation':preparing_man['generation']})
+        check('an in-flight build answers still preparing', code==409 and still_preparing.get('message')=='ZIP 正在准备，请稍后重试')
+        sql('delete from ar_zip_export where id=%s',(str(in_flight),))
+        code, after_build=api(preparing_path+'/zip-exports','POST',{'collectionId':preparing_man['collectionId'],'generation':preparing_man['generation']})
+        check('manual retry after a still-preparing answer reuses the finished zip', code==200 and after_build.get('status')=='AVAILABLE' and after_build.get('bytes',0)>0)
+        st, hdrs, after_body=api_bytes(after_build['downloadPath'])
+        check('zip finished after the conflict downloads with a matching digest', st==200 and len(after_body)==after_build['bytes'] and hashlib.sha256(after_body).hexdigest()==after_build['sha256'])
         check('anonymous manifest rejected', api(folder_path+'/download-manifest',auth=False)[0]==401)
         check('anonymous zip rejected', api(folder_path+'/zip-exports','POST',{'collectionId':man['collectionId'],'generation':man['generation']},auth=False)[0]==401)
         check('anonymous file download rejected', api_bytes(file0['downloadPath'], auth=False)[0]==401)
@@ -625,6 +641,21 @@ def main():
             zip_button.click()
             page.get_by_text(unconfirmed,exact=True).first.wait_for(timeout=30000)
             check('browser treats an interrupted connection as unconfirmed',zip_button.is_enabled())
+            page.unroute('**/api/v1/drafts/**/zip-exports')
+            still_building='ZIP 正在准备，构建结果尚未确认。请稍后手动重试。'
+            page.route('**/api/v1/drafts/**/zip-exports',lambda route: route.fulfill(status=409,content_type='application/json',body=json.dumps({'code':'AR_409','message':'ZIP 正在准备，请稍后重试'})))
+            zip_button.click()
+            page.get_by_text(still_building,exact=True).first.wait_for(timeout=30000)
+            check('browser keeps a still-building answer in progress',zip_button.is_enabled() and page.get_by_text('ZIP 准备失败',exact=False).count()==0)
+            page.unroute('**/api/v1/drafts/**/zip-exports')
+            with page.expect_download(timeout=30000) as rebuilt:
+                zip_button.click()
+            rebuilt_zip=run/'browser-rebuilt.zip'; rebuilt.value.save_as(rebuilt_zip)
+            check('browser manual retry after a still-building answer reuses the zip',rebuilt_zip.read_bytes()==zip_bytes and zip_button.is_enabled())
+            page.route('**/api/v1/drafts/**/zip-exports',lambda route: route.fulfill(status=409,content_type='application/json',body=json.dumps({'code':'AR_409','message':'文件集合已变化，请重新获取清单'})))
+            zip_button.click()
+            page.get_by_text('文件集合已变化，请重新获取清单',exact=True).first.wait_for(timeout=30000)
+            check('browser keeps other 409 conflicts as errors',zip_button.is_enabled() and page.get_by_text(still_building,exact=True).count()==0)
             page.unroute('**/api/v1/drafts/**/zip-exports')
             page.route('**/api/v1/drafts/**/zip-exports',lambda route: route.fulfill(status=503,content_type='application/json',body=json.dumps({'code':'AR_503','message':'ZIP 准备失败，请稍后重试'})))
             zip_button.click()

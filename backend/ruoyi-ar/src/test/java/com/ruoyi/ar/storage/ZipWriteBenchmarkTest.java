@@ -6,9 +6,14 @@ import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.channels.Channels;
+import java.nio.channels.FileChannel;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.nio.file.StandardOpenOption;
+import java.security.DigestOutputStream;
 import java.security.MessageDigest;
 import java.util.HexFormat;
 import java.util.List;
@@ -21,19 +26,25 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 /**
- * Times the same ZIP package through the fixed bulk-write boundary and through the pre-fix boundary that
- * only overrode {@code close()}. Host acceptance raises the sample with
+ * Times the same ZIP package through three write chains: the complete pre-fix store chain (unbuffered
+ * file channel plus a boundary stream that only overrode {@code close()}), the same chain with only the
+ * boundary replaced, and the fixed chain. Host acceptance raises the sample with
  * {@code -Dzip.benchmark.miB=250 -Dzip.benchmark.runs=1} and records the printed lines; the default keeps
- * the routine module test fast. No timing threshold is asserted and no ratio here promises end-to-end speedup.
+ * the routine module test short. No timing threshold is asserted and no ratio here promises an
+ * end-to-end speedup.
  */
 class ZipWriteBenchmarkTest {
-    private static final int DEFAULT_SAMPLE_MIB = 16;
+    private static final int DEFAULT_SAMPLE_MIB = 8;
     private static final int ENTRY_MIB = 4;
     private static final long MIB = 1024L * 1024L;
+    private static final String LEGACY_FULL = "legacy-full";
+    private static final String LEGACY_BOUNDARY = "legacy-boundary";
+    private static final String FIXED = "fixed";
+    private static final List<String> VARIANTS = List.of(LEGACY_FULL, LEGACY_BOUNDARY, FIXED);
 
     @TempDir Path root;
 
-    @Test void bulkWriteBoundaryIsMeasuredAgainstTheByteAtATimeWrapper() throws Exception {
+    @Test void writeChainsAreMeasuredAndProduceTheSameEntries() throws Exception {
         int sampleMiB = Integer.getInteger("zip.benchmark.miB", DEFAULT_SAMPLE_MIB);
         int runs = Integer.getInteger("zip.benchmark.runs", 1);
         assertTrue(sampleMiB > 0 && runs > 0, "Benchmark sample size and run count must be positive");
@@ -42,22 +53,34 @@ class ZipWriteBenchmarkTest {
         var store = new LocalZipExportStore(root);
         print("{\"environment\":{\"java\":\"" + System.getProperty("java.version") + "\",\"os\":\""
                 + System.getProperty("os.name") + " " + System.getProperty("os.arch") + "\",\"processors\":"
-                + Runtime.getRuntime().availableProcessors() + ",\"maxHeapBytes\":" + Runtime.getRuntime().maxMemory()
-                + ",\"sampleMiB\":" + sampleMiB + ",\"entryMiB\":" + ENTRY_MIB + ",\"runs\":" + runs + "}}");
-        for (String variant : List.of("legacy", "fixed")) {
+                + Runtime.getRuntime().availableProcessors() + ",\"maxHeapBytes\":"
+                + Runtime.getRuntime().maxMemory() + ",\"sampleMiB\":" + sampleMiB + ",\"entryMiB\":"
+                + ENTRY_MIB + ",\"runs\":" + runs + ",\"variants\":\"" + String.join(",", VARIANTS) + "\"}}");
+        for (String variant : VARIANTS) {
             for (int run = 1; run <= runs; run++) {
                 UUID id = UUID.randomUUID();
                 long started = System.nanoTime();
-                var descriptor = store.write(id, out -> pack("legacy".equals(variant) ? byteAtATimeKeepOpen(out)
-                        : LocalZipExportStore.keepOpen(out), block, sampleBytes));
+                long fileBytes;
+                String digest;
+                Path published;
+                if (LEGACY_FULL.equals(variant)) {
+                    published = writeWithPreFixChain(id, block, sampleBytes);
+                    fileBytes = Files.size(published);
+                    digest = sha256(published);
+                } else {
+                    var descriptor = store.write(id, out -> pack(LEGACY_BOUNDARY.equals(variant)
+                            ? byteAtATimeKeepOpen(out) : LocalZipExportStore.keepOpen(out), block, sampleBytes));
+                    published = root.resolve("zip-exports/" + id + ".zip");
+                    fileBytes = descriptor.bytes();
+                    digest = descriptor.sha256();
+                }
                 long millis = (System.nanoTime() - started) / 1_000_000L;
-                Path published = root.resolve("zip-exports/" + id + ".zip");
                 assertEquals(sampleBytes, readEntries(published), variant + " entry payload");
-                assertEquals(Files.size(published), descriptor.bytes(), variant + " byte count");
-                assertEquals(sha256(published), descriptor.sha256(), variant + " digest");
+                assertEquals(Files.size(published), fileBytes, variant + " byte count");
+                assertEquals(sha256(published), digest, variant + " digest");
                 print("{\"variant\":\"" + variant + "\",\"run\":" + run + ",\"millis\":" + millis
-                        + ",\"sampleBytes\":" + sampleBytes + ",\"fileBytes\":" + descriptor.bytes()
-                        + ",\"sha256\":\"" + descriptor.sha256() + "\"}");
+                        + ",\"sampleBytes\":" + sampleBytes + ",\"fileBytes\":" + fileBytes
+                        + ",\"sha256\":\"" + digest + "\"}");
             }
         }
     }
@@ -75,6 +98,27 @@ class ZipWriteBenchmarkTest {
                 index++;
             }
         }
+    }
+
+    /** Replays the pre-fix store chain: no buffering, and only {@code close()} overridden on the boundary. */
+    private Path writeWithPreFixChain(UUID id, byte[] block, long sampleBytes) throws Exception {
+        Path directory = root.resolve("zip-exports");
+        Files.createDirectories(directory);
+        Path partial = directory.resolve(id + ".part");
+        Path target = directory.resolve(id + ".zip");
+        try (FileChannel channel = FileChannel.open(partial, StandardOpenOption.CREATE_NEW,
+                StandardOpenOption.WRITE);
+             OutputStream raw = Channels.newOutputStream(channel);
+             DigestOutputStream digestStream = new DigestOutputStream(raw, MessageDigest.getInstance("SHA-256"));
+             OutputStream counted = new FilterOutputStream(digestStream) {
+                 @Override public void write(int b) throws IOException { out.write(b); }
+                 @Override public void write(byte[] b, int off, int len) throws IOException { out.write(b, off, len); }
+             }) {
+            pack(byteAtATimeKeepOpen(counted), block, sampleBytes);
+            channel.force(true);
+        }
+        Files.move(partial, target, StandardCopyOption.ATOMIC_MOVE);
+        return target;
     }
 
     /** The pre-fix boundary stream: bulk writes degrade to single bytes because only close() is overridden. */

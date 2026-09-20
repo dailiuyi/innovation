@@ -359,7 +359,17 @@ async function showManifest(){
   }catch(e){error.value=message(e)}
 }
 const zipResultUnconfirmed='请求等待超时，ZIP 构建结果尚未确认，后端可能仍在处理。请稍后重试。'
+const zipStillPreparing='ZIP 正在准备，构建结果尚未确认。请稍后手动重试。'
 const zipDownloadFailed='ZIP 下载失败，请重试'
+function prepareFailure(e){
+  // A gateway 504, a client timeout or an interrupted connection never proves the build failed.
+  if(e?.response?.status===504||(!e?.response&&(e?.isAxiosError||!!e?.request)))
+    return{error:zipResultUnconfirmed,progress:'ZIP 准备结果未确认，可手动重试'}
+  // 409 also covers other conflicts, so only the explicit preparing answer counts as still building.
+  const conflict=e?.response?.status===409?String(e.response.data?.message??''):''
+  if(conflict.includes('ZIP 正在准备'))return{error:zipStillPreparing,progress:'ZIP 正在准备，可稍后手动重试'}
+  return{error:message(e),progress:'ZIP 准备失败，可手动重试'}
+}
 async function downloadZip(){
   zipPreparing.value=true
   error.value=''
@@ -369,10 +379,9 @@ async function downloadZip(){
     try{
       exported=await request.post(`/api/v1/drafts/${selected.value.id}/zip-exports`,{collectionId:selected.value.currentCollectionId,generation:selected.value.collectionGeneration},{timeout:0})
     }catch(e){
-      // A gateway 504, a client timeout or an interrupted connection never proves the build failed.
-      const unconfirmed=e?.response?.status===504||(!e?.response&&(e?.isAxiosError||!!e?.request))
-      error.value=unconfirmed?zipResultUnconfirmed:message(e)
-      progressText.value=unconfirmed?'ZIP 准备结果未确认，可手动重试':'ZIP 准备失败，可手动重试'
+      const failure=prepareFailure(e)
+      error.value=failure.error
+      progressText.value=failure.progress
       return
     }
     progressText.value='ZIP 已准备好，开始下载'

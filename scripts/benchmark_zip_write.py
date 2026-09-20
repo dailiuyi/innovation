@@ -5,11 +5,13 @@ module once per variant and writes `<report-dir>/zip-write-benchmark.json` besid
 
     python scripts/benchmark_zip_write.py --sample-mib 250 --runs 1
 
-`legacy` keeps the pre-fix boundary stream that only overrode `close()`, so bulk writes degraded to single
-bytes; `fixed` uses the current bulk-write boundary. Both variants share the current store buffering, so
-the measurement isolates the boundary fix and understates the original build. Report the environment,
-sample size and measured seconds in the validation record; the ratio is a local measurement, not a
-promise of end-to-end speedup, and the gateway timeout limit is not measured here.
+Variants: `legacy-full` replays the pre-fix store chain (unbuffered file channel plus a boundary stream
+that only overrode `close()`, so bulk writes degraded to single bytes), `legacy-boundary` keeps the current
+64 KiB buffering and swaps only the boundary stream, and `fixed` is the current chain. All three must
+produce readable ZIPs with the same entry payload, so the measured difference is write-chain cost, not
+content. Report the environment, sample size and measured seconds in the validation record; the ratio is
+a local measurement, not a promise of end-to-end speedup, and the gateway timeout limit is not measured
+here.
 """
 import argparse
 import json
@@ -78,25 +80,38 @@ def main():
         by_variant.setdefault(entry['variant'], []).append(entry['seconds'])
     averages = {name: round(sum(values) / len(values), 3) for name, values in by_variant.items()}
     comparison = None
-    if by_variant.get('legacy') and by_variant.get('fixed') and averages['fixed'] > 0:
-        seconds = {'legacy': averages['legacy'], 'fixed': averages['fixed']}
-        comparison = {'averageSeconds': seconds, 'ratio': round(seconds['legacy'] / seconds['fixed'], 2),
+    if by_variant.get('legacy-full') and by_variant.get('fixed') and averages['fixed'] > 0:
+        seconds = {'legacyFull': averages['legacy-full'], 'fixed': averages['fixed']}
+        if averages.get('legacy-boundary'):
+            seconds['legacyBoundary'] = averages['legacy-boundary']
+        comparison = {'averageSeconds': seconds,
+                      'ratio': round(seconds['legacyFull'] / seconds['fixed'], 2),
                       'fixedMiBPerSecond': round(args.sample_mib / averages['fixed'], 1),
-                      'legacyMiBPerSecond': round(args.sample_mib / averages['legacy'], 1)}
-    passed = bool(result.returncode == 0 and environment and by_variant.get('legacy') and by_variant.get('fixed'))
+                      'legacyFullMiBPerSecond': round(args.sample_mib / averages['legacy-full'], 1)}
+        if averages.get('legacy-boundary'):
+            comparison['legacyBoundaryMiBPerSecond'] = round(args.sample_mib / averages['legacy-boundary'], 1)
+            comparison['boundaryRatio'] = round(seconds['legacyFull'] / seconds['legacyBoundary'], 2)
+    passed = bool(result.returncode == 0 and environment
+                  and by_variant.get('legacy-full') and by_variant.get('fixed'))
     report = {'passed': passed, 'command': [str(part) for part in command], 'exitCode': result.returncode,
               'seconds': round(time.time() - started, 2), 'mavenLog': str(log), 'environment': environment,
               'sample': {'requestedMiB': args.sample_mib, 'entryMiB': (environment or {}).get('entryMiB'),
                          'runs': args.runs, 'compressible': False, 'bytes': args.sample_mib * 1024 * 1024},
               'results': results, 'comparison': comparison,
               'limitations': ['Single-process micro-benchmark of the ZIP write chain only; no HTTP, gateway or client timing',
-                              'Both variants reuse the current store buffering, so the measured legacy cost understates the pre-fix build',
+                              'legacy-full replays the pre-fix chain locally (unbuffered channel stream plus a byte-at-a-time boundary), not the released build',
+                              'legacy-boundary isolates the boundary wrapper and therefore measures only part of the original cost',
                               'The ratio is a local measurement for the validation record, not a promised end-to-end speedup',
                               'The real ~60s gateway limit is not exercised here; a real 250 MiB build stays host acceptance']}
     (args.report_dir / 'zip-write-benchmark.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     if comparison:
-        print(f"legacy {comparison['averageSeconds']['legacy']}s vs fixed {comparison['averageSeconds']['fixed']}s "
-              f"({comparison['legacyMiBPerSecond']} vs {comparison['fixedMiBPerSecond']} MiB/s, ratio {comparison['ratio']})")
+        print(f"legacy-full {comparison['averageSeconds']['legacyFull']}s vs fixed "
+              f"{comparison['averageSeconds']['fixed']}s ({comparison['legacyFullMiBPerSecond']} vs "
+              f"{comparison['fixedMiBPerSecond']} MiB/s, ratio {comparison['ratio']})")
+        if 'legacyBoundary' in comparison['averageSeconds']:
+            print(f"legacy-boundary {comparison['averageSeconds']['legacyBoundary']}s "
+                  f"({comparison['legacyBoundaryMiBPerSecond']} MiB/s), wrapper-only ratio "
+                  f"{comparison['boundaryRatio']}")
     print(json.dumps({'passed': passed, 'environment': environment, 'comparison': comparison}, ensure_ascii=False))
     print('Report: ' + str(args.report_dir / 'zip-write-benchmark.json'))
     raise SystemExit(0 if passed else (2 if environment is None else 1))

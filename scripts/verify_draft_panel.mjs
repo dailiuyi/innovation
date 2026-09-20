@@ -171,6 +171,7 @@ console.log('PASS: default published selection, off-page publication, restore/ma
 
 // A failed ZIP request must never be reported as a build failure: only a real backend answer can.
 const zipTimeout = '请求等待超时，ZIP 构建结果尚未确认，后端可能仍在处理。请稍后重试。'
+const zipPreparing = 'ZIP 正在准备，构建结果尚未确认。请稍后手动重试。'
 const zipDownloadFailed = 'ZIP 下载失败，请重试'
 const zipDraft = { id: 'zip-draft', sceneId: 'scene-a', published: false, currentCollectionId: 'collection-a', collectionGeneration: 3 }
 const zipExportPath = '/api/v1/drafts/zip-draft/zip-exports/export-1/content'
@@ -187,7 +188,10 @@ async function beginZip() {
   assert.equal(run('zipPreparing.value'), true)
   const post = zipPosts.shift()
   assert.equal(post.url, '/api/v1/drafts/zip-draft/zip-exports')
-  assert.deepEqual(post.body, { collectionId: 'collection-a', generation: 3 })
+  // The body is built inside the VM context, so its prototype differs from a host object; compare fields.
+  assert.deepEqual(Object.keys(post.body).sort(), ['collectionId', 'generation'])
+  assert.equal(post.body.collectionId, 'collection-a')
+  assert.equal(post.body.generation, 3)
   assert.equal(post.config.timeout, 0)
   return { attempt, post }
 }
@@ -250,6 +254,53 @@ for (const [label, error] of [
   assert.equal(run('zipPreparing.value'), false)
 }
 
+// A conflict that reports the package is still building must read as in progress, never as a failure.
+{
+  const { attempt, post } = await beginZip()
+  post.reject(axiosError('Request failed with status code 409', { response: { status: 409, data: { code: 'AR_409', message: 'ZIP 正在准备，请稍后重试' } } }))
+  await attempt
+  assert.equal(run('error.value'), zipPreparing)
+  assert.equal(run('progressText.value'), 'ZIP 正在准备，可稍后手动重试')
+  assert.equal(run('error.value').includes('准备失败'), false)
+  assert.equal(run('zipPreparing.value'), false)
+}
+
+// Other 409 conflicts, such as a changed collection, must keep their own error.
+{
+  const { attempt, post } = await beginZip()
+  post.reject(axiosError('Request failed with status code 409', { response: { status: 409, data: { code: 'AR_409', message: '文件集合已变化，请重新获取清单' } } }))
+  await attempt
+  assert.equal(run('error.value'), '文件集合已变化，请重新获取清单')
+  assert.notEqual(run('error.value'), zipPreparing)
+  assert.equal(run('progressText.value'), 'ZIP 准备失败，可手动重试')
+  assert.equal(run('zipPreparing.value'), false)
+}
+
+// Timeout, then still-building, then a completed build: the third manual retry downloads the reused ZIP.
+{
+  const first = await beginZip()
+  first.post.reject(axiosError('Request failed with status code 504', { response: { status: 504, data: {} } }))
+  await first.attempt
+  assert.equal(run('error.value'), zipTimeout)
+  assert.equal(run('zipPreparing.value'), false)
+  const second = await beginZip()
+  second.post.reject(axiosError('Request failed with status code 409', { response: { status: 409, data: { code: 'AR_409', message: 'ZIP 正在准备，请稍后重试' } } }))
+  await second.attempt
+  assert.equal(run('error.value'), zipPreparing)
+  assert.equal(run('progressText.value'), 'ZIP 正在准备，可稍后手动重试')
+  assert.equal(run('zipPreparing.value'), false)
+  const third = await beginZip()
+  third.post.resolve({ downloadPath: zipExportPath })
+  await tick()
+  assert.equal(zipGets.length, 1)
+  zipGets.shift().resolve({ data: new Blob([new Uint8Array([4, 5, 6])]), headers: { 'content-disposition': 'attachment; filename=场景A.zip' } })
+  await third.attempt
+  assert.equal(run('error.value'), '')
+  assert.equal(run('progressText.value'), 'ZIP 已开始下载')
+  assert.equal(run('zipPreparing.value'), false)
+  assert.deepEqual(saved.map(item => item.name), ['场景A.zip'])
+}
+
 // Manual retry after an unconfirmed result must reuse the prepared ZIP and download it.
 {
   const { attempt, post } = await beginZip()
@@ -266,4 +317,4 @@ for (const [label, error] of [
   assert.equal(run('zipPreparing.value'), false)
   assert.deepEqual(saved.map(item => item.name), ['场景A.zip'])
 }
-console.log('PASS: ZIP prepare timeout/interruption stay unconfirmed, backend failures surface, download failures are separate, the button recovers and retry reuses the prepared ZIP')
+console.log('PASS: ZIP prepare timeout/interruption stay unconfirmed, a still-building 409 stays in progress while other conflicts surface, backend failures surface, download failures are separate, the button recovers and retry reuses the prepared ZIP')
