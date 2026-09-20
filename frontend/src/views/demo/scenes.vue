@@ -1,6 +1,6 @@
 <template>
   <div class="app-container">
-    <h2>场景管理</h2><p>管理场景基本信息与启用状态。</p>
+    <h2>场景管理</h2><p>场景列表分别提供“场景信息”和“版本与文件”入口：前者维护名称、地址、坐标，后者直接打开该场景的资源管理面板。</p>
     <el-form inline @submit.prevent="search">
       <el-form-item label="场景名称"><el-input v-model="name" clearable placeholder="搜索场景" /></el-form-item>
       <el-form-item>
@@ -8,17 +8,21 @@
       </el-form-item>
     </el-form>
     <el-table :data="items" v-loading="loading">
-      <el-table-column prop="name" label="名称" /><el-table-column prop="address" label="地址" />
-      <el-table-column label="状态"><template #default="{row}"><el-tag :type="row.enabled?'success':'info'">{{row.enabled?'启用':'停用'}}</el-tag></template></el-table-column>
-      <el-table-column prop="lockVersion" label="修订号" width="90" />
-      <el-table-column label="操作" width="220"><template #default="{row}">
-        <el-button link type="primary" @click="edit(row)">编辑</el-button>
-        <el-button link type="warning" @click="toggle(row)">{{row.enabled?'停用':'启用'}}</el-button>
-        <el-button link type="danger" :disabled="deleting" @click="remove(row)">删除</el-button>
+      <el-table-column prop="name" label="名称" min-width="180" show-overflow-tooltip />
+      <el-table-column prop="address" label="地址" min-width="320" show-overflow-tooltip />
+      <el-table-column label="状态" width="80"><template #default="{row}"><el-tag :type="row.enabled?'success':'info'">{{row.enabled?'启用':'停用'}}</el-tag></template></el-table-column>
+      <el-table-column prop="lockVersion" label="修订号" width="80" />
+      <el-table-column label="操作" width="300" fixed="right"><template #default="{row}">
+        <div class="scene-actions">
+          <el-button link type="primary" @click="edit(row)">场景信息</el-button>
+          <el-button link type="primary" @click="openDrafts(row)">版本与文件</el-button>
+          <el-button link type="warning" @click="toggle(row)">{{row.enabled?'停用':'启用'}}</el-button>
+          <el-button link type="danger" :disabled="deleting" @click="remove(row)">删除</el-button>
+        </div>
       </template></el-table-column>
     </el-table>
     <pagination v-show="total>0" :total="total" v-model:page="page" v-model:limit="limit" @pagination="load" />
-    <el-dialog v-model="visible" :title="form.id?'编辑场景':'新建场景'" width="600px" :close-on-click-modal="false">
+    <el-dialog v-model="visible" :title="form.id?'场景信息':'新建场景'" width="600px" :close-on-click-modal="false">
       <el-form label-width="100px">
         <el-form-item label="名称" required><el-input v-model="form.name" maxlength="200" /></el-form-item>
         <el-form-item label="地址"><el-input v-model="form.address" maxlength="1000" /></el-form-item>
@@ -27,18 +31,22 @@
         <el-form-item label="坐标类型"><el-select v-model="form.geoCrs" clearable><el-option v-for="c in ['WGS84','GCJ02','BD09']" :key="c" :value="c" :label="c" /></el-select></el-form-item>
         <el-form-item v-if="form.id" label="场景编号"><span>{{form.id}}</span></el-form-item>
       </el-form>
-      <template #footer><el-button v-if="form.id" type="primary" @click="openDrafts(form.id)">版本与文件</el-button><el-button @click="visible=false">关闭</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
+      <template #footer><el-button @click="visible=false">关闭</el-button><el-button type="primary" :loading="saving" @click="save">保存</el-button></template>
     </el-dialog>
     <DraftPanel :scene-id="draftScene" @close="closeDrafts" @scene-updated="load" />
   </div>
 </template>
+<style scoped>
+.scene-actions{display:flex;align-items:center;flex-wrap:nowrap;gap:12px}
+.scene-actions :deep(.el-button+.el-button){margin-left:0}
+</style>
 <script setup>
 import request from '@/utils/request'
 import DraftPanel from './DraftPanel.vue'
 import { useRoute, useRouter } from 'vue-router'
 const route=useRoute(),router=useRouter()
 const draftScene=computed(()=>String(route.query.draftScene||''))
-function openDrafts(id){visible.value=false;const query={...route.query,draftScene:id};delete query.draftId;router.replace({query})}
+function openDrafts(row){const query={...route.query,draftScene:row.id};delete query.draftId;router.replace({query})}
 function closeDrafts(){const query={...route.query};delete query.draftScene;delete query.draftId;router.replace({query});load()}
 import { ElMessage, ElMessageBox } from 'element-plus'
 const deleting=ref(false)

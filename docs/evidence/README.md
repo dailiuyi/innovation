@@ -39,4 +39,4 @@
 
 ## Issue 专项材料
 
-[GH-1 首页](issue-1/README.md)、[GH-3 审计动作](issue-3/README.md)、[GH-4 发布版本展示](issue-4/README.md)、[GH-7 密码策略](issue-7/README.md) 保留对应阶段的自查和待验收项。后续验证见 [验证记录](../06-validation.md)，不能把实施时的待验收描述当作当前完成状态，也不能仅凭自查认定已合并或部署。
+[GH-1 首页](issue-1/README.md)、[GH-3 审计动作](issue-3/README.md)、[GH-4 发布版本展示](issue-4/README.md)、[GH-7 密码策略](issue-7/README.md)、[GH-9 场景列表入口与列宽](issue-9/README.md) 保留对应阶段的自查和待验收项。后续验证见 [验证记录](../06-validation.md)，不能把实施时的待验收描述当作当前完成状态，也不能仅凭自查认定已合并或部署。

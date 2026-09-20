@@ -97,6 +97,9 @@ async function enter(published, restored) {
   const entering = sceneChanged('scene-a')
   assert.equal(run('selected.value'), null)
   assert.equal(run('files.value.length'), 0)
+  assert.equal(run('sceneName.value'), '')
+  await resolveNext('/api/v1/scenes/scene-a', { id: 'scene-a', name: '场景A' })
+  assert.equal(run('sceneName.value'), '场景A')
   await resolveNext('/api/v1/drafts/config', {})
   // Published draft need not be on the current list page.
   await resolveNext('/api/v1/scenes/scene-a/drafts', { items: [], total: 21, published })
@@ -132,16 +135,24 @@ for (const id of ['first-live', 'replacement-live']) {
 }
 // Switching away and back must invalidate even a same-scene late response.
 const stale = sceneChanged('scene-a')
-const oldConfig = pending.shift()
 props.sceneId = 'scene-b'
 const nextScene = sceneChanged('scene-b')
 assert.equal(run('files.value.length'), 0)
 assert.equal(run('selected.value'), null)
+assert.equal(run('sceneName.value'), '')
+const oldScene = pending.shift()
+const oldConfig = pending.shift()
+assert.equal(oldScene.url, '/api/v1/scenes/scene-a')
+assert.equal(oldConfig.url, '/api/v1/drafts/config')
+await resolveNext('/api/v1/scenes/scene-b', { id: 'scene-b', name: '场景B' })
 await resolveNext('/api/v1/drafts/config', {})
 await resolveNext('/api/v1/scenes/scene-b/drafts', { items: [], total: 0 })
 await nextScene
+assert.equal(run('sceneName.value'), '场景B')
+oldScene.resolve({ id: 'scene-a', name: '场景A' })
 oldConfig.resolve({})
 await stale
 assert.equal(pending.length, 0)
 assert.equal(run('selected.value'), null)
-console.log('PASS: default published selection, off-page publication, restore/manual refresh, unpublished scene, first/replacement publish, scene reset and stale initialization')
+assert.equal(run('sceneName.value'), '场景B')
+console.log('PASS: default published selection, off-page publication, restore/manual refresh, unpublished scene, first/replacement publish, scene name display, scene reset and stale initialization')

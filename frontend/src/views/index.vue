@@ -49,7 +49,7 @@ import auth from '@/plugins/auth'
 
 const router = useRouter()
 const entries = [
-  { title: '场景管理', path: '/admin/scenes', permission: 'ar:scene:list', description: '维护场景信息，从场景编辑进入版本与文件。' },
+  { title: '场景管理', path: '/admin/scenes', permission: 'ar:scene:list', description: '维护场景信息；列表每行分别提供“场景信息”和“版本与文件”入口。' },
   { title: '账号管理', path: '/account/accounts', permission: 'system:user:list', description: '管理团队账号、账号状态和密码。' },
   { title: '场景操作记录', path: '/admin/audits', permission: 'ar:audit:list', description: '查看场景、版本和文件的操作记录。' }
 ]
@@ -59,8 +59,8 @@ function canOpen(entry) {
 }
 const visibleEntries = computed(() => entries.filter(canOpen))
 const steps = [
-  { title: '选择场景', description: '进入场景管理，选择要维护的场景。', path: '场景管理 → 场景列表' },
-  { title: '创建版本草稿', description: '填写版本说明，再点击“创建草稿”。', path: '场景的“编辑” → 版本与文件 → 新草稿说明' },
+  { title: '选择场景', description: '进入场景管理，选择要维护的场景；名称、地址和坐标从列表的“场景信息”修改。', path: '场景管理 → 场景列表' },
+  { title: '创建版本草稿', description: '从列表的“版本与文件”进入该场景资源面板，填写版本说明，再点击“创建草稿”。', path: '场景列表的“版本与文件” → 新草稿说明' },
   { title: '上传并检查文件', description: '选择文件并上传，或选择文件夹并上传（替换全部文件）。等待校验完成；失败时可“重新选择原文件”重试。', path: '版本与文件 → 草稿的“查看文件”' },
   { title: '发布版本', description: '确认资源准备完成后发布草稿，或替换该场景当前发布版本。', path: '版本与文件 → 草稿的“发布”或“替换发布”' }
 ]
