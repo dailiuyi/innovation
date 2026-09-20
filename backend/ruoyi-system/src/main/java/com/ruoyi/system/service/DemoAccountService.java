@@ -1,5 +1,6 @@
 package com.ruoyi.system.service;
 
+import com.ruoyi.common.constant.UserConstants;
 import com.ruoyi.common.core.domain.entity.SysUser;
 import com.ruoyi.common.exception.ServiceException;
 import com.ruoyi.common.utils.SecurityUtils;
@@ -14,7 +15,8 @@ public class DemoAccountService {
     private final ISysUserService users;
     public DemoAccountService(JdbcTemplate jdbc, ISysUserService users) { this.jdbc = jdbc; this.users = users; }
     public static void validatePassword(String password) {
-        if (password == null || password.length() < 6 || password.length() > 64)
+        if (password == null || password.length() < UserConstants.PASSWORD_MIN_LENGTH
+                || password.length() > UserConstants.PASSWORD_MAX_LENGTH)
             throw new ServiceException("密码长度必须为 6–64 个字符");
     }
     private void lock() { jdbc.queryForObject("select role_id from sys_role where role_id=100 for update", Long.class); }

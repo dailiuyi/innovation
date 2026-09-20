@@ -229,3 +229,7 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 ## GH-3 场景操作记录中文动作（2026-09-19）
 
 核对当前后端全部 21 种动作，前端集中映射中文，未知代码保留原文；不修改接口、数据库、刷新或详情处理。实现自查、合成记录组件截图、完整映射和 Windows 待验收步骤见 [GH-3 验证说明](evidence/issue-3/README.md)。真实登录页面、Windows ingestion 和独立审查仍待完成；未合并、未部署。
+
+## GH-7 管理员密码长度与登录返工（2026-09-20）
+
+密码设置与实际登录入口统一使用 6–64 长度常量，补充真实登录服务路径的边界回归。Linux quick 检查已通过；Java 测试、Windows 专项账号矩阵、旧 Token 失效与独立审查仍待完成。[本次证据及隔离验收步骤](evidence/issue-7/README.md)区分原提交历史结果和返工证据；前端最终结果见现有 PR #8。未部署，无数据库迁移。
