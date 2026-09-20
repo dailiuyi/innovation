@@ -402,6 +402,22 @@ def main():
         check('zip export reused', reused['id']==exported['id'])
         st, hdrs, zpart=api_bytes(exported['downloadPath'], headers={'Range':'bytes=0-10'})
         check('zip range 206', st==206 and zpart==zbody[:11])
+        # A build that is still running answers 409, and that answer must be distinguishable from other conflicts.
+        preparing_draft=api(pub_path,'POST',{'requestKey':str(uuid.uuid4()),'description':'zip preparing conflict'})[1]
+        preparing_path='/api/v1/drafts/'+preparing_draft['id']
+        preparing_file=api(preparing_path+'/files','POST',dict(requestKey=str(uuid.uuid4()),fileName='prep.bin',kind='RESOURCE_FILE',bytes=len(a),sha256=hashlib.sha256(a).hexdigest()))[1]
+        check('zip preparing fixture file available', api(preparing_path+'/files/'+preparing_file['id']+'/content','PUT',a,raw=True)[1]['status']=='AVAILABLE')
+        preparing_man=api(preparing_path+'/download-manifest')[1]
+        in_flight=uuid.uuid4()
+        sql("insert into ar_zip_export(id, collection_id, generation, status) values(%s, %s, %s, 'PREPARING')",
+            (str(in_flight), preparing_man['collectionId'], preparing_man['generation']))
+        code, still_preparing=api(preparing_path+'/zip-exports','POST',{'collectionId':preparing_man['collectionId'],'generation':preparing_man['generation']})
+        check('an in-flight build answers still preparing', code==409 and still_preparing.get('message')=='ZIP 正在准备，请稍后重试')
+        sql('delete from ar_zip_export where id=%s',(str(in_flight),))
+        code, after_build=api(preparing_path+'/zip-exports','POST',{'collectionId':preparing_man['collectionId'],'generation':preparing_man['generation']})
+        check('manual retry after a still-preparing answer reuses the finished zip', code==200 and after_build.get('status')=='AVAILABLE' and after_build.get('bytes',0)>0)
+        st, hdrs, after_body=api_bytes(after_build['downloadPath'])
+        check('zip finished after the conflict downloads with a matching digest', st==200 and len(after_body)==after_build['bytes'] and hashlib.sha256(after_body).hexdigest()==after_build['sha256'])
         check('anonymous manifest rejected', api(folder_path+'/download-manifest',auth=False)[0]==401)
         check('anonymous zip rejected', api(folder_path+'/zip-exports','POST',{'collectionId':man['collectionId'],'generation':man['generation']},auth=False)[0]==401)
         check('anonymous file download rejected', api_bytes(file0['downloadPath'], auth=False)[0]==401)
@@ -607,6 +623,54 @@ def main():
             with zipfile.ZipFile(zip_path) as archive:
                 names=archive.namelist()
                 check('browser zip contains folder path', archive.read('场景B/models/one.bin')==a)
+            zip_bytes=zip_path.read_bytes()
+            zip_button=page.get_by_role('button',name='下载 ZIP',exact=True)
+            unconfirmed='请求等待超时，ZIP 构建结果尚未确认，后端可能仍在处理。请稍后重试。'
+            check('browser zip button is operable before retries',zip_button.is_enabled())
+            page.route('**/api/v1/drafts/**/zip-exports',lambda route: route.fulfill(status=504,content_type='text/html',body='<html>504 Gateway Time-out</html>'))
+            zip_button.click()
+            page.get_by_text(unconfirmed,exact=True).first.wait_for(timeout=30000)
+            check('browser reports unconfirmed result on gateway timeout',zip_button.is_enabled())
+            check('browser never claims a build failure on gateway timeout',page.get_by_text('ZIP 未准备成功',exact=False).count()==0 and page.get_by_text('ZIP 构建失败',exact=False).count()==0)
+            page.unroute('**/api/v1/drafts/**/zip-exports')
+            with page.expect_download(timeout=30000) as retried:
+                zip_button.click()
+            retried_zip=run/'browser-retry.zip'; retried.value.save_as(retried_zip)
+            check('browser manual retry reuses the prepared zip',retried_zip.read_bytes()==zip_bytes and zip_button.is_enabled())
+            page.route('**/api/v1/drafts/**/zip-exports',lambda route: route.abort())
+            zip_button.click()
+            page.get_by_text(unconfirmed,exact=True).first.wait_for(timeout=30000)
+            check('browser treats an interrupted connection as unconfirmed',zip_button.is_enabled())
+            page.unroute('**/api/v1/drafts/**/zip-exports')
+            still_building='ZIP 正在准备，构建结果尚未确认。请稍后手动重试。'
+            page.route('**/api/v1/drafts/**/zip-exports',lambda route: route.fulfill(status=409,content_type='application/json',body=json.dumps({'code':'AR_409','message':'ZIP 正在准备，请稍后重试'})))
+            zip_button.click()
+            page.get_by_text(still_building,exact=True).first.wait_for(timeout=30000)
+            check('browser keeps a still-building answer in progress',zip_button.is_enabled() and page.get_by_text('ZIP 准备失败',exact=False).count()==0)
+            page.unroute('**/api/v1/drafts/**/zip-exports')
+            with page.expect_download(timeout=30000) as rebuilt:
+                zip_button.click()
+            rebuilt_zip=run/'browser-rebuilt.zip'; rebuilt.value.save_as(rebuilt_zip)
+            check('browser manual retry after a still-building answer reuses the zip',rebuilt_zip.read_bytes()==zip_bytes and zip_button.is_enabled())
+            page.route('**/api/v1/drafts/**/zip-exports',lambda route: route.fulfill(status=409,content_type='application/json',body=json.dumps({'code':'AR_409','message':'文件集合已变化，请重新获取清单'})))
+            zip_button.click()
+            page.get_by_text('文件集合已变化，请重新获取清单',exact=True).first.wait_for(timeout=30000)
+            check('browser keeps other 409 conflicts as errors',zip_button.is_enabled() and page.get_by_text(still_building,exact=True).count()==0)
+            page.unroute('**/api/v1/drafts/**/zip-exports')
+            page.route('**/api/v1/drafts/**/zip-exports',lambda route: route.fulfill(status=503,content_type='application/json',body=json.dumps({'code':'AR_503','message':'ZIP 准备失败，请稍后重试'})))
+            zip_button.click()
+            page.get_by_text('ZIP 准备失败，请稍后重试',exact=True).first.wait_for(timeout=30000)
+            check('browser surfaces an explicit backend build failure',zip_button.is_enabled() and page.get_by_text(unconfirmed,exact=True).count()==0)
+            page.unroute('**/api/v1/drafts/**/zip-exports')
+            page.route('**/api/v1/drafts/**/zip-exports/*/content',lambda route: route.abort())
+            zip_button.click()
+            page.get_by_text('ZIP 下载失败，请重试',exact=True).first.wait_for(timeout=30000)
+            check('browser reports a download-stage failure separately',zip_button.is_enabled() and page.get_by_text(unconfirmed,exact=True).count()==0)
+            page.unroute('**/api/v1/drafts/**/zip-exports/*/content')
+            with page.expect_download(timeout=30000) as recovered:
+                zip_button.click()
+            recovered_zip=run/'browser-recovered.zip'; recovered.value.save_as(recovered_zip)
+            check('browser downloads the same zip after a download-stage failure',recovered_zip.read_bytes()==zip_bytes)
             check('browser folder upload restores top-level directory',page.get_by_role('row').filter(has_text='场景B/models/one.bin').count()==1)
             retry_root=run/'browser-retry'/'场景D'/'models'
             retry_root.mkdir(parents=True)
@@ -649,7 +713,8 @@ def main():
             browser.close()
         report={'passed':True,'postgres':version,'runtime':'isolated native PostgreSQL 17 / Redis / Spring Boot / Vite / Edge',
                 'backendJar':str(args.backend_jar),'backendJarSha256':hashlib.sha256(args.backend_jar.read_bytes()).hexdigest(),
-                'checks':CHECKS,'limitations':['No Addressables/client-loading validation','No power-loss or disk-full injection','Nginx container route not exercised by this native test']}
+                'checks':CHECKS,'limitations':['No Addressables/client-loading validation','No power-loss or disk-full injection','Nginx container route not exercised by this native test',
+                    'Gateway timeout and interrupted prepare/download are simulated at the browser route; the real 60s gateway limit and a ~250MB same-environment build comparison stay host acceptance']}
         (args.report_dir/'validation-ingestion.json').write_text(json.dumps(report,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
     finally:
         (run/'checks.json').write_text(json.dumps(CHECKS,ensure_ascii=False,indent=2),encoding='utf-8')

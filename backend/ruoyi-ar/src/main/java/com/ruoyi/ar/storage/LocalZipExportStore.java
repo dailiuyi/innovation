@@ -1,5 +1,6 @@
 package com.ruoyi.ar.storage;
 
+import java.io.BufferedOutputStream;
 import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -27,8 +28,34 @@ public final class LocalZipExportStore {
     @FunctionalInterface
     public interface ZipWriter { void write(OutputStream out) throws IOException; }
 
+    /** Buffer in front of the file write; coalesces the small chunks a ZIP writer emits. */
+    static final int WRITE_BUFFER_BYTES = 64 * 1024;
+
     private final Path files;
     private final Path locks;
+
+    /** Bulk writes must reach the next stream as one call; the JDK default writes byte by byte. */
+    static class BulkOutputStream extends FilterOutputStream {
+        BulkOutputStream(OutputStream out) { super(out); }
+        @Override public void write(int b) throws IOException { out.write(b); }
+        @Override public void write(byte[] b, int off, int len) throws IOException { out.write(b, off, len); }
+    }
+
+    /** Boundary stream for a writer that owns flushing: bulk writes pass through, close only flushes. */
+    public static OutputStream keepOpen(OutputStream out) {
+        Objects.requireNonNull(out);
+        return new BulkOutputStream(out) {
+            @Override public void close() throws IOException { flush(); }
+        };
+    }
+
+    /** Counts every written byte and forwards bulk writes unchanged. */
+    static final class CountingOutputStream extends BulkOutputStream {
+        private final long[] count;
+        CountingOutputStream(OutputStream out, long[] count) { super(out); this.count = count; }
+        @Override public void write(int b) throws IOException { super.write(b); count[0]++; }
+        @Override public void write(byte[] b, int off, int len) throws IOException { super.write(b, off, len); count[0] += len; }
+    }
 
     public LocalZipExportStore(Path root) throws IOException {
         Path absolute = root.toAbsolutePath().normalize();
@@ -72,15 +99,12 @@ public final class LocalZipExportStore {
                 long[] count = {0};
                 try (FileChannel channel = FileChannel.open(partial, StandardOpenOption.CREATE_NEW,
                         StandardOpenOption.WRITE, LinkOption.NOFOLLOW_LINKS);
-                     OutputStream raw = Channels.newOutputStream(channel);
-                     DigestOutputStream digestStream = new DigestOutputStream(raw, digest);
-                     OutputStream counted = new FilterOutputStream(digestStream) {
-                         @Override public void write(int b) throws IOException { count[0]++; out.write(b); }
-                         @Override public void write(byte[] b, int off, int len) throws IOException {
-                             count[0] += len; out.write(b, off, len);
-                         }
-                     }) {
+                     OutputStream buffered = new BufferedOutputStream(Channels.newOutputStream(channel), WRITE_BUFFER_BYTES);
+                     DigestOutputStream digestStream = new DigestOutputStream(buffered, digest);
+                     OutputStream counted = new CountingOutputStream(digestStream, count)) {
                     writer.write(counted);
+                    // The buffered tail must reach the file before force and the atomic move.
+                    counted.flush();
                     channel.force(true);
                 }
                 Files.move(partial, target, StandardCopyOption.ATOMIC_MOVE);

@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ruoyi.ar.storage.ArtifactStorage;
 import com.ruoyi.ar.storage.LocalZipExportStore;
 import com.ruoyi.common.utils.SecurityUtils;
-import java.io.FilterOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -590,9 +589,7 @@ public class DraftService implements InitializingBean {
             }
             try {
                 var written=zips.write(exportId, out -> {
-                    OutputStream keepOpen=new FilterOutputStream(out) {
-                        @Override public void close() throws IOException { flush(); }
-                    };
+                    OutputStream keepOpen=LocalZipExportStore.keepOpen(out);
                     try (ZipOutputStream zip=new ZipOutputStream(keepOpen, StandardCharsets.UTF_8)) {
                         for(var file:files) {
                             ZipEntry entry=new ZipEntry((String)file.get("relativePath"));
