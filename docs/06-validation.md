@@ -1,5 +1,27 @@
 # V0.1 验证记录
 
+## 2026-09-20 新 Agent 的流程识别与交接文档
+
+- 本轮仅补充仓库说明，不修改程序、不更新运行容器。AGENTS、README、知识索引共同链接 [Agent 工作流入口](17-agent-workflow.md)，明确口头需求、Issue 准备、受控编码、PR 审查和显式重试的职责与阶段产物。
+- 消除受控模型“自行运行通用检查”和“由控制器检查”的职责冲突；统一“审查 PR X”默认交付同 SHA 本机实例，保留用户明确要求只审代码的例外。补充 Issue 正文模板、外置程序计划与 Markdown 任务记录的区别，以及交接/恢复字段。
+- 入口人工走查覆盖需求澄清、仅准备 Issue、授权入队、受控编码、PR 审查、只审代码、查询阻塞和显式恢复。命令验证使用 `harness.py doctor --profile quick` 与 `check --profile quick`；本轮报告和最终源码指纹登记在 `.local/agent-workflow-docs-validation.json`，不沿用上一轮源码的绿色记录。
+- 没有调用另一模型进行理解测试，因此不宣称所有 Agent 都能正确遵循。另机、远端或旧检出需先获得这些文档；本机未提交内容、外置合同和凭据不会随旧仓库自动出现。
+
+## 2026-09-20 程序控制编码检查与本机验收
+
+- 范围：外置任务合同/状态、最多一次修复、程序字节交付、调度重启终止守卫、按改动选择的 Windows 验收。没有任务总时长或 token 上限；单命令保留超时。不接 GitHub Actions，不合并或部署业务应用。实现基线 `c4b4879882a5f1317ea864d150577d8c84da106e`，隔离工作树 `.local/task-control-worktree`。
+- 故障验证：Windows 任务控制及启动模块校验 13 项通过；适配器 Linux 19 项全部通过，覆盖权限阻塞、一次修复、第二次失败及进程清理。字节发布回归覆盖中文大文件、哈希冲突、远端并发、已有草稿更新；不确定写入只读核对，不自动重发。独立 Elixir VM 验证六组人工阻塞序列、持久化终态在 ready 未删除时阻止新领取/重试，以及受控会话等待 infinity、普通模式保留原时限。
+- 调度补丁：Orchestrator 上游 SHA256 `a3cc9c67338e097eee9167e3ec88839a49850f8cf09f4c0529f05ca4e0b5d985`；AppServer 上游 `e51dd1af6f58883ebcea208f2786debb208363f6303d8b9bb00da2125a528cef`。已编译模块与验证清单保留在 `.local/symphony/data/task-control-validation/blocking-fix/`；安装状态另见下方上线记录。
+- DeepSeek 实跑 [Issue #11](https://github.com/dailiuyi/innovation/issues/11)：deepseek-flash/high，模型编码约 16 秒、5 次工具调用（4 次读取/差异命令和 1 次补丁），无模型安装、检查轮询、浏览器安装或文件内容发布。程序一次 frontend 检查通过：检查命令 1105.586 秒，其中首次 npm ci 147.285 秒；仅一次安装和一次生产构建。完整流程 1176.44 秒，冷启动及 Windows 绑定磁盘 I/O 仍慢，不能宣称简单任务可固定分钟数完成。
+- 程序创建 [草稿 PR #12](https://github.com/dailiuyi/innovation/pull/12)，提交 `45a560aa664808eb7aa6073197120774152372a1`，只改场景说明。交付状态 review，检查轮次 1，源码指纹 `54d0bcd1dbe923a9c127bd5b1d593cbc2bd3bdce2cd5b137ef633f6a77a12c81`，文件 blob `3e170d89be1be8c8678721120d84b5204725dee8`，远端标签更新通过。模型与检查、发布阶段时间及工具记录在 `.local/symphony/control-smoke-11-v3/`。实跑使用该目录 bundle.json 对应的冻结工具版本；后续中断保存、网络回读等补强由最终故障回归覆盖。
+- 早期实跑失败记录保留：v1 在推理前遇 Linux/Windows Git 所有权；v2 使用宿主克隆导致跨平台 Git 快照超时，未完成检查/发布。修复为与 Symphony 相同的容器内克隆后才进行 v3，没有把失败记录算作通过或隐藏重试。
+- Windows PR 10 完整 SHA `5b8ff6636f60472771777e5bc8fc5b75376f7157`：frontend、64 项场景 UI/视口检查、独立 PostgreSQL 17.6 真实登录与场景/草稿点击全部通过。后端构建执行 23 项 Java 测试且无跳过，Jar SHA256 `dde4d8316e82da226379a08e354881858b1e6909cf5217ea49be8bba0104c87a`，后续实例复用该产物。新 preview 合成数据、代理登录、健康查询、定向停止和端口关闭均验证；实例已停止，日常 Demo 容器仍健康。证据在 `.local/task-control-worktree/.local/reviews/pr-10/<完整SHA>/`。
+- 修复验收器的实际问题：停用后等待文字误匹配旧操作按钮，改为等待“启用”按钮；合成 API 接受合法 201；直接浏览器调用复用宿主 Playwright。旧 PR 缺少新工具测试时执行中央工具回归，不跳过或伪造零测试。Windows Git 发布子进程设置 stdin=DEVNULL，避免继承协议管道而阻塞。
+- 人工观感仍待用户确认；PR 12 未执行其自己的宿主验收，PR 10 的结果不能替代 PR 12。当前并未进行本次改动的 ingestion 全链、LAN、客户端加载或部署验证。所有凭据、完整日志与合成数据留在本地。
+- 运行切换已完成：切换前后 running/retrying/blocked 均为 0，GitHub open ready 队列为空。保留旧容器 `innovation-symphony-before-task-control-20260920`，新容器 `378a743c1af574e902e7e9c37a7876f028932e90acc34acec3be35f099fd9a3a` 的调度器/AppServer/两份中文模块哈希全部匹配，43190 API 与中文页面健康，日常四个应用容器仍健康。回退清单与入口：`.local/symphony/task-control-rollout-20260920/manifest.json`、`rollback.py --apply`；回退先核对空闲和部署文件未被后续修改，不删除数据。
+- 首次切换暴露 Burrito 解包与只读最终模块目录冲突，失败容器保留为 `innovation-symphony-startup-failure-20260920`，没有启动任务。修复为独立只读补丁目录和启动包装器：仅用 --help 解包（上游正常打印 Usage 并退出 1），校验模块后安装，再执行真实工作流。已在无网络无凭据容器验证，再切换并验证健康。升级未重建镜像、未改业务容器。
+- 集成后的最终 quick 报告、源码指纹及运行模块核对结果统一索引在 `.local/symphony/task-control-rollout-20260920/validation.json`；该忽略目录索引不改变受检源码。源码尚未提交，保留与此任务无关的同期文档更新。
+
 ## 2026-09-20 拉取 main 并更新 LAN 网关
 
 - 用户明确要求拉取最新代码并部署 Docker；main 从 `5806c68` 快进到 `8119b854e87b3a6fd7c2b251086b0c0f04b8b2e4`。原有未提交修改保留，验证记录的自动暂存冲突按独立段落合并，恢复备份仍留在 Git stash。
@@ -28,11 +50,13 @@
 - `check --profile frontend`：contracts-and-links 与 draft-panel 通过；`frontend-build` 步骤在 harness 固定的 300 秒超时内未完成，该 profile 记为 blocked，不能算通过。同一命令直接执行 `npm --prefix frontend run build:prod` 退出码 0（墙钟 6 分 56 秒，user 28 秒），产物含 `"min-width":"180"`、`"min-width":"320"`、`width:"80"`、`label:"操作",width:"300",fixed:"right"` 与资源面板场景名文案。
 - 未执行：Windows ingestion、Edge 真实后端登录点击、真实发布/上传/下载/删除业务闭环、数据库、Docker/LAN、部署与客户端加载。详见 [GH-9 证据记录](evidence/issue-9/README.md)。
 
-## 2026-09-20 Symphony 管理页面简体中文补丁（待空闲应用）
+## 2026-09-20 Symphony 管理页面简体中文补丁（已应用）
 
 - 新增 `scripts/prepare_symphony_zh_cn.py`，固定校验本机 v0.0.3 上游模板指纹，生成并独立编译两个页面模块。翻译页面标题、指标、状态、表头、按钮反馈、空状态、快照错误、时长单位及 HTML 语言；保留原始日志、错误诊断与 JSON API。
 - `python scripts/prepare_symphony_zh_cn.py --verify` 通过：独立 Elixir VM 编译成功，合成 empty/running/blocked/retry/error 状态渲染通过，诊断与会话 ID 保持原值。编译输出位于 `.local/symphony/data/ui-zh-CN/ebin/`，源文件指纹见同目录上一层 `manifest.json`。
-- 原页面模块已备份至 `.local/symphony/ui-zh-CN-backup-20260920/`。用户授权本次文案更新例外，要求当前任务结束、队列空闲后应用并重启；准备阶段 GH-9 仍在执行，因此尚未替换运行模块，原地址仍为英文。不得将模板验证当作实际页面已更新。
+- 用户再次明确要求更新并重启后，确认原容器已正常停止、GitHub ready 队列为空。核对原模块与 `.local/symphony/ui-zh-CN-backup-20260920/` 备份一致，只替换两个页面 BEAM 并核验副本。应用指纹与原容器 ID 记录在 `.local/symphony/ui-zh-CN-apply-20260920/applied.json`；未重建镜像或容器。
+- 首次启动健康接口未开放；启动代码在 HTTP 服务启动前同步清理已关闭任务工作区，复现 Windows 挂载盘清理延迟。确认 GH-1、GH-3、GH-4、GH-9 均已关闭、ready 队列为空后停止容器，将四个剩余目录移动至 `.local/symphony/data/archived-workspaces/ui-zh-CN-startup-20260920/` 原样保留，再启动同一容器，健康恢复。未手动删除工作区、未更改调度器或日常 Demo。
+- 原地址 `http://127.0.0.1:43190/` 返回 HTTP 200，标题为“Symphony 运行监控”，HTML 为 `lang=zh-CN`。实际浏览器验证标题、指标、中文空状态及“实时更新”连接状态，截图检查排版正常。`/api/v1/state` 返回原字段结构，running/retrying/blocked 均为 0。当前无执行任务，因此真实任务行及复制按钮沿用前述合成渲染验证，未派发任务进行测试。
 - Windows quick 的首轮 doctor/check 通过（`.local/harness/20260920T064753Z-akgydp23/report.json`），后续最终源码检查另存 `.local/harness/`。该检查不证明当前运行页面已经切换，也不涉及业务 Java、数据库、ingestion 或日常 Demo。
 
 ## 2026-09-20 Symphony 接入 DeepSeek 官方 API

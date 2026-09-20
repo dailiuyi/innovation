@@ -4,6 +4,7 @@
 
 | 要回答的问题 | 入口 | 使用边界 |
 |---|---|---|
+| 收到口头需求、准备 Issue、审查 PR 或接手任务时先做什么 | [Agent 工作流入口](17-agent-workflow.md) | 先判断职责和用户授权，再进入对应手册；不依赖旧聊天 |
 | 当前后台实现了什么 | [资源入库闭环](12-resource-ingestion.md)、[项目介绍](../README.md) | 已有场景、账号、私有入库和场景发布指针；预览、客户端加载未实现 |
 | 当前平台如何组成 | [当前架构](11-current-platform-architecture.md) | 结合现行实现核对；后续设计不等于已有能力 |
 | 如何开发、启动、打包 | [开发工作流](development-workflow.md)、[本机手册](08-demo-runbook.md)、[容器手册](10-local-infrastructure.md) | 日常 Demo、隔离验收、LAN Compose 是不同环境 |

@@ -38,7 +38,8 @@ def blob_sha(data):
 
 
 def git(root, *args):
-    result = subprocess.run(['git', '-C', str(root), *args], capture_output=True, timeout=15)
+    result = subprocess.run(['git', '-C', str(root), *args], stdin=subprocess.DEVNULL,
+                            capture_output=True, timeout=15)
     if result.returncode:
         raise PublishError('git_preflight_failed')
     return result.stdout
@@ -72,7 +73,7 @@ def snapshot(root, paths):
         if not path.resolve(strict=True).is_relative_to(root) or not path.is_file():
             raise PublishError('path_outside_workspace_or_not_file')
         ignored = subprocess.run(['git', '-C', str(root), 'check-ignore', '--no-index', '-q', '--', name],
-                                 capture_output=True, timeout=15).returncode
+                                 stdin=subprocess.DEVNULL, capture_output=True, timeout=15).returncode
         if ignored != 1:
             raise PublishError('ignored_path_or_git_error')
         if path.stat().st_size > 1024 * 1024:

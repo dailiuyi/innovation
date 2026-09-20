@@ -19,6 +19,7 @@ import time
 from urllib.parse import unquote_plus
 import uuid
 from symphony_publish import TOOL_NAME, TOOL_SPEC, PublishError, publish
+from symphony_task import Task, delivery, inspect_uncertain_delivery, lock, save, now
 
 DEFAULT_MODEL = 'gpt-6-astra'
 DEFAULT_EFFORT = 'low'
@@ -143,7 +144,7 @@ def write_message(stream, message):
 
 
 class Bridge:
-    def __init__(self, command, catalog_timeout=30, audit_path=None):
+    def __init__(self, command, catalog_timeout=30, audit_path=None, control_root=None, execution_root=None):
         self.command = command
         self.catalog_timeout = catalog_timeout
         self.audit_path = audit_path
@@ -170,6 +171,126 @@ class Bridge:
         self.publish_deadline = None
         self.publish_seen = set()
         self.publish_call = None
+        self.control_root = control_root
+        self.execution_root = execution_root or Path(__file__).parent
+        self.task = None
+        self.task_lock = None
+        self.last_turn_params = None
+        self.completed_message = None
+        self.control_job = None
+        self.control_request_id = None
+        self.control_deadline = None
+        self.child_stopped = False
+        self.control_finished = False
+        self.repair_request_id = None
+        self.check_thread = None
+        self.recovering_delivery = False
+
+    def open_task(self):
+        root = Path((self.start_params or {}).get('cwd', ''))
+        if (not re.fullmatch(r'GH-[1-9][0-9]*', self.issue or '') or not root.is_absolute()
+                or root.is_symlink() or root.resolve() != WORKSPACE_ROOT.resolve() / self.issue):
+            raise RoutingError('untrusted_control_workspace')
+        self.task_lock = lock(self.control_root / self.issue)
+        self.task_lock.__enter__()
+        try:
+            self.task = Task(self.control_root, self.issue, root)
+        except (OSError, ValueError, KeyError, TypeError):
+            save(self.control_root / self.issue / 'state.json', {
+                'status': 'blocked', 'issue': self.issue, 'reason': 'missing_or_invalid_operator_plan',
+                'runId': uuid.uuid4().hex, 'checks': [], 'updatedAt': now()})
+            raise RoutingError('missing_or_invalid_operator_plan') from None
+        if not self.task.begin():
+            raise RoutingError('task_terminal_operator_resume_required')
+
+    def start_checks(self, completion):
+        self.completed_message = completion
+        if completion.get('params', {}).get('turn', {}).get('status') != 'completed':
+            self.task.update(status='blocked', reason='model_turn_failed_or_interrupted')
+            self.start_delivery()
+            return
+        try:
+            if not self.task.start_check():
+                self.start_delivery()
+                return
+        except (OSError, ValueError, PublishError, subprocess.SubprocessError):
+            self.task.update(status='blocked', reason='submission_snapshot_failed')
+            self.start_delivery()
+            return
+        self.audit('controlled_checks_started', attempt=len(self.task.state['checks']))
+        def check():
+            try:
+                # The trusted execution bundle owns the check implementation.
+                sys.path.insert(0, str(self.execution_root))
+                from symphony_task import run_checks
+                result = run_checks(self.task, self.execution_root)
+            except Exception as exc:
+                result = {'status': 'blocked', 'reason': 'check_runner_' + type(exc).__name__}
+            self.events.put(('checks', result))
+        self.check_thread = threading.Thread(target=check, daemon=True)
+        self.check_thread.start()
+
+    def checks_finished(self, result):
+        result['source'] = self.task.state['checks'][-1]['source']
+        result['nextAction'] = {'passed': 'Deliver draft; host acceptance pending.',
+                                'failed': 'One code repair if this is the first failure; otherwise stop.',
+                                'blocked': 'Stop; retain evidence and deliver an unaccepted draft when possible.'}.get(result['status'], 'Stop.')
+        try:
+            status = self.task.finish_check(result)
+        except (OSError, ValueError, PublishError, subprocess.SubprocessError):
+            self.task.update(status='blocked', reason='check_result_snapshot_failed')
+            status = 'blocked'
+        self.audit('controlled_checks_finished', status=status, attempt=len(self.task.state['checks']))
+        if status == 'repair':
+            params = copy.deepcopy(self.last_turn_params)
+            params['input'] = [{'type': 'text', 'text':
+                '固定检查首次失败。只允许这一次代码修复。不要运行检查、安装依赖、操作 GitHub 或提交 Git；'
+                '修复后结束本轮，由控制器复验和交付。完整证据见下列路径。\n' + json.dumps(result, ensure_ascii=False)}]
+            self.repair_request_id = 'symphony-repair-' + uuid.uuid4().hex
+            write_message(self.child.stdin, {'id': self.repair_request_id, 'method': 'turn/start',
+                          'params': remap_thread({'params': params}, self.thread_id,
+                                                self.actual_thread_id or self.thread_id)['params']})
+        else:
+            self.start_delivery()
+
+    def start_delivery(self):
+        # Terminal state is written before any publication. No more model calls.
+        if self.task.state['status'] not in ('review', 'blocked'):
+            self.task.update(status='blocked', reason='unexpected_delivery_state')
+        self.stop_child()
+        self.child_stopped = True
+        self.control_job = delivery(self.task)
+        self.advance_control()
+
+    def advance_control(self, response=None):
+        try:
+            request = next(self.control_job) if response is None else self.control_job.send(response)
+            self.control_request_id = 'symphony-control-' + uuid.uuid4().hex
+            self.control_deadline = time.monotonic() + 90
+            write_message(sys.stdout.buffer, {'id': self.control_request_id, 'method': 'item/tool/call',
+                'params': {'threadId': self.thread_id, 'turnId': self.completed_message.get('params', {}).get('turn', {}).get('id', ''),
+                           'callId': self.control_request_id, 'tool': 'github_api', 'name': 'github_api', 'arguments': request}})
+        except StopIteration:
+            self.finish_control()
+        except Exception as exc:
+            self.task.update(status='blocked', reason='delivery_' + type(exc).__name__)
+            self.finish_control()
+
+    def finish_control(self):
+        self.control_job = self.control_request_id = self.control_deadline = None
+        self.control_finished = True
+        self.audit('controlled_handoff', status=self.task.state['status'], delivery=self.task.state.get('delivery'))
+        # Even if ready-label removal failed, persisted state prevents new inference.
+        write_message(sys.stdout.buffer, self.completed_message)
+
+    def uncertain_control(self, reason):
+        if self.recovering_delivery:
+            self.task.update(status='blocked', reason=reason + '_readback_incomplete')
+            self.finish_control()
+            return
+        self.recovering_delivery = True
+        self.control_job = inspect_uncertain_delivery(self.task, reason)
+        self.advance_control()
 
     def publish_result(self, value, success):
         text = json.dumps(value, ensure_ascii=True)
@@ -271,6 +392,8 @@ class Bridge:
                 self.issue, labels = parse_envelope(params)
                 self.route = select_route(labels, self.catalog)
                 self.thread_id = params['threadId']
+                if self.control_root:
+                    self.open_task()
                 if self.route['model'] == DEEPSEEK_MODEL:
                     if not os.environ.get('DEEPSEEK_API_KEY'):
                         raise RoutingError('deepseek_credentials_missing')
@@ -292,6 +415,17 @@ class Bridge:
                 raise RoutingError('one_thread_per_adapter_required')
             params['model'] = self.route['model']
             params['effort'] = self.route['effort']
+            if self.task:
+                if self.task.state['status'] not in ('coding', 'repair'):
+                    raise RoutingError('task_not_accepting_inference')
+                params = copy.deepcopy(params)
+                params['input'].append({'type': 'text', 'text':
+                    '本任务由固定控制器管理。只修改计划范围内的源码和必要测试；不要运行 npm/pip/Maven/'
+                    'harness/浏览器检查，不安装浏览器、字体或系统库，不 git commit，不写 GitHub。'
+                    '完成代码后直接结束本轮。控制器执行检查，最多返回一次修复，自动发布草稿和停止。'
+                    '缺环境或权限时说明阻塞并结束，不尝试更换通道。\n计划：' + json.dumps(self.task.plan, ensure_ascii=False)})
+                message = {**message, 'params': params}
+                self.last_turn_params = copy.deepcopy(params)
             # Explicitly pin on every turn; continuation prompts need no envelope.
             self.turn_requests.add(message['id'])
             self.audit('turn_requested', requestId=message['id'])
@@ -303,6 +437,15 @@ class Bridge:
             return False
 
     def handle_parent(self, message):
+        if ('method' not in message and str(message.get('id', '')).startswith('symphony-control-')):
+            if message['id'] == self.control_request_id:
+                try:
+                    result = message['result']
+                    text = result.get('output') or result['contentItems'][0]['text']
+                    self.advance_control(json.loads(text))
+                except (KeyError, IndexError, TypeError, ValueError):
+                    self.uncertain_control('invalid_control_api_response')
+            return True
         if ('method' not in message and isinstance(message.get('id'), str)
                 and message['id'].startswith('symphony-publish-')):
             if message['id'] == self.publish_request_id:
@@ -333,6 +476,9 @@ class Bridge:
                 params['dynamicTools'] = [t for t in params['dynamicTools'] if t.get('name') != TOOL_NAME] + [copy.deepcopy(TOOL_SPEC)]
             self.start_params = copy.deepcopy(params)
         if method == 'turn/start':
+            if self.control_finished:
+                self.fail_turn(message, 'task_terminal_operator_resume_required')
+                return False
             if self.switch_id:
                 self.fail_turn(message, 'concurrent_turn_start')
                 return False
@@ -358,6 +504,24 @@ class Bridge:
     def handle_child(self, message):
         params = message.get('params', {})
         name = params.get('name') or params.get('tool')
+        if self.task and (str(message.get('method', '')).endswith('requestApproval')
+                          or message.get('method') in ('tool/requestUserInput', 'item/tool/requestUserInput')):
+            self.task.update(status='blocked', reason='unattended_permission_or_input_required')
+            self.completed_message = {'method': 'turn/completed', 'params': {
+                'threadId': self.thread_id, 'turn': {'id': params.get('turnId', ''), 'status': 'interrupted'}}}
+            self.start_delivery()
+            return True
+        if self.task and message.get('method') == 'item/tool/call' and (
+                name == TOOL_NAME or (name == 'github_api' and params.get('arguments', {}).get('method', 'GET').upper() != 'GET')):
+            write_message(self.child.stdin, {'id': message['id'], 'result': {'success': False,
+                'contentItems': [{'type': 'inputText', 'text': 'Controller owns checks, publication and labels. Finish your code turn.'}]}})
+            return True
+        if self.repair_request_id and message.get('id') == self.repair_request_id:
+            self.repair_request_id = None
+            if 'error' in message:
+                self.task.update(status='blocked', reason='repair_turn_rejected')
+                self.start_delivery()
+            return True
         if message.get('method') == 'item/tool/call' and name == 'github_api':
             args = params.get('arguments', {})
             if (isinstance(args, dict) and args.get('method', 'GET').upper() != 'GET'
@@ -410,12 +574,16 @@ class Bridge:
         if message.get('method') == 'turn/completed':
             turn = message.get('params', {}).get('turn', {})
             self.audit('turn_completed', turnId=turn.get('id'), status=turn.get('status'))
+            if self.task:
+                self.start_checks(remap_thread(message, self.actual_thread_id, self.thread_id)
+                                  if self.actual_thread_id else message)
+                return True
         write_message(sys.stdout.buffer, remap_thread(message, self.actual_thread_id,
                       self.thread_id) if self.actual_thread_id else message)
         return True
 
     def stop_child(self):
-        if self.child is None:
+        if self.child is None or self.child_stopped:
             return
         if self.child.stdin:
             self.child.stdin.close()
@@ -445,6 +613,10 @@ class Bridge:
             threading.Thread(target=self.read_stream, args=(stream, source), daemon=True).start()
         try:
             while True:
+                if self.control_deadline and time.monotonic() >= self.control_deadline:
+                    self.uncertain_control('delivery_timeout_operator_review_required')
+                if self.control_finished:
+                    return 0
                 if self.publish_deadline and time.monotonic() >= self.publish_deadline:
                     self.publish_result({'status': 'blocked', 'reason': 'github_publish_timeout',
                                          'next': 'Inspect remote branch before retry; request may have succeeded.'}, False)
@@ -459,7 +631,12 @@ class Bridge:
                     source, line = self.events.get(timeout=0.1)
                 except queue.Empty:
                     continue
+                if source == 'checks':
+                    self.checks_finished(line)
+                    continue
                 if line is None:
+                    if source == 'child' and self.child_stopped:
+                        continue
                     if source == 'child':
                         raise RoutingError('app_server_exited')
                     return 0
@@ -474,12 +651,32 @@ class Bridge:
                     return 1
         finally:
             self.stop_child()
+            if self.task:
+                self.task.cancel.set()
+                if self.task.process is not None:
+                    sys.path.insert(0, str(self.execution_root))
+                    from harness import stop_tree
+                    stop_tree(self.task.process)
+                if self.check_thread:
+                    self.check_thread.join(timeout=20)
+                if self.task.state['status'] not in ('review', 'blocked'):
+                    self.task.update(status='blocked', reason='controller_interrupted_operator_resume_required')
+                if not self.task.state.get('evidence'):
+                    try:
+                        self.task.preserve()
+                    except (OSError, ValueError, PublishError, subprocess.SubprocessError):
+                        self.task.update(preservationProblems=['interrupted_snapshot_failed'],
+                                         retainedWorkspace=str(self.task.root))
+            if self.task_lock:
+                self.task_lock.__exit__(None, None, None)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--catalog-timeout', type=float, default=30)
     parser.add_argument('--audit-log', type=Path)
+    parser.add_argument('--control-root', type=Path, help='Trusted state outside agent workspace; enables controlled lifecycle')
+    parser.add_argument('--execution-root', type=Path)
     parser.add_argument('command', nargs=argparse.REMAINDER)
     args = parser.parse_args()
     if args.catalog_timeout <= 0:
@@ -489,7 +686,7 @@ def main():
     command = args.command or ['codex', 'app-server']
     if command[0] == '--':
         command = command[1:]
-    bridge = Bridge(command, args.catalog_timeout, args.audit_log)
+    bridge = Bridge(command, args.catalog_timeout, args.audit_log, args.control_root, args.execution_root)
     def stop(_signum, _frame):
         raise KeyboardInterrupt()
     signal.signal(signal.SIGTERM, stop)
@@ -502,7 +699,7 @@ def main():
         return bridge.run()
     except KeyboardInterrupt:
         return 130
-    except (OSError, RoutingError, KeyError, TypeError) as exc:
+    except (OSError, RoutingError, PublishError, subprocess.SubprocessError, KeyError, TypeError) as exc:
         # Never serialize an OS error, child output, prompt or credential.
         bridge.audit('adapter_failed', reason=str(exc) if isinstance(exc, RoutingError) else type(exc).__name__)
         return 1

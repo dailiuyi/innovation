@@ -1,5 +1,7 @@
 # Symphony 本地安装
 
+新接手的 Agent 先读 [工作流入口](17-agent-workflow.md)，确定自己负责需求准备、受控编码还是独立宿主审查。本页是执行与恢复手册；不要把宿主操作命令交给受控编码模型自行运行。
+
 新增 [专项优先与固定审查入口](16-fast-review.md)。Java 执行镜像目标为 `innovation-symphony:0.0.3-java-v2`（JDK 21/Maven）；是否已切换运行容器以当前状态和验证记录为准。Java 变更须先运行实际测试再交付，宿主审查通过后交付同版人工实例。
 
 Symphony 在独立 Docker 容器中运行，读取 GitHub Issues，使用 Codex 执行任务。它是开发工具，不是 Spring Boot 业务服务，也不改变入库系统的单服务边界。
@@ -27,7 +29,7 @@ Symphony 在独立 Docker 容器中运行，读取 GitHub Issues，使用 Codex 
 
 翻译范围包含标题、指标、状态、表格、按钮反馈、空状态、快照错误和页面 `lang=zh-CN`。原始 Agent 消息、错误诊断、JSON 字段、任务编号与模型名保留原文。HTTP API 与调度逻辑不变。
 
-用户已于 2026-09-20 授权本次文案更新例外：仅在 running/retrying/blocked 与 GitHub open ready 队列均为空后，备份并替换 `SymphonyElixirWeb.Layouts`、`SymphonyElixirWeb.DashboardLive` 两个 BEAM 模块，再重启 Symphony；不重建镜像、不操作日常 Demo。具体应用结果和备份位置见验证记录。后续重建容器会恢复镜像内英文页面，须重新审查、授权应用；上游版本或源文件指纹变化时脚本拒绝生成，需核对新模板。
+用户已于 2026-09-20 授权本次文案更新例外：仅在 running/retrying/blocked 与 GitHub open ready 队列均为空后，备份并替换 `SymphonyElixirWeb.Layouts`、`SymphonyElixirWeb.DashboardLive` 两个 BEAM 模块，再重启 Symphony；不重建镜像、不操作日常 Demo。本次已应用并在原地址验证中文页面及实时连接，启动清理阻塞时保留归档了四个已关闭任务的剩余工作区；具体证据和备份位置见验证记录。后续重建容器会恢复镜像内英文页面，须重新审查、授权应用；上游版本或源文件指纹变化时脚本拒绝生成，需核对新模板。
 
 本次原模块备份在 `.local/symphony/ui-zh-CN-backup-20260920/`。需要回退时先确认上述空闲条件，停止 `innovation-symphony`，将备份中的两个 `.beam` 文件复制回 `/opt/symphony/.burrito/symphony_erts-16.4_0.0.3/lib/symphony_elixir-0.0.3/ebin/`，再启动同一容器并检查页面及 `/api/v1/state`。不要删除 data 或任务工作区。
 
@@ -54,11 +56,11 @@ Symphony 在独立 Docker 容器中运行，读取 GitHub Issues，使用 Codex 
 ./scripts/symphony.ps1 StartOffline
 ```
 
-已存在同名容器时不覆盖。切换模式先停止并删除该容器，再启动；独立工作区和日志保留在 `.local/symphony/data/`。不要删除该目录，也不要操作日常 Demo 容器。
+已存在同名容器时不覆盖。升级时先停止并重命名保留旧容器，再启动；独立工作区和日志保留在 `.local/symphony/data/`。不要删除该目录，也不要操作日常 Demo 容器。
 
 ```powershell
 ./scripts/symphony.ps1 Stop
-docker rm innovation-symphony
+docker rename innovation-symphony innovation-symphony-before-update
 ./scripts/symphony.ps1 Start -UseHostCredentials
 ```
 
@@ -70,45 +72,55 @@ GitHub Token 不传给 Codex 子进程；Agent 通过 Symphony 的 `github_api` 
 
 ## 领取与交付
 
-### 统一执行入口与复用
+### 准备任务合同
 
-Symphony 使用 `.local/venv/bin/python /opt/symphony-execution/agent_check.py --root "$PWD" --profile frontend`（非前端任务选 quick）。入口按需安装依赖并调用 harness，读取 `.local/frontend-control/handoff.json` 获得容器检查通过、代码失败或环境阻塞及下一步。不要在入口外重复运行 npm ci 或生产构建；同输入的失败/超时必须调查后使用 `--retry-reason` 才重试。详细失效条件和限制见 [Harness 安装与构建复用](13-harness.md)。
+Issue 正文从 [Issue 模板](examples/symphony-issue-template.md) 整理；外置计划是程序控制输入，两者必须对应同一份已确认需求。只有正文或 ready 标签不足以执行。正文、JSON 的编写与命令操作由准备 Agent 完成，不要求用户手动转换口头需求。用户已明确授权准备或执行时沿用授权，不为每条命令重复确认。
 
-启动脚本将 agent_check、frontend_control、harness 和专项测试逐文件只读挂载到 `/opt/symphony-execution`，旧任务 checkout 也能使用当前执行工具。2026-09-20 为当前运行容器新增该目录并以 root 所有、只读文件安装，未重启、未替换 GH-9 文件；新建容器使用只读挂载。当前正在执行的旧会话不会自动更新提示，新会话才使用新入口规则。工具升级应避免在同一调用中途改文件；本次安装时没有运行该新入口。
+需求准备者先复制 [任务计划示例](examples/symphony-task-plan.json)，明确可改路径、容器 quick/frontend、Java 模块、宿主专项和人工验收目标。当前宿主支持 smoke、scene-ui、accounts、ingestion；不适用的业务必须先补充检查器，不能让编码模型临场安装环境或自行扩展验收。完成模型目录检查和标签校验后，登记计划，最后才加 ready：
 
-### 无人值守工具与阻塞处理
+```powershell
+./scripts/symphony.ps1 PrepareTask -Issue 11 -PlanFile .local/task-11.json
+./scripts/symphony.ps1 TaskStatus -Issue 11
+# 设置 model/effort 标签并校验之后，再添加 symphony:ready。
+```
 
-适配器在每个初始线程及 DeepSeek 提供商线程的配置中固定 `features.apps=false`，避免账户 Apps GitHub 插件触发交互授权；Symphony 注入的 `github_api` 动态工具保留。文件发布使用适配器增加的 `github_publish_files`，底层仍通过同一个 `github_api` 认证通道。不要改成自动批准插件、向任务 shell 注入凭据或调用其他 GitHub 连接器。
+计划与状态位于 `.local/symphony/data/task-control/GH-编号/`，不属于模型可写工作区。已有计划不能被 prepare 覆盖。模型运行期间不换模型。
 
-### 按路径发布文件
+### 固定检查与一次修复
 
-`scripts/symphony_publish.py` 接收 `branch`、`expected_head`、`paths` 和 `message`；Agent 只提交相对路径，不读取分段内容或生成整文件/base64 工具参数。适配器将文件根绑定到线程 cwd 与当前 Issue 对应的 `/data/workspaces/GH-*`，程序读取原始字节并通过 Git Data 上传，校验返回 blob SHA，保留远端其他文件与本地跟踪的可执行位，最后以 `force=false` 更新分支并回读确认。新分支从指定基准提交创建。
+适配器读取已登记计划后启动编码会话。模型只提交代码和必要测试的修改，然后结束 turn；不提交 Git commit，不运行安装、构建、浏览器、Maven 或 GitHub 写入。程序接管固定检查，模型不需要轮询进程。
 
-只允许 `codex/` 分支、显式普通文件，拒绝路径越界、符号链接、忽略文件、运行时目录和 `.env`（`.env.example` 除外）。每文件最多 1 MiB、每批最多 100 文件及 8 MiB；删除和符号链接发布尚不支持，遇到这些范围应保留补丁并交接。显式文件白名单不替代人工密钥检查，普通源码中误写的凭据不能靠路径判断发现。
+程序使用只读 `/opt/symphony-execution` 工具，先执行约定 Java 模块（非零测试），再运行 agent_check 的 quick/frontend。frontend 包含 quick，不重复执行两套。安装和构建复用仍由 frontend_control 校验输入、依赖内容与产物哈希；新代码不能引用旧证据。日志完整留在本地，交给模型的结果包含分类、证据路径、源码指纹和下一步。
 
-发布前检查远端 head，更新引用前重新检查 head 和本地文件；远端变化、哈希不符、源文件变化或 API 错误都停止。单次上游应答等待最多 90 秒，不自动重试；超时可能已经写入远端，须先检查分支。相同参数在同一适配器会话只执行一次；适配器拒绝 Agent 直接写 Git blobs 或 Contents API，错误不允许退回模型手工搬运文件。上传 blob/提交后、更新分支前失败可能留下无分支引用的 Git 对象，不会覆盖分支。
+- 通过：进入待审查，程序发布草稿 PR，列出宿主待验收项。
+- 第一次代码失败：允许一次修复和复验；相同源码再次提交直接停止。
+- 第二次代码失败、环境/权限阻塞或执行中断：持久化 blocked，保存补丁和证据，尽可能发布标有“未通过／待验收”的草稿。
 
-`symphony.ps1` 将模块只读挂载到 `/opt/symphony-routing/symphony_publish.py`。2026-09-20 首次对现有容器增加该只读文件，不重启容器；后续新会话自动获得新工具，旧会话不热注入工具。宿主人工补交可用同一实现的 `python scripts/symphony_publish.py --root <独立检出目录> --request <JSON文件> --receipt <输出JSON>`，只复用宿主已有 gh 认证，不读取或导出 token；该入口不供无人值守 Agent 改用宿主认证。
+不限制任务总时间或 token。受控模式的 App Server 等待为 infinity，stall 检测关闭；握手、单条检查和 GitHub 请求仍有超时。没有固定分钟数完成的承诺；尚未结束编码 turn 的模型也不会被总时长规则强制停止。
 
-v0.0.3 会先发出 `turn_input_required` / `approval_required`，再发出 `turn_ended_with_error`。原调度器只查看最新事件，导致人工阻塞被覆盖并进入重试。`python scripts/prepare_symphony_blocking_fix.py --verify` 对固定上游源码生成补丁，在独立 VM 编译并测试六组事件序列：同一 worker 生命周期内保留人工阻塞，识别结束错误中的阻塞原因，普通错误继续退避重试。该命令不安装、不重启，也不改变任何审批策略。
+首次启动、调度重启和新模型会话都读取同一状态。`review`/`blocked` 在 GitHub 标签失败时仍阻止再次领取和推理。调度器补丁由 `prepare_symphony_blocking_fix.py --verify` 针对固定上游源码生成，在独立 VM 验证，不自动安装。受控执行必须同时安装 Orchestrator 与 Codex.AppServer 两个模块，不能仅修改 WORKFLOW。
 
-应用时必须先将受影响 Issue 临时移出 ready 队列并保留其标签快照，等待 running/retrying 为空；备份容器中 `SymphonyElixir.Orchestrator` 的原 BEAM 模块和 GH 工作区，停止 Symphony，安装 `.local/symphony/data/blocking-fix/ebin/Elixir.SymphonyElixir.Orchestrator.beam` 后启动并检查 HTTP 状态，最后恢复原先应续跑的 ready 标签。无需替换 State 模块或重建镜像。恢复原 BEAM 的步骤相同；不要删除 data。模块补丁在重建容器后需重新应用，上游指纹变化时脚本拒绝生成。
+### 程序交付与恢复
 
-blocked 状态等待人工处理，不能按普通错误无限重试；解决问题后先移除 ready，让调度器解除该任务占用，再加 ready 重新入队。当前运行中的 Agent 不会自动获得已修改的首轮提示或线程配置。
+固定程序调用现有 symphony_publish，读取普通文件原始字节，经 Git Data 上传、核对 blob SHA、核对远端 head，再以 force=false 更新分支并回读。不让模型复制整文件或编码 base64；模型直接发布和 GitHub 写入会被适配器拒绝。Token 不传给模型 shell，认证仍由 Symphony github_api 传输。
 
-### 草稿 PR 与合并验收分开
+发布仅允许显式源码路径、codex 分支，拒绝越界、符号链接、忽略文件和运行时文件。每文件最大 1 MiB、每批最大 100 文件/8 MiB；删除和符号链接暂不支持，按阻塞交接。更新已有草稿，不创建重复 PR；遇非草稿 PR 或远端冲突停止。超时先只读核对分支和 PR，不自动重发不确定写入；部分上传不标记完整交付。
 
-宿主验收待完成也可交付草稿 PR。Symphony 完成容器内可执行的专项检查，保存代码、证据及源码指纹，并逐项列出宿主待验收原因和命令后，可以添加 `symphony:review`、移除 `symphony:ready`。真实后端流程、Windows ingestion、浏览器视口、独立审查和同提交人工实例仍是后续验收项目，不因草稿交付而视为通过。
+每轮保留 `runs/<runId>/changes.patch`、文件副本、检查日志和 handoff；源码快照失败时保留整个工作区并明确记录不完整。只有用户明确要求重新执行后才允许：
 
-不为宿主专属检查反复安装系统库、浏览器依赖和字体；构建超时调查一次后记录环境限制，可随草稿交接，不能改写为通过。实际代码错误仍须修复或明确按阻塞交接。只有缺权限、需求或实现必需环境使工作无法继续时才使用 `symphony:blocked`；仅宿主验收待完成使用 `symphony:review`。
+```powershell
+./scripts/symphony.ps1 ResumeTask -Issue 11 -Reason "用户要求重试，已补齐指定环境"
+# 合同变化时追加 -PlanFile；旧合同和状态仍保留在 history。
+# 核对远端发布结果，移除阻塞标签，再按原定模型重新加入 ready。
+```
 
-1. 创建 Issue，写明目标、边界、验收和必要背景。
-2. 加上 `symphony:ready`，即表示允许 Agent 在隔离工作区执行该任务。
-3. Agent 完成后保存代码与证据、创建 draft PR，添加 `symphony:review` 并移除 ready 标签。
-4. 需要返工时写明反馈，再添加 ready 标签。审查、合并和部署仍由负责人决定。
-5. 缺少环境或需求时标记 `symphony:blocked` 并移除 ready；解决后再入队。
+单独恢复 ready 标签不会清除本地终止状态。不得删除状态文件来重置修复次数。发布通道故障先读本地证据、远端分支和草稿状态，必要时人工使用已有 symphony_publish CLI 恢复，不自动反复上传。
 
-GitHub Issues 的 open/closed 是调度状态，标签用于领取和人工审查。这里不依赖 GitHub Projects 的自定义状态列。
+### 宿主验收与执行环境更新
+
+用户提出“审查 PR X”后，按 [本机审查入口](16-fast-review.md) 完成独立代码审查、同 SHA 专项检查和合成数据实例；通过草稿交付不表示人工验收通过，不合并、不部署。
+
+升级前检查 running/retrying 为空且 GitHub open ready 队列为空，保存旧容器、WORKFLOW、所有只读挂载脚本和被替换模块，提供回退清单。Start 要求 `.local/symphony/data/blocking-fix/manifest.json` 与当前生成器和已验证模块的哈希相同，缺少验证即拒绝启动。补丁输入只读挂载在独立目录；symphony_entrypoint 先用 --help 完成 Burrito 解包，再校验并安装模块，最后才启动真实工作流，避免首次解包被只读模块阻塞。已安装中文模块可按清单 preservedModules 一并保留，禁止加载清单之外的模块。不要删除 data、任务工作区或操作日常 Demo。
 
 ## 模型与思考深度
 

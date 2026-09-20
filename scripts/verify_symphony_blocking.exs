@@ -39,3 +39,21 @@ end
 run.([%{event: :turn_ended_with_error, reason: :timeout}], false)
 run.([%{event: :notification}], false)
 IO.puts("PASS: 6 blocker/retry sequences; input and approval survive error/notification; ordinary failures retry")
+
+root = Path.join(System.tmp_dir!(), "symphony-control-" <> Integer.to_string(System.unique_integer([:positive])))
+File.mkdir_p!(Path.join(root, "GH-987654321"))
+System.put_env("SYMPHONY_CONTROL_ROOT", root)
+check.(SymphonyElixir.Codex.AppServer.controlled_turn_timeout() == :infinity, "controlled turns have no duration ceiling")
+issue = %Issue{id: "persistent", identifier: "GH-987654321", state: "open", labels: ["symphony:ready"]}
+for status <- ["review", "blocked"] do
+  File.write!(Path.join([root, issue.identifier, "state.json"]), Jason.encode!(%{status: status}))
+  check.(not Orchestrator.should_dispatch_issue_for_test(issue, %State{}), "terminal state blocks fresh dispatch")
+  state = %State{claimed: MapSet.new([issue.id])}
+  result = Orchestrator.handle_retry_issue_lookup_for_test(issue, state, issue.id, 2, %{})
+  check.(not MapSet.member?(result.claimed, issue.id), "terminal retry releases claim")
+  check.(map_size(result.retry_attempts) == 0, "terminal retry is not scheduled again")
+end
+System.delete_env("SYMPHONY_CONTROL_ROOT")
+check.(is_integer(SymphonyElixir.Codex.AppServer.controlled_turn_timeout()), "legacy timeout retained outside controlled mode")
+File.rm_rf!(root)
+IO.puts("PASS: persistent review/blocked state prevents dispatch and retry with ready still present")

@@ -3,10 +3,18 @@
 ## Start here
 
 - Read the [knowledge index](docs/index.md) for current implementation, historical candidates, decisions and task handoffs.
+- For verbal requirements, Issue preparation, Symphony work, PR review or retry/handoff, first use the [Agent workflow entrypoint](docs/17-agent-workflow.md). It defines roles, user-intent routing and stage outputs without relying on chat history.
 - Use [resource ingestion](docs/12-resource-ingestion.md) for current business behavior and [development workflow](docs/development-workflow.md) for local processes, Docker and acceptance commands.
 - Use [harness instructions](docs/13-harness.md) to choose checks and interpret evidence. A passing quick check is not end-to-end acceptance.
 - For work spanning sessions, copy the [task template](docs/tasks/template.md) and follow the [handoff rules](docs/tasks/README.md).
 - For review requests, follow the [review defaults](docs/14-code-review.md). A short request naming the changes is sufficient; review only unless the user also requests fixes.
+
+## Select your role before acting
+
+- Host preparation Agent: clarify missing business intent, record confirmed scope and acceptance, prepare an Issue and external task plan when authorized, validate model routing, and add ready last only when execution is authorized. A verbal idea alone does not authorize queueing or inventing requirements.
+- Controlled Symphony coding Agent: the workflow/adapter identifies this role. Edit only in the isolated Issue workspace and end the turn; the controller owns checks, the single repair opportunity, file publication and terminal state. The general commands below are requirements for the controller/host, not instructions for this coding Agent to run installers, tests or GitHub writes. Never reset state or requeue yourself.
+- Independent host reviewer: “审查 PR X” defaults to independent review, applicable host checks and a same-SHA local acceptance instance after no blocking findings. This permits isolated tooling and local evidence, not source fixes, merge or Demo deployment. Respect an explicit “code review only / 不启动实例”. The author cannot attest their own independent review.
+- Ordinary local implementation stays local unless the user asks to use Symphony or enqueue an Issue. No role automatically creates another agent/task, changes models mid-run, merges or deploys.
 
 ## Review defaults
 
@@ -58,3 +66,5 @@ Use descriptive incremental Flyway migrations for subsequent changes; keep empty
 Record commands, tested versions, results and limitations in [validation records](docs/06-validation.md). SQL checks do not establish HTTP, cloud storage or client behavior. No percentage coverage threshold exists.
 
 Use imperative commit subjects, optionally `docs:`, `db:` or `contracts:`. PRs explain changed behavior, reason, validation commands, database version and remaining assumptions. Never commit production connection strings; keep examples synthetic and unresolved client/server contracts explicit.
+
+Controlled lifecycle and recovery details: [Symphony runbook](docs/15-symphony.md). Browser/system provisioning belongs to host preparation. Missing applicable checks must be resolved before queueing; existing scene checks do not prove unrelated pages work.

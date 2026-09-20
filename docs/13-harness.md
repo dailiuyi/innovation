@@ -2,11 +2,11 @@
 
 先按 [专项优先流程](16-fast-review.md) 执行需求对应的最短检查，再按风险选择 profile。Java 专项使用 `scripts/check_java.py`；账号 HTTP 与同提交人工实例使用 `scripts/review.py`。通用 ingestion 不替代专项验收，也不是所有改动的默认门槛。
 
-Harness 把仓库约束、验证脚本与交接记录组织成统一工作流。当前版本提供人工触发的验证入口，不调度模型、不自动修复、不合并、不部署。
+Harness 把仓库约束、验证脚本与交接记录组织成统一工作流。Harness 本身是验证入口，不调度模型、不修复、不合并、不部署。Symphony 的固定任务控制器调用该入口，并单独管理一次修复和持久化终止状态。
 
 ## Agent 安装与构建复用
 
-无人值守任务使用 `python scripts/agent_check.py --profile frontend`（无前端变更用 `quick`）。它准备必要依赖后运行 harness，并保存 `.local/frontend-control/handoff.json`：`container_checks_passed`、`code_check_failed` 或 `environment_blocked`。前端 profile 已包含 quick，不需重复执行两个 profile；专项业务验收仍由任务要求决定。
+受控 Symphony 任务由程序调用入口，编码模型不自行执行。人工使用 `python scripts/agent_check.py --profile frontend`（无前端变更用 `quick`）。它准备必要依赖后运行 harness，并保存 `.local/frontend-control/handoff.json`：`container_checks_passed`、`code_check_failed` 或 `environment_blocked`。前端 profile 已包含 quick，不需重复执行两个 profile；专项业务验收仍由任务要求决定。
 
 `frontend_control.py` 在每个工作区独立保存安装和构建记录，OS 文件锁避免并发重复操作，进程退出自动释放锁。第一次无可信记录时执行一次 `npm ci --prefer-offline --no-audit --no-fund --include=dev`，随后核对锁文件、npm 配置、Node/npm/平台、相关环境和已安装包内容再复用；不共享任务 node_modules。完整内容校验本身有 I/O 成本，但能发现依赖删除或损坏。Vite 开发缓存 `.vite`、`.vite-temp` 和 `.cache` 不参与依赖摘要。
 
@@ -61,3 +61,5 @@ python scripts/harness.py check --profile ingestion
 入库 profile 不运行历史候选七表数据库验收；候选结构校验不属于已实现业务的数据库证明。Docker Nginx 路由、LAN、真实客户端加载仍需独立验收。
 
 正式证据的保存和引用遵循 [证据索引](evidence/README.md)。将真实验收摘要加入 [验证记录](06-validation.md)；需要提交专项 JSON 时只提升人工核对后的证据，避免把本机绝对路径或敏感日志一起提交。扩展入口时先明确测试环境、副作用和完成证据，再加入 profile。以后是否接 CI 或 Agent 调度，见 [基础决策](decisions/0001-harness-baseline.md)。
+
+任务控制、字节发布和构建复用的回归测试由只读执行工具提供；旧 PR 缺少新工具测试时仍执行中央工具测试，不将零测试视为成功。源码中的业务测试仍按该提交执行。新任务计划、停止和恢复规则见 [Symphony](15-symphony.md)。

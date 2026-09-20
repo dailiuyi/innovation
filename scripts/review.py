@@ -12,9 +12,11 @@ import time
 import uuid
 from check_java import test_counts
 
-from review_runtime import Runtime, account_smoke, request
+from review_runtime import Runtime, account_smoke, request, seed_preview, browser_smoke
+import frontend_control
 
 ROOT = Path(__file__).resolve().parents[1]
+RESOURCES = ROOT
 REMOTE = 'https://github.com/dailiuyi/innovation.git'
 
 
@@ -72,16 +74,20 @@ def clean(source, sha):
 
 def environment():
     env = dict(os.environ)
-    java = next((ROOT / '.local/java21').glob('jdk*/bin/java.exe'), None)
+    java = next((RESOURCES / '.local/java21').glob('jdk*/bin/java.exe'), None)
     if java:
         env['JAVA_HOME'] = str(java.parent.parent)
         env['PATH'] = str(java.parent) + os.pathsep + env.get('PATH', '')
-    env['PYTHONPATH'] = str(ROOT / '.local/python') + os.pathsep + env.get('PYTHONPATH', '')
+    env['PYTHONPATH'] = str(RESOURCES / '.local/python') + os.pathsep + env.get('PYTHONPATH', '')
     return env
 
 
-def prepare(pr):
+def prepare(pr, extra_suites=()):
     sha = remote_head(pr)
+    metadata = json.loads(run(['gh', 'pr', 'view', str(pr), '--repo', 'dailiuyi/innovation',
+                              '--json', 'headRefOid,files']))
+    if metadata['headRefOid'] != sha:
+        raise RuntimeError('PR changed while preparing')
     home = directory(pr, sha)
     source = home / 'source'
     if not source.exists():
@@ -94,8 +100,58 @@ def prepare(pr):
         run(['git', 'checkout', '--detach', sha], source)
     clean(source, sha)
     # Task-local node_modules; never mutate another checkout's install.
-    result = {'pr': pr, 'sha': sha, 'source': str(source), 'state': 'prepared'}
+    suites = set(select_suites([item['path'] for item in metadata['files']])) | set(extra_suites)
+    if (home / 'snapshot.json').exists():
+        suites.update(read(home / 'snapshot.json').get('requiredSuites', []))
+    suites = sorted(suites)
+    result = {'pr': pr, 'sha': sha, 'source': str(source), 'state': 'prepared', 'requiredSuites': suites}
     write(home / 'snapshot.json', result)
+    return result
+
+
+def select_suites(paths):
+    suites = {'smoke', 'frontend'}
+    for path in paths:
+        if path.startswith('frontend/'):
+            suites.add('scene-ui')
+        if path.startswith('backend/'):
+            if any(part in path.lower() for part in ('user', 'password', 'login', 'security', 'token', 'auth')):
+                suites.add('accounts')
+            # Business storage and migrations require their real isolated HTTP/database flow.
+            if '/ruoyi-ar/' in path or '/db/' in path:
+                suites.add('ingestion')
+    return sorted(suites)
+
+
+def passing(home, suite, sha):
+    try:
+        report = read(home / ('checks-' + suite + '.json'))
+    except (OSError, ValueError):
+        raise RuntimeError(suite + ' current-source evidence required') from None
+    if report.get('status') != 'passed' or report.get('sha') != sha or report.get('sourceUnchanged') is not True:
+        raise RuntimeError(suite + ' current-source evidence required')
+    return report
+
+
+def backend_artifact(source, home, sha, evidence, env, online):
+    record = home / 'backend.json'
+    if record.exists():
+        old = read(record)
+        jar = Path(old.get('jar', 'missing'))
+        if (old.get('status') == 'passed' and old.get('sha') == sha and jar.is_file()
+                and old.get('jarSha256') == sha256(jar)):
+            return {**old, 'mode': 'reused'}
+    write(record, {'status': 'running', 'sha': sha})
+    execute(['mvn.cmd', '-f', source / 'backend/pom.xml',
+             '-Dmaven.repo.local=' + str(RESOURCES / '.local/m2'), *([] if online else ['-o']),
+             'clean', 'package', '-B', '-ntp'], source, evidence, 'backend-package', env)
+    counts = test_counts(list((source / 'backend').glob('*/target/surefire-reports/TEST-*.xml')))
+    if not counts['tests'] or any(counts[k] for k in ('failures', 'errors', 'skipped')):
+        raise RuntimeError('Java tests missing, failing or skipped')
+    jar = source / 'backend/ruoyi-admin/target/ruoyi-admin.jar'
+    result = {'status': 'passed', 'sha': sha, 'jar': str(jar), 'jarSha256': sha256(jar),
+              'javaCounts': counts, 'mode': 'executed'}
+    write(record, result)
     return result
 
 
@@ -123,41 +179,59 @@ def check(pr, sha, suite, online=False):
     if (home / 'serving.lock').exists():
         raise RuntimeError('Stop the managed preview before rebuilding its source/artifacts')
     clean(source, sha)
+    if suite == 'auto':
+        suites = read(home / 'snapshot.json')['requiredSuites']
+        # Frontend prepares dependencies once for browser and runtime suites.
+        return [check(pr, sha, item, online) for item in ['frontend', *[s for s in suites if s != 'frontend']]]
     evidence = home / ('check-' + uuid.uuid4().hex[:12])
     evidence.mkdir()
     report = {'pr': pr, 'sha': sha, 'suite': suite, 'status': 'running',
               'startedAt': datetime.now(timezone.utc).isoformat(), 'checks': [], 'evidence': str(evidence)}
     # Invalidate old success as soon as a new run starts.
     write(home / 'checks.json', report)
+    write(home / ('checks-' + suite + '.json'), report)
     env = environment()
     try:
-        if suite == 'accounts':
-            execute(['mvn.cmd', '-f', source / 'backend/pom.xml',
-                     '-Dmaven.repo.local=' + str(ROOT / '.local/m2'), *([] if online else ['-o']),
-                     'clean', 'package', '-B', '-ntp'],
-                    source, evidence, 'backend-package', env)
-            results = list((source / 'backend').glob('*/target/surefire-reports/TEST-*.xml'))
-            counts = test_counts(results)
-            report['javaTests'] = counts['tests']
-            report['javaCounts'] = counts
-            if not counts['tests'] or any(counts[k] for k in ('failures', 'errors', 'skipped')):
-                raise RuntimeError('Java tests missing, failing or skipped; inspect Surefire results')
-            jar = source / 'backend/ruoyi-admin/target/ruoyi-admin.jar'
-            # Requirement-specific HTTP path runs before generic repository checks.
-            with Runtime(source, ROOT, evidence / 'accounts', jar, password='Ab1!xy') as runtime:
-                report['checks'] = account_smoke(runtime)
-                report['postgresVersion'] = runtime.pg_version
-            report.update(jar=str(jar), jarSha256=sha256(jar))
+        if suite == 'frontend':
+            execute([sys.executable, Path(__file__).with_name('agent_check.py'), '--root', source,
+                     '--profile', 'frontend'], source, evidence, 'frontend', env, timeout=1800)
+            decision = read(source / '.local/frontend-control/handoff.json')
+            if decision.get('decision') != 'container_checks_passed' or decision.get('sourceUnchanged') is not True:
+                raise RuntimeError('Fresh frontend evidence required')
+            report['containerEvidence'] = decision
+        elif suite == 'scene-ui':
+            frontend_control.operate(source, 'deps', env=env)
+            execute([sys.executable, Path(__file__).with_name('verify_scene_list_ui.py'), '--report-dir', evidence,
+                     '--root', source, '--channel', 'msedge'], source, evidence, 'scene-ui', env)
+            checks = read(evidence / 'validation-scene-list-ui.json')
+            if not isinstance(checks, list) or not checks or any(c.get('passed') is not True for c in checks):
+                raise RuntimeError('Scene UI assertions missing or failing')
+            report['checks'] = checks
+        elif suite in ('smoke', 'accounts', 'ingestion'):
+            artifact = backend_artifact(source, home, sha, evidence, env, online)
+            report['backend'] = artifact
+            jar = Path(artifact['jar'])
+            if suite == 'ingestion':
+                frontend_control.operate(source, 'deps', env=env)
+                execute([sys.executable, source / 'scripts/verify_ingestion.py', '--report-dir', evidence,
+                         '--backend-jar', jar, '--resources-root', RESOURCES], source, evidence, 'ingestion', env)
+                result = read(evidence / 'validation-ingestion.json')
+                if result.get('passed') is not True or not result.get('checks') or any(c.get('passed') is not True for c in result['checks']):
+                    raise RuntimeError('Ingestion evidence missing or failing')
+                report['checks'] = result['checks']
+            else:
+                with Runtime(source, RESOURCES, evidence / suite, jar,
+                             password='Ab1!xy' if suite == 'accounts' else None) as runtime:
+                    if suite == 'accounts':
+                        report['checks'] = account_smoke(runtime)
+                    else:
+                        frontend_control.operate(source, 'deps', env=env)
+                        fixtures = seed_preview(runtime)
+                        runtime.frontend()
+                        report['checks'] = browser_smoke(runtime, fixtures)
+                    report['postgresVersion'] = runtime.pg_version
         else:
-            npm = 'npm.cmd' if os.name == 'nt' else 'npm'
-            execute([npm, '--prefix', 'frontend', 'ci', '--prefer-offline', '--no-audit', '--no-fund',
-                     '--cache', ROOT / '.local/npm-cache'], source, evidence, 'npm-ci', env)
-            execute([sys.executable, source / 'scripts/harness.py', 'check', '--profile', 'frontend'],
-                    source, evidence, 'frontend', env)
-        execute([sys.executable, source / 'scripts/harness.py', 'doctor', '--profile', 'quick'],
-                source, evidence, 'doctor', env)
-        execute([sys.executable, source / 'scripts/harness.py', 'check', '--profile', 'quick'],
-                source, evidence, 'quick', env)
+            raise ValueError('Unknown suite')
         clean(source, sha)
         report.update(status='passed', sourceUnchanged=True)
     except Exception as error:
@@ -177,14 +251,14 @@ def serve(pr, sha, reviewed_sha):
     clean(source, sha)
     if reviewed_sha != sha or remote_head(pr) != sha:
         raise RuntimeError('Independent review and current PR head must match this snapshot')
-    report = read(home / 'checks-accounts.json')
-    if report.get('status') != 'passed' or report.get('sha') != sha or not report.get('sourceUnchanged'):
-        raise RuntimeError('Passing current-source accounts HTTP evidence required')
-    frontend = read(home / 'checks-frontend.json')
-    if frontend.get('status') != 'passed' or frontend.get('sha') != sha or not frontend.get('sourceUnchanged'):
-        raise RuntimeError('Passing current-source frontend evidence required')
-    jar = Path(report['jar'])
-    if sha256(jar) != report['jarSha256']:
+    snapshot = read(home / 'snapshot.json')
+    if snapshot.get('sha') != sha or not snapshot.get('requiredSuites'):
+        raise RuntimeError('Prepared current-source evidence required')
+    for suite in snapshot['requiredSuites']:
+        passing(home, suite, sha)
+    artifact = read(home / 'backend.json')
+    jar = Path(artifact['jar'])
+    if artifact.get('status') != 'passed' or artifact.get('sha') != sha or sha256(jar) != artifact['jarSha256']:
         raise RuntimeError('Tested backend artifact changed')
     marker = home / 'serving.lock'
     # Atomic lock; do not silently reuse stale sessions or replace a live preview.
@@ -196,20 +270,22 @@ def serve(pr, sha, reviewed_sha):
     state = {'sha': sha, 'pr': pr, 'status': 'starting', 'reviewedSha': reviewed_sha}
     write(state_path, state)
     try:
-        npm = 'npm.cmd' if os.name == 'nt' else 'npm'
-        execute([npm, '--prefix', 'frontend', 'ci', '--prefer-offline', '--no-audit', '--no-fund',
-                 '--cache', ROOT / '.local/npm-cache'], source, home, 'preview-npm', environment())
+        deps = frontend_control.operate(source, 'deps', env=environment())
+        if deps['status'] != 'passed':
+            raise RuntimeError('Preview dependencies are not verified')
         clean(source, sha)
-        with Runtime(source, ROOT, home / ('preview-' + uuid.uuid4().hex[:12]), jar) as runtime:
+        with Runtime(source, RESOURCES, home / ('preview-' + uuid.uuid4().hex[:12]), jar) as runtime:
+            fixtures = seed_preview(runtime)
             runtime.frontend()
             status, login = request(runtime.web, '/dev-api/login', 'POST',
-                                    {'username': 'bootstrap', 'password': runtime.password})
+                                    {'username': fixtures['username'], 'password': runtime.password})
             if status != 200 or login.get('code') != 200 or not login.get('token'):
                 raise RuntimeError('Preview proxy login failed')
             credentials = runtime.directory / 'credentials.json'
-            write(credentials, {'username': 'bootstrap', 'password': runtime.password})
+            write(credentials, {'username': fixtures['username'], 'password': runtime.password})
             state.update(status='ready', url=runtime.web, credentialsFile=str(credentials),
-                         runtime=str(runtime.directory), pid=os.getpid())
+                         runtime=str(runtime.directory), pid=os.getpid(), requiredSuites=snapshot['requiredSuites'],
+                         fixtures=str(runtime.directory / 'fixtures.json'), manualAcceptance='pending')
             write(state_path, state)
             print(json.dumps(state, ensure_ascii=False), flush=True)
             print('Keep this foreground process alive. Stop via review.py stop --pr/--sha.', flush=True)
@@ -228,16 +304,22 @@ def serve(pr, sha, reviewed_sha):
 
 
 def main():
+    global RESOURCES
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('prepare', 'check', 'serve', 'status', 'stop'))
     parser.add_argument('--pr', type=int, required=True)
     parser.add_argument('--sha')
-    parser.add_argument('--suite', choices=('accounts', 'frontend'), default='accounts')
+    parser.add_argument('--suite', choices=('auto', 'smoke', 'scene-ui', 'accounts', 'frontend', 'ingestion'), default='auto')
+    parser.add_argument('--require-suite', action='append', default=[],
+                        choices=('smoke', 'scene-ui', 'accounts', 'ingestion'),
+                        help='Prepared Issue host suite; additive, never removes existing gates')
+    parser.add_argument('--resources-root', type=Path, default=ROOT)
     parser.add_argument('--reviewed-sha', help='Explicit attestation by the independent reviewer, not an auto-approval')
     parser.add_argument('--online', action='store_true', help='Explicitly permit missing Maven dependency downloads')
     args = parser.parse_args()
+    RESOURCES = args.resources_root.resolve()
     if args.action == 'prepare':
-        result = prepare(args.pr)
+        result = prepare(args.pr, args.require_suite)
     else:
         if not args.sha:
             parser.error('--sha required; use the commit returned by prepare')

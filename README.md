@@ -35,6 +35,8 @@ V0.1 面向第一阶段的 AR 场景展示：团队制作场景内容，管理�
 
 ## 开发资料
 
+- [Agent 工作流入口：口头需求 → Issue → 编码 → 本机验收](docs/17-agent-workflow.md)
+
 - [仓库知识入口](docs/index.md)
 - [基础 Harness 与验证入口](docs/13-harness.md)
 - [数据库初始化说明](database/README.md)

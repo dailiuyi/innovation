@@ -233,11 +233,14 @@ def close_clears_scene_query(page, timeout=5):
 
 
 def main():
+    global ROOT
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--report-dir', type=Path, default=ROOT / '.local')
     parser.add_argument('--port', type=int, default=0)
     parser.add_argument('--channel', default='')
+    parser.add_argument('--root', type=Path, default=ROOT)
     args = parser.parse_args()
+    ROOT = args.root.resolve()
     report_dir = args.report_dir.resolve()
     report_dir.mkdir(parents=True, exist_ok=True)
     run = report_dir / 'scene-list-ui'
@@ -395,7 +398,7 @@ def main():
             prompt.wait_for()
             prompt.locator('input').fill('布局检查停用原因')
             prompt.get_by_role('button', name='确定', exact=True).click()
-            short_row.get_by_text('停用', exact=True).wait_for(timeout=10000)
+            short_row.get_by_role('button', name='启用', exact=True).wait_for(timeout=10000)
             check('填写原因后停用生效并刷新状态',
                   short_row.get_by_role('button', name='启用', exact=True).count() == 1
                   and api.scene(SHORT_ID)['enabled'] is False)

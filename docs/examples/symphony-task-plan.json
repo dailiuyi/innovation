@@ -1,0 +1,17 @@
+{
+  "title": "调整场景列表入口与列宽",
+  "profile": "frontend",
+  "allowedPaths": [
+    "frontend/src/views/demo/scenes.vue",
+    "frontend/src/views/demo/DraftPanel.vue",
+    "frontend/src/views/index.vue",
+    "scripts/verify_scene_list_ui.py",
+    "scripts/verify_draft_panel.mjs",
+    "scripts/verify_browser.py",
+    "scripts/verify_ingestion.py",
+    "docs/12-resource-ingestion.md"
+  ],
+  "javaModules": [],
+  "hostSuites": ["smoke", "scene-ui"],
+  "acceptance": "两个入口直接可用；1280/1440/1920 视口四按钮完整；真实登录和对应场景面板在宿主验收。"
+}

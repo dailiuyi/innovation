@@ -124,7 +124,7 @@ def stop_tree(process):
     process.wait(timeout=15)
 
 
-def run_step(step, directory, env):
+def run_step(step, directory, env, process_callback=None, progress_stream=None):
     log = directory / (step.name + '.log')
     result = {'name': step.name, 'command': [str(arg) for arg in step.command], 'cwd': str(step.cwd),
               'startedAt': utc_now(), 'log': str(log), 'timeoutSeconds': step.timeout, 'status': 'failed', 'exitCode': None}
@@ -134,6 +134,8 @@ def run_step(step, directory, env):
         with log.open('wb') as output:
             process = subprocess.Popen(result['command'], cwd=step.cwd, env=env, stdout=output, stderr=subprocess.STDOUT,
                                        start_new_session=os.name != 'nt')
+            if process_callback:
+                process_callback(process)
             while True:
                 remaining = step.timeout - (time.monotonic() - started)
                 if remaining <= 0:
@@ -142,7 +144,8 @@ def run_step(step, directory, env):
                     result['exitCode'] = process.wait(timeout=min(30, remaining))
                     break
                 except subprocess.TimeoutExpired:
-                    print(f'RUNNING {step.name}: {int(time.monotonic() - started)}s; log={log}', flush=True)
+                    print(f'RUNNING {step.name}: {int(time.monotonic() - started)}s; log={log}',
+                          file=progress_stream or sys.stdout, flush=True)
         if result['exitCode'] == 0:
             result['status'] = 'passed'
             if step.evidence:
@@ -166,6 +169,8 @@ def run_step(step, directory, env):
     finally:
         if process is not None and process.poll() is None:
             stop_tree(process)
+        if process_callback:
+            process_callback(None)
         result['durationSeconds'] = round(time.monotonic() - started, 3)
     return result
 
@@ -177,10 +182,12 @@ def make_steps(profile, directory, root=ROOT):
              Step('review-tool-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'), '-p', 'test_review.py'], root),
              Step('symphony-routing-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'),
                                                '-p', 'test_symphony_codex_adapter.py'], root),
-             Step('symphony-publish-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'),
+             Step('symphony-publish-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(Path(__file__).parent),
                                                '-p', 'test_symphony_publish.py'], root),
              Step('execution-control-tests', [sys.executable, '-m', 'unittest', 'discover',
                   '-s', str(Path(__file__).parent), '-p', 'test_frontend_control.py'], root),
+             Step('task-control-tests', [sys.executable, '-m', 'unittest', 'discover',
+                  '-s', str(Path(__file__).parent), '-p', 'test_symphony_task.py'], root),
              Step('contracts-and-links', [sys.executable, root / 'scripts/verify_design.py', '--report-dir', evidence], root,
                   evidence=evidence / 'validation-contracts.json')]
     if profile in ('frontend', 'ingestion'):

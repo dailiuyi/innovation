@@ -1,13 +1,16 @@
 """Disposable Windows PostgreSQL/Redis/Java runtime, owned by its foreground parent."""
 import json
+import hashlib
 import os
 from pathlib import Path
 import secrets
 import socket
+import sys
 import subprocess
 import time
 import urllib.error
 import urllib.request
+import uuid
 
 
 def free_port():
@@ -20,7 +23,9 @@ def request(base, path, method='GET', body=None, token=None):
     headers = {'Content-Type': 'application/json'}
     if token:
         headers['Authorization'] = 'Bearer ' + token
-    data = json.dumps(body).encode() if body is not None else None
+    data = body if isinstance(body, bytes) else json.dumps(body).encode() if body is not None else None
+    if isinstance(body, bytes):
+        headers['Content-Type'] = 'application/octet-stream'
     req = urllib.request.Request(base + path, data=data, headers=headers, method=method)
     try:
         response = urllib.request.urlopen(req, timeout=15)
@@ -36,6 +41,7 @@ class Runtime:
         if os.name != 'nt':
             raise RuntimeError('HTTP preview runtime currently requires Windows')
         self.source, self.directory, self.jar = source, directory, jar
+        self.resources = resources
         self.pg = resources / '.local/postgresql17/pgsql/bin'
         self.java = next((resources / '.local/java21').glob('jdk*/bin/java.exe'))
         self.directory.mkdir(parents=True, exist_ok=False)
@@ -207,3 +213,64 @@ def account_smoke(runtime):
                 password = new
                 login('review_64', password)
     return checks
+
+
+def seed_preview(runtime):
+    """Populate only the newly created runtime through authenticated business APIs."""
+    def api(path, method='GET', body=None, token=None):
+        status, result = request(runtime.base, path, method, body, token)
+        if status not in (200, 201) or result.get('code', 200) != 200:
+            raise RuntimeError('Synthetic fixture API failed: ' + path)
+        return result
+    token = api('/login', 'POST', {'username': 'bootstrap', 'password': runtime.password})['token']
+    user = 'review_admin'
+    api('/system/user', 'POST', {'userName': user, 'nickName': '隔离验收账号', 'password': runtime.password}, token)
+    token = api('/login', 'POST', {'username': user, 'password': runtime.password})['token']
+    fixtures = {'username': user, 'scenes': []}
+    for index, name in enumerate(['验收场景A', '超长场景名称' + '测试内容' * 25]):
+        scene = api('/api/v1/scenes', 'POST', {'name': name, 'address': '合成地址' * (1 if index == 0 else 80)}, token)
+        draft = api('/api/v1/scenes/' + scene['id'] + '/drafts', 'POST',
+                    {'requestKey': str(uuid.uuid4()), 'description': '人工验收用合成版本'}, token)
+        payload = '这是隔离验收文件，不是真实客户端资源。'.encode('utf-8')
+        path = '/api/v1/drafts/' + draft['id'] + '/files'
+        file = api(path, 'POST', {'requestKey': str(uuid.uuid4()), 'fileName': '验收示例.txt',
+                                  'kind': 'RESOURCE_FILE', 'bytes': len(payload),
+                                  'sha256': hashlib.sha256(payload).hexdigest()}, token)
+        uploaded = api(path + '/' + file['id'] + '/content', 'PUT', payload, token)
+        if uploaded.get('status') != 'AVAILABLE':
+            raise RuntimeError('Synthetic payload was not verified')
+        fixtures['scenes'].append({'id': scene['id'], 'name': name, 'draftId': draft['id'], 'fileId': file['id']})
+    (runtime.directory / 'fixtures.json').write_text(json.dumps(fixtures, ensure_ascii=False, indent=2), encoding='utf-8')
+    return fixtures
+
+
+def browser_smoke(runtime, fixtures):
+    """Real Edge login, scene/detail navigation and frontend proxy, no mocked responses."""
+    sys.path.insert(0, str(runtime.resources / '.local/python'))
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as playwright:
+        browser = playwright.chromium.launch(channel='msedge', headless=True)
+        try:
+            page = browser.new_page(viewport={'width': 1440, 'height': 1050})
+            errors = []
+            page.on('pageerror', lambda error: errors.append(str(error)))
+            page.goto(runtime.web + '/login', wait_until='networkidle', timeout=90000)
+            page.get_by_placeholder('账号').fill(fixtures['username'])
+            page.get_by_placeholder('密码').fill(runtime.password)
+            page.get_by_role('button', name='登 录').click()
+            page.wait_for_url(lambda url: '/login' not in url, timeout=30000)
+            page.goto(runtime.web + '/admin/scenes', wait_until='networkidle', timeout=90000)
+            row = page.get_by_role('row').filter(has_text=fixtures['scenes'][0]['name'])
+            row.get_by_role('button', name='场景信息', exact=True).click()
+            dialog = page.get_by_role('dialog', name='场景信息')
+            dialog.wait_for()
+            dialog.locator('.el-dialog__footer').get_by_role('button', name='关闭', exact=True).click()
+            dialog.wait_for(state='hidden')
+            row.get_by_role('button', name='版本与文件', exact=True).click()
+            page.get_by_role('heading', name='内容版本草稿 · ' + fixtures['scenes'][0]['name']).wait_for()
+            page.screenshot(path=str(runtime.directory / 'real-browser.png'), full_page=True)
+            if errors:
+                raise RuntimeError('Browser page errors; inspect isolated browser evidence')
+            return [{'name': 'real login, scene information and corresponding draft panel', 'passed': True}]
+        finally:
+            browser.close()

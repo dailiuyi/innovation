@@ -8,6 +8,19 @@ from check_java import test_counts
 
 
 class ReviewTests(unittest.TestCase):
+    def test_ui_does_not_require_accounts_and_storage_requires_ingestion(self):
+        suites = review.select_suites(['frontend/src/views/demo/scenes.vue'])
+        self.assertIn('scene-ui', suites)
+        self.assertIn('smoke', suites)
+        self.assertNotIn('accounts', suites)
+        self.assertIn('accounts', review.select_suites(['backend/ruoyi-framework/SysLoginService.java']))
+        self.assertIn('ingestion', review.select_suites(['backend/ruoyi-ar/DraftService.java']))
+
+    def test_wrong_sha_cannot_supply_required_evidence(self):
+        with patch('review.read', return_value={'status': 'passed', 'sha': 'b' * 40, 'sourceUnchanged': True}):
+            with self.assertRaisesRegex(RuntimeError, 'evidence required'):
+                review.passing(Path('.'), 'smoke', 'a' * 40)
+
     def test_path_rejects_ref_injection(self):
         for sha in ('main', '../main', 'a' * 39, 'A' * 40):
             with self.assertRaises(ValueError):

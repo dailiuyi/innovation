@@ -33,7 +33,7 @@ agent:
   max_turns: 5
   max_retry_backoff_ms: 300000
 codex:
-  command: env PIP_CACHE_DIR=/data/cache/pip NPM_CONFIG_CACHE=/data/cache/npm python3 /opt/symphony-routing/symphony_codex_adapter.py --audit-log /data/logs/model-routing.jsonl
+  command: env PIP_CACHE_DIR=/data/cache/pip NPM_CONFIG_CACHE=/data/cache/npm python3 /opt/symphony-routing/symphony_codex_adapter.py --audit-log /data/logs/model-routing.jsonl --control-root /data/task-control --execution-root /opt/symphony-execution
   approval_policy:
     granular:
       sandbox_approval: false
@@ -48,7 +48,7 @@ codex:
     networkAccess: true
   turn_timeout_ms: 600000
   read_timeout_ms: 60000
-  stall_timeout_ms: 600000
+  stall_timeout_ms: 0
 server:
   host: 0.0.0.0
   port: 43190
@@ -76,32 +76,16 @@ Do not automatically merge, deploy, publish releases, rewrite main history or de
 Do not spawn subagents. Symphony may run up to four issues concurrently, each in its own isolated workspace.
 Write user-facing progress and delivery notes in Chinese.
 
-## Execution and evidence
+## Controlled execution
 
-Reproduce the issue or confirm requirements, list acceptance criteria, then make bounded changes. Use branch codex/issue-<number>.
-Choose and run the shortest test that exercises the requested behavior FIRST. For password changes this is setting a six-character password and authenticating with it, not a resource-ingestion suite. Trace every real caller before editing a shared rule.
-For Java changes run python3 scripts/check_java.py --module <affected-module> (optionally --tests <classes>). The Java-capable image provides JDK 21 and Maven. The helper uses a task-local .local/m2 repository and rejects zero/skipped tests. If the helper is absent in an older checkout, run mvn -f backend/pom.xml -pl <affected-module> -am -Dmaven.repo.local=$PWD/.local/m2 clean test -B -ntp and verify fresh Surefire XML contains executed tests. Never describe unexecuted tests as delivery evidence.
-Use one check entrypoint: .local/venv/bin/python /opt/symphony-execution/agent_check.py --root "$PWD" --profile quick (use frontend instead when frontend code changes). For local development outside Symphony use scripts/agent_check.py. The frontend profile includes quick; do not run both profiles just for the same frontend change.
-The entrypoint owns dependency installation and production builds. It validates task-local installed packages, input fingerprints and dist contents before reuse; do not separately run npm ci, npm install or npm run build:prod. Do not change package-lock.json to refresh caches. First-time unverified installations are prepared once. Source/runtime/dependency changes invalidate reuse automatically.
-Read .local/frontend-control/handoff.json after the command. container_checks_passed means proceed to draft PR delivery once issue-specific checks are complete or explicitly host-pending; code_check_failed means fix the reported code failure; environment_blocked means record the specific blocker. Do not repeat checks merely because this is a resumed session. For unchanged failed/timed-out builds, inspect the saved log once. Retry only after fixing the condition, through the same entrypoint with --retry-reason "specific repaired condition"; never switch to a direct build to evade the hold.
-This container runs Linux. The ingestion profile requires Windows, PostgreSQL 17, JDK 21, Edge and host runtime dependencies. Do not claim that ingestion end-to-end acceptance passed here.
-When host-only validation is required, deliver reviewable changes and exact Windows validation steps, marking acceptance pending. Do not weaken tests or equate a successful build with business-flow acceptance.
-Draft PR delivery and merge acceptance are separate gates. Host browser/viewports, real-backend flows, Windows ingestion, independent review and the host preview may remain pending when delivering a draft PR. List each pending check, its reason and the exact host command; do not claim acceptance passed. Once container-capable checks and code are ready, deliver instead of repeatedly trying to recreate the host environment. Do not install system/browser libraries or fonts merely to satisfy host-only checks. A reproducible environment limitation or build timeout must be documented honestly; it may accompany a draft PR, but known code/test failures must be fixed or explicitly handed off as blocked, never reported as passed.
-Select broader regression by the changed behavior. Account changes need account HTTP/session checks, not the entire artifact-ingestion suite unless ingestion is affected. Investigate a timeout once before retrying; never repeat an identical long build without a changed condition.
-The host reviewer uses scripts/review.py prepare/check/serve/status/stop. After independent review, the delivery includes a healthy preview URL for the reviewed commit, its credential-file location, and stop command. Symphony itself does not approve its own code or operate the host preview. Pending host validation/preview must be reported as pending, not complete.
-Report the source commit, whether the source changed during checks, commands, report paths, and passed/failed/blocked/not-run items.
-Implementation self-checks do not replace the independent review defined in docs/14-code-review.md.
+An operator-prepared plan outside this workspace defines allowed paths, container checks and pending host acceptance. The adapter validates it before starting inference. Missing plans or terminal task states do not start a coding run.
 
-## GitHub handoff
+Read the relevant source and make only the requested code and necessary test changes. Do not git commit or change HEAD. Do not run npm/pip/Maven, harness, browser checks, install browsers/fonts/system libraries, publish files, create PRs, edit labels or perform other GitHub writes. The fixed controller owns those operations and their evidence. Anonymous/read-only source inspection remains allowed.
 
-Read the current issue using the injected github_api tool. Limit every API path to /repos/dailiuyi/innovation/.
-Use the injected github_api dynamic tool for authenticated GitHub reads, comments, PRs and labels. Publish workspace files ONLY through github_publish_files, which delegates authentication to that same github_api channel. Do not use Apps/MCP GitHub connectors, tool search to discover alternate GitHub tools, or gh authentication. Apps are disabled for these unattended sessions. If either tool is unavailable or denied, preserve local changes and evidence and report the exact blocker; do not switch to an interactive connector or repeatedly retry authorization.
-Maintain one progress comment on the issue with the plan, evidence and blockers. Never include credentials or sensitive logs.
-Symphony holds the GitHub token; the shell does not receive it. Do not try to extract it from process environments or files.
-Clone and fetch the public repository anonymously. Call github_publish_files with branch (codex/...), expected_head (verified remote branch head, or base commit for a new branch), paths (explicit relative regular-file paths) and message (commit message). The tool reads bytes, uploads base64, verifies blob hashes and advances the branch without force. It preserves unrelated remote files and tracked executable modes. Never read chunks or transcribe whole files/base64 into github_api to publish. Deletions, symlinks, ignored/runtime files and files over 1 MiB are unsupported: report these as a delivery blocker, not a reason to improvise another channel. A failed/uncertain publish stops publication; inspect the branch once and report the blocker, do not retry the same request. After a successful receipt, create/update the draft PR once and finish the handoff. Pending host acceptance is not a reason to keep the session running.
-Create a draft PR with changes, evidence and limitations, or update the existing PR for this issue rather than creating duplicates.
-After saving code and evidence, add symphony:review and remove symphony:ready to stop dispatch. Do not close the issue or merge the PR.
-If missing access, requirements or runtime dependencies prevent further progress, record the specific blocker, add symphony:blocked, then remove symphony:ready.
-Host-only acceptance pending does not by itself require symphony:blocked: deliver a draft PR and use symphony:review. If access prevents even label updates, stop with a clear local handoff; never claim that remote labels changed.
-For rework preserve prior evidence, address feedback and revalidate affected behavior, then return to symphony:review.
-Perform stop-label changes last: removing symphony:ready can terminate the current run.
+Finish your turn when the code is ready. The controller runs the prepared checks while the model is idle. Only a first code-check failure can start one repair turn. Repair only the reported code problem and end that turn; a second failure, unchanged failure, environment or permission blocker terminates the task. There is no task time or token budget; individual commands retain timeouts. Do not continue exploring when delivery conditions are satisfied.
+
+On missing requirements/access, state the concrete blocker and end the turn. Never recreate host-only acceptance environments. Windows browser/viewports, real HTTP flows, independent review and manual acceptance remain explicitly pending until the host review.
+
+The controller persists status outside the agent workspace, reads file bytes itself, creates or updates one draft PR, marks unverified work clearly and stops dispatch. Remote label failure does not reopen the local task. If publication fails it retains the patch and evidence; do not find another publication channel. Only an explicit operator resume starts a new run, preserving prior history. Never change the control state or operator plan.
+
+The host reviewer uses scripts/review.py prepare/check/serve/status/stop for the exact PR SHA. Neither a draft PR nor successful container checks mean human acceptance, merge or deployment.

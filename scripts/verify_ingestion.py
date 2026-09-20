@@ -44,6 +44,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--report-dir', type=Path, default=ROOT / 'docs')
     parser.add_argument('--backend-jar', type=Path, default=ROOT / 'backend/ruoyi-admin/target/ruoyi-admin.jar')
+    parser.add_argument('--resources-root', type=Path, default=ROOT)
     args = parser.parse_args()
     args.report_dir = args.report_dir.resolve()
     args.backend_jar = args.backend_jar.resolve()
@@ -51,8 +52,8 @@ def main():
     evidence_root = ROOT / '.local' if args.report_dir == ROOT / 'docs' else args.report_dir
     evidence_root.mkdir(parents=True, exist_ok=True)
     run = Path(tempfile.mkdtemp(prefix='ingestion-check-', dir=evidence_root))
-    pg = ROOT / '.local/postgresql17/pgsql/bin'
-    java = next((ROOT / '.local/java21').glob('jdk*/bin/java.exe'))
+    pg = args.resources_root / '.local/postgresql17/pgsql/bin'
+    java = next((args.resources_root / '.local/java21').glob('jdk*/bin/java.exe'))
     pg_port, redis_port, api_port, web_port = [free_port() for _ in range(4)]
     password = secrets.token_urlsafe(24)
     env = dict(os.environ, AR_DATABASE_URL=f'jdbc:postgresql://127.0.0.1:{pg_port}/ingestion',

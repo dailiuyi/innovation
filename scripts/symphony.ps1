@@ -1,10 +1,13 @@
 param(
-    [ValidateSet('Build', 'Start', 'StartOffline', 'Stop', 'Status', 'Logs', 'Models', 'ValidateModel')]
+    [ValidateSet('Build', 'Start', 'StartOffline', 'Stop', 'Status', 'Logs', 'Models', 'ValidateModel', 'PrepareTask', 'TaskStatus', 'ResumeTask')]
     [string]$Action = 'Status',
     [switch]$UseHostCredentials,
     [string]$Model = 'gpt-6-astra',
     [string]$Effort = 'low',
-    [string]$DeepSeekKeyFile
+    [string]$DeepSeekKeyFile,
+    [int]$Issue,
+    [string]$PlanFile,
+    [string]$Reason
 )
 
 $ErrorActionPreference = 'Stop'
@@ -21,6 +24,20 @@ function Invoke-Docker {
 }
 
 switch ($Action) {
+    { $_ -in 'PrepareTask', 'TaskStatus', 'ResumeTask' } {
+        if ($Issue -lt 1) { throw 'Positive -Issue required' }
+        $taskArgs = @((Join-Path $PSScriptRoot 'symphony_task.py'),
+            @{PrepareTask='prepare'; TaskStatus='status'; ResumeTask='resume'}[$Action],
+            '--state-root', (Join-Path $runtimeRoot 'data/task-control'), '--issue', "GH-$Issue")
+        if ($Action -eq 'PrepareTask') { $taskArgs += @('--plan', $PlanFile) }
+        if ($Action -eq 'ResumeTask') {
+            $taskArgs += @('--reason', $Reason)
+            if ($PlanFile) { $taskArgs += @('--plan', $PlanFile) }
+        }
+        & python @taskArgs
+        if ($LASTEXITCODE -ne 0) { throw 'Task control command failed' }
+        return
+    }
     'Build' {
         # An explicit minimal context avoids sending source, auth or logs to Docker.
         $buildRoot = Join-Path $runtimeRoot 'build-validation'
@@ -73,13 +90,14 @@ if (-not (Test-Path -LiteralPath $seccompPath -PathType Leaf)) { throw "Missing 
 $adapterPath = Join-Path $PSScriptRoot 'symphony_codex_adapter.py'
 $probePath = Join-Path $PSScriptRoot 'symphony_model_probe.py'
 $publishPath = Join-Path $PSScriptRoot 'symphony_publish.py'
-$executionFiles = @('agent_check.py', 'frontend_control.py', 'harness.py', 'test_frontend_control.py')
+$taskPath = Join-Path $PSScriptRoot 'symphony_task.py'
+$executionFiles = @('agent_check.py', 'frontend_control.py', 'harness.py', 'check_java.py', 'test_frontend_control.py', 'test_symphony_task.py', 'test_symphony_publish.py', 'symphony_task.py', 'symphony_publish.py', 'symphony_entrypoint.py')
 foreach ($executionFile in $executionFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $executionFile) -PathType Leaf)) {
         throw "Missing execution script: $executionFile"
     }
 }
-foreach ($routingPath in @($adapterPath, $probePath, $publishPath)) {
+foreach ($routingPath in @($adapterPath, $probePath, $publishPath, $taskPath)) {
     if (-not (Test-Path -LiteralPath $routingPath -PathType Leaf)) { throw "Missing routing script: $routingPath" }
 }
 
@@ -89,11 +107,13 @@ $dockerArguments = @(
     '--cap-drop', 'ALL', '--security-opt', 'no-new-privileges',
     '--security-opt', "seccomp=$seccompPath",
     '--pids-limit', '512', '--memory', '4g', '--cpus', '2',
+    '--env', 'SYMPHONY_CONTROL_ROOT=/data/task-control',
     '-p', '127.0.0.1:43190:43190',
     '--mount', "type=bind,source=$workflowPath,target=/config/WORKFLOW.md,readonly",
     '--mount', "type=bind,source=$adapterPath,target=/opt/symphony-routing/symphony_codex_adapter.py,readonly",
     '--mount', "type=bind,source=$probePath,target=/opt/symphony-routing/symphony_model_probe.py,readonly",
     '--mount', "type=bind,source=$publishPath,target=/opt/symphony-routing/symphony_publish.py,readonly",
+    '--mount', "type=bind,source=$taskPath,target=/opt/symphony-routing/symphony_task.py,readonly",
     '--mount', "type=bind,source=$dataRoot,target=/data",
     '--mount', "type=bind,source=$dataRoot\codex,target=/home/node/.codex"
 )
@@ -101,6 +121,31 @@ $dockerArguments = @(
 foreach ($executionFile in $executionFiles) {
     $executionPath = Join-Path $PSScriptRoot $executionFile
     $dockerArguments += @('--mount', "type=bind,source=$executionPath,target=/opt/symphony-execution/$executionFile,readonly")
+}
+
+if ($Action -eq 'Start') {
+    $patchRoot = Join-Path $dataRoot 'blocking-fix'
+    $patchManifest = Get-Content -LiteralPath (Join-Path $patchRoot 'manifest.json') -Raw | ConvertFrom-Json
+    $generatorHash = (Get-FileHash -LiteralPath (Join-Path $PSScriptRoot 'prepare_symphony_blocking_fix.py') -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($patchManifest.generatorSha256 -ne $generatorHash) { throw 'Regenerate and verify the current controlled scheduler modules before Start.' }
+    $moduleRoot = '/opt/symphony-patches'
+    $dockerArguments += @('--mount', "type=bind,source=$patchRoot/manifest.json,target=$moduleRoot/manifest.json,readonly",
+        '--mount', "type=bind,source=$PSScriptRoot/symphony_entrypoint.py,target=/opt/symphony-entrypoint.py,readonly",
+        '--entrypoint', 'python3')
+    foreach ($moduleName in @('Elixir.SymphonyElixir.Orchestrator.beam', 'Elixir.SymphonyElixir.Codex.AppServer.beam')) {
+        $moduleFile = Join-Path $patchRoot "ebin/$moduleName"
+        $moduleHash = (Get-FileHash -LiteralPath $moduleFile -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($patchManifest.verifiedModules.$moduleName -ne $moduleHash) { throw "Unverified controlled module: $moduleName" }
+        $dockerArguments += @('--mount', "type=bind,source=$moduleFile,target=$moduleRoot/$moduleName,readonly")
+    }
+    if ($patchManifest.preservedModules) {
+        foreach ($property in $patchManifest.preservedModules.PSObject.Properties) {
+            if ($property.Name -notin @('Elixir.SymphonyElixirWeb.Layouts.beam', 'Elixir.SymphonyElixirWeb.DashboardLive.beam')) { throw 'Unexpected preserved UI module' }
+            $moduleFile = Join-Path $patchRoot ('ebin/' + $property.Name)
+            if ((Get-FileHash -LiteralPath $moduleFile -Algorithm SHA256).Hash.ToLowerInvariant() -ne $property.Value) { throw 'Preserved UI module changed' }
+            $dockerArguments += @('--mount', "type=bind,source=$moduleFile,target=$moduleRoot/$($property.Name),readonly")
+        }
+    }
 }
 
 if (-not $DeepSeekKeyFile) {
@@ -123,7 +168,9 @@ try {
         $ghTokenOutput = $null
         $dockerArguments += @('--env', 'GITHUB_TOKEN', '--mount', "type=bind,source=$authPath,target=/home/node/.codex/auth.json,readonly")
     }
-    $dockerArguments += @($imageName, '/config/WORKFLOW.md', '--logs-root', '/data/logs', '--i-understand-that-this-will-be-running-without-the-usual-guardrails')
+    $dockerArguments += @($imageName)
+    if ($Action -eq 'Start') { $dockerArguments += @('/opt/symphony-entrypoint.py') }
+    $dockerArguments += @('/config/WORKFLOW.md', '--logs-root', '/data/logs', '--i-understand-that-this-will-be-running-without-the-usual-guardrails')
     Invoke-Docker -Arguments $dockerArguments
 } finally {
     $env:GITHUB_TOKEN = $oldGitHubToken

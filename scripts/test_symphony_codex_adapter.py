@@ -26,7 +26,7 @@ def turn(labels=(), request_id=3, text=None, thread='thread-1'):
 
 
 class Client:
-    def __init__(self, mode='normal', timeout='2', deepseek=False):
+    def __init__(self, mode='normal', timeout='2', deepseek=False, controlled=False):
         self.directory = tempfile.TemporaryDirectory()
         self.log = Path(self.directory.name) / 'audit.jsonl'
         self.stderr = open(Path(self.directory.name) / 'stderr.log', 'wb')
@@ -34,16 +34,38 @@ class Client:
         env.pop('DEEPSEEK_API_KEY', None)
         if deepseek:
             env['DEEPSEEK_API_KEY'] = 'sk-synthetic-test-only'
+        self.workspace = Path(self.directory.name) / 'GH-9'
+        self.control = Path(self.directory.name) / 'control'
+        self.controlled = controlled
+        control_setup = ''
+        if controlled:
+            from symphony_task import save
+            self.workspace.mkdir()
+            for args in [('init', '-q'), ('config', 'user.email', 'test@example.invalid'), ('config', 'user.name', 'Test')]:
+                subprocess.run(['git', '-C', str(self.workspace), *args], check=True, capture_output=True)
+            (self.workspace / 'sample.txt').write_text('original')
+            subprocess.run(['git', '-C', str(self.workspace), 'add', '.'], check=True, capture_output=True)
+            subprocess.run(['git', '-C', str(self.workspace), 'commit', '-qm', 'base'], check=True, capture_output=True)
+            save(self.control / 'GH-9/plan.json', {'title': 'synthetic', 'profile': 'quick', 'allowedPaths': ['sample.txt'],
+                                                  'javaModules': [], 'hostSuites': ['smoke'], 'acceptance': 'synthetic'})
+            statuses = {'control-pass': ['passed'], 'control-repair': ['failed', 'passed'],
+                        'control-fail': ['failed', 'failed'], 'control-blocked': ['blocked']}[mode]
+            control_setup = (f'adapter.WORKSPACE_ROOT = Path({self.directory.name!r})\n'
+                             'import symphony_task\n'
+                             f'outcomes = iter({statuses!r})\n'
+                             'symphony_task.run_checks = lambda *args: {"status": next(outcomes), "reason": "synthetic"}\n')
         # Isolate tests from a production secret mounted at /run/secrets.
         runner = Path(self.directory.name) / 'adapter_runner.py'
         runner.write_text('import sys\nfrom pathlib import Path\n'
                           f'sys.path.insert(0, {str(Path(__file__).parent)!r})\n'
                           'import symphony_codex_adapter as adapter\n'
+                          + control_setup +
                           f'adapter.DEEPSEEK_KEY_FILE = Path({str(Path(self.directory.name) / "absent-key")!r})\n'
                           'sys.exit(adapter.main())\n', encoding='utf-8')
         self.process = subprocess.Popen([
             sys.executable, str(runner),
-            '--catalog-timeout', timeout, '--audit-log', str(self.log), '--',
+            '--catalog-timeout', timeout, '--audit-log', str(self.log),
+            *(['--control-root', str(self.control)] if controlled else []), '--',
             sys.executable, __file__, '--fake', mode],
             stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr, env=env)
         self.messages = queue.Queue()
@@ -69,7 +91,8 @@ class Client:
         self.send({'id': 1, 'method': 'initialize', 'params': {}})
         self.receive('id', 1)
         self.send({'method': 'initialized'})
-        self.send({'id': 2, 'method': 'thread/start', 'params': {'dynamicTools': [{'name': 'github_api'}]}})
+        self.send({'id': 2, 'method': 'thread/start', 'params': {'dynamicTools': [{'name': 'github_api'}],
+                   **({'cwd': str(self.workspace)} if self.controlled else {})}})
         self.receive('id', 2)
 
     def close(self):
@@ -132,6 +155,28 @@ class ProtocolTests(unittest.TestCase):
         self.addCleanup(client.close)
         client.initialize()
         return client
+
+    def test_controlled_repair_and_delivery_never_restart_model(self):
+        for mode, expected_calls in [('control-pass', 1), ('control-repair', 2),
+                                     ('control-fail', 2), ('control-blocked', 1)]:
+            with self.subTest(mode=mode):
+                client = self.client(mode=mode, controlled=True)
+                client.send(turn())
+                client.receive('id', 3)
+                while True:
+                    message = client.messages.get(timeout=10)
+                    if message.get('method') == 'turn/completed':
+                        break
+                    if message.get('method') == 'item/tool/call':
+                        # Delivery unavailable: model still must stop and retain artifacts.
+                        client.send({'id': message['id'], 'result': {'success': False,
+                            'contentItems': [{'type': 'inputText', 'text': json.dumps({'status': 403, 'body': {}})}]}})
+                client.process.wait(timeout=5)
+                self.assertEqual((client.workspace / 'sample.txt').read_text().count('changed'), expected_calls)
+                state = json.loads((client.control / 'GH-9/state.json').read_text())
+                self.assertEqual(state['status'], 'blocked')
+                self.assertEqual(len(state['checks']), expected_calls)
+                self.assertTrue(Path(state['evidence'], 'changes.patch').is_file())
 
     def test_deepseek_provider_tools_policies_and_continuation(self):
         client = self.client(deepseek=True)
@@ -319,6 +364,9 @@ def fake_server(mode):
                   'nextCursor': 'page2' if not second or mode == 'cycle' else None}})
         elif method == 'turn/start':
             params = msg['params']
+            if mode.startswith('control-'):
+                path = Path(start_params['cwd']) / 'sample.txt'
+                path.write_text(path.read_text() + 'changed')
             send({'id': request_id, 'result': {
                   **{k: params[k] for k in ['model', 'effort', 'sandboxPolicy', 'approvalPolicy']},
                   'actualThreadId': params['threadId'], 'starts': starts, 'startParams': start_params}})
