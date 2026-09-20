@@ -106,7 +106,7 @@
 
 ## 验证证据与验收清单
 
-实施验收 HEAD：`b2e11821cce03f20400fcb98e04f9e4b82713cd8`，源码指纹 `05d7182833ceb228e36bbdaed1496e9df30957b1b19ceaf899d166eca53f3cf8`（工作区含未提交修改）。PostgreSQL 17.6。隔离报告 [validation-ingestion.json](../../validation-ingestion.json)；Harness `.local/harness/20260918T041339Z-fdjg783q/report.json`。构建 Jar SHA256 `1a3711e085cf26e840f4af17829461658e7d5f3a14a185052d22fd33c1a543e4`。
+实施验收 HEAD：`b2e11821cce03f20400fcb98e04f9e4b82713cd8`，源码指纹 `05d7182833ceb228e36bbdaed1496e9df30957b1b19ceaf899d166eca53f3cf8`（工作区含未提交修改）。PostgreSQL 17.6。保留快照已非此 149 项批次的独立证据，见 [证据说明](../../evidence/README.md)；Harness `.local/harness/20260918T041339Z-fdjg783q/report.json`。构建 Jar SHA256 `1a3711e085cf26e840f4af17829461658e7d5f3a14a185052d22fd33c1a543e4`。
 
 保存前工作区已有以下未提交修改，均保留，不是本交接操作产生的业务改动：
 

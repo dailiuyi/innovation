@@ -117,13 +117,14 @@ V008 历史逻辑移除记录不会因 V009 迁移自动物理删除。后续仅
 
 ## 验收
 
-[真实验收报告](validation-ingestion.json)来自独立 PostgreSQL 17.6、Redis、Spring Boot、Vite 和 Edge 浏览器，使用新建的 `.local/ingestion-check-*` 数据目录和随机空闲回环端口。脚本自行启动并停止测试进程，保留本地日志及截图。要求项目已有 Java 21/PostgreSQL 17 运行时，并安装 psycopg、Playwright（本机可从 `.local/python` 加载）。
+使用 Harness 的 ingestion profile，在本次运行目录构建当前后端源码，再启动独立 PostgreSQL 17、Redis、Spring Boot、Vite 和 Edge；使用随机回环端口、隔离数据与存储目录，保留本地日志和截图。依赖由 doctor 检查，具体构建与清理边界见 [Harness](13-harness.md)。
 
 ```powershell
-python -X utf8 scripts/verify_ingestion.py
-python scripts/generate_contracts.py
-python scripts/verify_design.py
+python scripts/harness.py doctor --profile ingestion
+python scripts/harness.py check --profile ingestion
 ```
+
+每次结果以该次 `.local/harness/<运行标识>/report.json` 的范围、源码指纹和结构化证据为准。[保留证据索引](evidence/README.md)中的入库 JSON 是历史快照，不代表当前代码，也不同时代表历次验收。
 
 验收覆盖双文件关联、刷新持久化、正式存储重新读取、大小/摘要错误、重复及并发请求、真实连接中断、上传中强制结束服务、重启恢复、草稿整份删除确认/取消、空草稿拒绝发布、失败文件拒绝发布和下载、文件夹替换确认/取消、清单与 ZIP 下载及 Range、发布/替换指针、已发布文件冻结、当前发布禁止删除、说明仍可修改、发布确认取消、匿名和非管理员拒绝，以及操作审计归属。另有`LocalArtifactStorageTest`、`RelativePathTest` 和前后端构建。
 

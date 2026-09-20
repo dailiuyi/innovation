@@ -1,5 +1,13 @@
 # V0.1 验证记录
 
+本文按阶段保留历史结论；各段“当前”“未完成”只对应所记日期与源码。后续记录可能补充验收，但不追改当时结果。正式证据与保留快照的区别见 [证据索引](evidence/README.md)。本机 `.local` 路径仅是查证线索，不保证其他检出环境可访问。
+
+## 2026-09-20 文档状态与证据引用整理
+
+- 将旧候选文档标为历史状态，现行手册统一通过 Harness 执行日常检查；归档协作讨论并保留后续验收入口。新增 [证据索引](evidence/README.md)，记录保留 JSON 的 SHA256 和重复引用限制；没有改写报告内容，也没有恢复或补造旧批次证据。
+- Windows / Python 3.12.5：`python scripts/harness.py doctor --profile quick` 和 `python scripts/harness.py check --profile quick` 通过，首轮报告 `.local/harness/20260920T035236Z-pq3min13/report.json`，`sourceUnchanged=true`。该报告对应补写本段前的快照；最终文档复核报告另存 `.local/harness/`，以本次交付所列路径为准。
+- 范围为 Harness、审查工具、模型路由回归及契约/文档链接。Windows 路由测试明确跳过 1 项 Linux 进程组清理测试；未执行 frontend、ingestion、数据库或浏览器业务验收。未修改业务代码、脚本默认值或运行服务。
+
 ## 2026-09-20 需求专项优先与固定审查实例
 
 - 新增 `scripts/check_java.py` 和 `scripts/review.py`，流程见 [固定审查入口](16-fast-review.md)。先验证需求实际路径，再按风险追加 quick/frontend/ingestion；零测试或跳过不得作为 Java 交付通过。
@@ -69,7 +77,7 @@
 
 V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V013，未增加 V014、未改 Flyway 历史。迁移只保留已有合法相对路径，改写不安全或冲突路径；先删除唯一索引再写回，避免中间态 23505。
 
-- 独立 PostgreSQL 17.6 带旧数据升级 15 项通过，见 [报告](validation-export-path-migration.json)。覆盖嵌套目录保持、不同目录同名、CON.txt、冒号/问号清洗碰撞、已有 `report_2026-22222222.txt` 不被覆盖、file_name 与 storage_key 不变。
+- 独立 PostgreSQL 17.6 带旧数据升级 15 项通过，见 [保留快照说明，非该批次独立证据](evidence/README.md)。覆盖嵌套目录保持、不同目录同名、CON.txt、冒号/问号清洗碰撞、已有 `report_2026-22222222.txt` 不被覆盖、file_name 与 storage_key 不变。
 - 隔离 ingestion 164 项通过，含浏览器取消后重选同一目录。Harness `.local/harness/20260918T073111Z-wiqycldx/report.json`，源码指纹 `6a99f7c8dd5128ed67f0ca57759553a90ea5cbaeec2d5b4245aadf44ab0842cf`，`sourceUnchanged=true`。
 - `python scripts/harness.py doctor --profile quick` 与 `check --profile quick`、`check --profile ingestion` 通过。未操作日常 Demo、未重启日常服务。日常库没有被压平的目录需要恢复。
 
@@ -77,7 +85,7 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 
 修复五项：启动恢复使用集合创建人并标明 SYSTEM_RECONCILIATION；删除持有草稿写锁；取消后新批次使用新 requestKey；路径前缀冲突按大小写折叠；V013 改写不安全导出路径且不改 V012 历史。
 
-- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 164 项通过，见 [报告](validation-ingestion.json)。Harness `.local/harness/20260918T070751Z-mxe5zmb4/report.json`。源码指纹 `1c0a772ae672a8ff14ce875140411bb52779afcd290493f3691c72d6d9cbb7a1`，`sourceUnchanged=true`。
+- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 164 项通过，见 [保留快照说明，非该批次独立证据](evidence/README.md)。Harness `.local/harness/20260918T070751Z-mxe5zmb4/report.json`。源码指纹 `1c0a772ae672a8ff14ce875140411bb52779afcd290493f3691c72d6d9cbb7a1`，`sourceUnchanged=true`。
 - 新增覆盖：启动时完成未切换替换、系统恢复审计、下载/打包期间删除 409、取消批次键不能重开、大小写前缀冲突、`ar_safe_export_path`、浏览器取消后重选同一目录。
 - `python scripts/harness.py doctor --profile quick`、`check --profile quick`、`check --profile frontend`、`check --profile ingestion` 通过。未操作日常 Demo、未重启日常服务。
 
@@ -85,7 +93,7 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 
 管理员草稿支持选择文件夹替换全部文件，以及 ZIP 整包和完整清单逐文件下载。V012 增加文件集合、相对路径和 ZIP 缓存。发布与所有下载共用完整性门槛：集合非空、无未完成替换/上传/删除、全部 AVAILABLE 且存储校验通过。
 
-- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 149 项通过，见 [报告](validation-ingestion.json)。Harness 报告 `.local/harness/20260918T041339Z-fdjg783q/report.json`。HEAD `b2e11821cce03f20400fcb98e04f9e4b82713cd8`，源码指纹 `05d7182833ceb228e36bbdaed1496e9df30957b1b19ceaf899d166eca53f3cf8`（工作区有未提交修改），构建 Jar SHA256 `1a3711e085cf26e840f4af17829461658e7d5f3a14a185052d22fd33c1a543e4`。
+- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 149 项通过，见 [保留快照说明，非该批次独立证据](evidence/README.md)。Harness 报告 `.local/harness/20260918T041339Z-fdjg783q/report.json`。HEAD `b2e11821cce03f20400fcb98e04f9e4b82713cd8`，源码指纹 `05d7182833ceb228e36bbdaed1496e9df30957b1b19ceaf899d166eca53f3cf8`（工作区有未提交修改），构建 Jar SHA256 `1a3711e085cf26e840f4af17829461658e7d5f3a14a185052d22fd33c1a543e4`。
 - 覆盖：失败文件拒绝发布和下载、路径穿越拒绝、文件夹替换开始/续传/清单变化 409、替换期间禁止发布下载追加、取消后恢复旧集合、切换后旧文件删除、清单还原目录、单文件与 ZIP 的 206/416/HEAD、ZIP 复用、匿名拒绝、浏览器文件夹上传与 ZIP 下载。
 - `python scripts/harness.py doctor --profile quick` 与 `check --profile quick`、`check --profile frontend`、`check --profile ingestion` 均通过。契约 57 个操作、358 项设计检查。`RelativePathTest` 3 项、存储测试 13 项。
 - 未执行：日常 Demo 迁移/重启、Docker 网关、磁盘写满、物理断电、客户端加载认证。空目录不保留。集合默认 200 个文件 / 500 MiB、ZIP 缓存 24 小时 / 2 GiB 为配置默认值。
@@ -101,13 +109,13 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 针对发布审查三项：刷新后重取当前草稿以同步 `published`；发布成功后通知场景列表刷新修订号；未发布时列表省略 `published` 字段（不再输出 `null`）。删除文件后的浏览器步骤改为点「刷新」并先等抽屉标题，避免整页重载时 Vite 代理 `/getInfo` 连不上后端导致登出、发布流程未执行。
 
 - `node scripts/verify_draft_panel.mjs` 增加刷新后选中草稿发布状态同步。
-- 隔离入库 115 项通过，见 [报告](validation-ingestion.json)：未发布列表无 `published` 字段、发布递增场景修订号、父表修订号更新、删除后刷新仍隐藏已删文件、发布/替换按钮流程跑完。
+- 隔离入库 115 项通过，见 [保留快照说明，非该批次独立证据](evidence/README.md)：未发布列表无 `published` 字段、发布递增场景修订号、父表修订号更新、删除后刷新仍隐藏已删文件、发布/替换按钮流程跑完。
 
 ## 2026-09-17 场景发布指针
 
 同一场景一份当前发布版本：发布后文件冻结、说明可改；替换后原版本回到草稿；当前发布禁止删除。V011 增加 `ar_scene` 发布指针。入口仍是场景编辑 → 版本与文件。
 
-- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 113 项通过，见 [报告](validation-ingestion.json)。覆盖空草稿拒绝发布、过期场景版本 409、重复发布幂等、已发布文件冻结、当前发布不能删、说明可改、替换后解冻可删、发布审计、浏览器首次发布/替换确认与取消。
+- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 113 项通过，见 [保留快照说明，非该批次独立证据](evidence/README.md)。覆盖空草稿拒绝发布、过期场景版本 409、重复发布幂等、已发布文件冻结、当前发布不能删、说明可改、替换后解冻可删、发布审计、浏览器首次发布/替换确认与取消。
 - 契约检查 313 项、48 个操作；草稿面板乱序回归与 Vue 生产构建通过。Maven package 含 12 项存储测试。
 - 本机 Demo 已执行 V011 并重启后端；未重建 Docker 网关。客户端加载、预览、单独下线仍未实现。
 
@@ -132,7 +140,7 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 
 ## 2026-09-17 草稿整份删除验收
 
-草稿列表增加删除入口，确认后永久删除草稿行及其全部实际文件。V010 去掉文件删除回执对草稿行的外键。隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 88 项通过，见 [报告](validation-ingestion.json)。覆盖空草稿、含文件草稿、取消确认、上传中拒绝、匿名/非管理员拒绝、重复删除 204，以及文件物理消失。Maven package 与契约检查通过。未重建 Docker 网关。
+草稿列表增加删除入口，确认后永久删除草稿行及其全部实际文件。V010 去掉文件删除回执对草稿行的外键。隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 88 项通过，见 [保留快照说明，非该批次独立证据](evidence/README.md)。覆盖空草稿、含文件草稿、取消确认、上传中拒绝、匿名/非管理员拒绝、重复删除 204，以及文件物理消失。Maven package 与契约检查通过。未重建 Docker 网关。
 
 ## 2026-09-17 草稿文件物理删除验收（后续需求）
 
@@ -140,7 +148,7 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 
 按用户后续要求，将上一节所述逻辑移除改为物理删除：删除 UUID 对应的临时/正式文件和 `ar_draft_file` 行，保留审计及 `ar_file_deletion` 幂等回执。原先“不做正式文件物理删除”的边界在草稿文件范围内被本次要求替代。
 
-- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 73 项通过，见 [报告](validation-ingestion.json)。新增验证实际文件/数据库行均消失、存储删除失败返回503并可重试、旧登记键无法恢复、删除前/磁盘删除后两种持久状态下的启动恢复、历史逻辑移除不自动清理、明确指定旧记录时可以物理删除，以及浏览器确认/取消与重新上传。
+- 隔离 PostgreSQL 17.6、HTTP 与 Edge 验收 73 项通过，见 [保留快照说明，非该批次独立证据](evidence/README.md)。新增验证实际文件/数据库行均消失、存储删除失败返回503并可重试、旧登记键无法恢复、删除前/磁盘删除后两种持久状态下的启动恢复、历史逻辑移除不自动清理、明确指定旧记录时可以物理删除，以及浏览器确认/取消与重新上传。
 - 存储单元测试 12 项通过，其中新增仅删除指定 UUID 的 `.part`/`.ready`/`.bin`、其他文件保留、非普通文件路径及并发锁拒绝删除、重复删除安全。Maven package 通过。
 - OpenAPI 生成与检查通过：276 项检查、46 个接口操作。
 
@@ -148,11 +156,11 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 
 ## 2026-09-17 草稿文件移除验收
 
-新增 V008 逻辑移除迁移、管理员 DELETE 接口、文件行“移除”按钮和确认框。正式文件与历史元数据保留，不执行物理删除。隔离 PostgreSQL 17.6、HTTP 和 Edge 浏览器入库验收共 65 项通过，包含取消/确认、刷新后保持移除、重新添加、上传中拒绝移除、旧幂等键不能恢复、重启不会恢复、匿名/非管理员拒绝与审计只记一次；详见 [当前验收报告](validation-ingestion.json)。Maven package 和 Docker 前端构建通过；契约检查 275 项、46 个操作通过。
+新增 V008 逻辑移除迁移、管理员 DELETE 接口、文件行“移除”按钮和确认框。正式文件与历史元数据保留，不执行物理删除。隔离 PostgreSQL 17.6、HTTP 和 Edge 浏览器入库验收共 65 项通过，包含取消/确认、刷新后保持移除、重新添加、上传中拒绝移除、旧幂等键不能恢复、重启不会恢复、匿名/非管理员拒绝与审计只记一次；详见 [保留快照说明，非该批次独立证据](evidence/README.md)。Maven package 和 Docker 前端构建通过；契约检查 275 项、46 个操作通过。
 
 ## 2026-09-17 资源入库闭环验收
 
-本轮新增场景下的版本草稿、多个文件登记与上传、大小/SHA256 校验、失败重试、重启对账和后台文件明细。实现边界见 [资源入库说明](12-resource-ingestion.md)，完整证据见 [入库验收报告](validation-ingestion.json)。
+本轮新增场景下的版本草稿、多个文件登记与上传、大小/SHA256 校验、失败重试、重启对账和后台文件明细。实现边界见 [资源入库说明](12-resource-ingestion.md)，完整证据见 [保留快照说明，非该批次独立证据](evidence/README.md)。
 
 - `scripts/verify_ingestion.py`：47 项通过。使用新建私有目录和随机回环端口的 PostgreSQL 17.6、Redis、Spring Boot、Vite、Edge，不修改现有 Demo。覆盖双文件与刷新持久化、正式文件读取校验、大小/摘要错误、请求幂等与并发、真实网络中断、上传中强制终止后重启、`.ready`/已正式落盘但数据库未确认的恢复、匿名/非管理员鉴权及操作审计。浏览器另验证跨 2 MiB 分块的 SHA256、失败原因和重试入口。
 - Maven 完整 `package` 成功，`LocalArtifactStorageTest` 10 项通过；Vue 生产构建通过。
@@ -198,7 +206,7 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 - [场景及数据库报告](validation-demo.json)：18 项通过，包括并发更新冲突、审计操作人、审计失败的业务回滚、审计追加约束和数据校验。
 - [浏览器报告](validation-browser.json)：登录、新建、编辑、停用、查看审计与退出全部通过，未捕获页面脚本错误。截图保存在本机 `.local/scenes-browser.png`。
 - [初始化报告](validation-initialization.json)：独立空库初始化后再次启动，迁移、账号、菜单、角色及场景数量一致，没有重复灌入。
-- [契约报告](validation-contracts.json)：检查通过，37 个操作按已实现/候选区分，管理接口使用 Bearer；生成源、OpenAPI、Schema 与示例一致。准确检查数量以报告为准。
+- 当时记载契约检查通过，37 个操作按已实现/候选区分，管理接口使用 Bearer；生成源、OpenAPI、Schema 与示例一致。该批次独立报告本次未恢复，不能从 [保留快照](evidence/README.md) 推定其检查数量。
 - Java 21 Maven 打包和前端生产构建通过。没有把 Maven 无测试类的构建结果当成业务测试，业务依据上述 HTTP/真实数据库/浏览器检查。
 
 一万条合成场景数据下，单次 `EXPLAIN ANALYZE` 执行时间：列表 0.018 ms、名称筛选 0.458 ms、主键详情 0.007 ms。完整计划见数据库报告。测试数据事务回滚；这是本机查询采样，不是并发压测或端到端响应时间，不用于承诺生产吞吐。
@@ -213,7 +221,7 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 
 这些检查在独立临时 PostgreSQL 18.4 实例上执行，实例已停止。设计目标为 PostgreSQL 17，仍需在目标版本上复验。
 
-[契约检查报告](validation-contracts.json)记录 OpenAPI、运行清单 Schema 与示例、生成源一致性、Session 和 CSRF 声明、数据表及本地链接的检查结果。接口共包含 23 个操作，具体检查数量以报告为准。
+当时记载契约检查覆盖 OpenAPI、运行清单 Schema 与示例、生成源一致性、Session 和 CSRF 声明、数据表及本地链接，共 23 个操作。该批次独立报告本次未恢复，不能从 [保留快照](evidence/README.md) 推定其检查数量。
 
 检查结果验证当前候选结构的一致性，不表示成品格式或文件管理粒度已经确认。
 
@@ -223,9 +231,9 @@ V013 未应用于日常 Demo（仍为 V012），因此直接改写未应用的 V
 
 本次文档重写不改变 SQL 行为，沿用现有数据库验证记录；接口元数据与文档链接通过设计检查重新验证。
 
-## 复现命令
+## 历史复现命令（非日常验证入口）
 
-在仓库根目录执行：
+以下保留历史命令，仅用于独立检出的候选设计复现。旧脚本会覆盖该检出目录的 docs 报告；日常检查使用 [Harness](13-harness.md)，不要在主工作区直接执行本段命令：
 
 ```powershell
 python -m pip install -r scripts/requirements-review.txt

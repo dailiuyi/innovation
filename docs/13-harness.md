@@ -9,7 +9,7 @@ Harness 把仓库约束、验证脚本与交接记录组织成统一工作流。
 在仓库根目录运行（入口也支持从其他目录调用）：
 
 ```powershell
-python scripts/harness.py doctor
+python scripts/harness.py doctor --profile quick
 python scripts/harness.py check --profile quick
 python scripts/harness.py doctor --profile frontend
 python scripts/harness.py check --profile frontend
@@ -19,7 +19,7 @@ python scripts/harness.py check --profile ingestion
 
 | Profile | 检查范围 | 前置条件 |
 |---|---|---|
-| quick（默认） | Harness 故障回归、Symphony 模型路由协议回归、OpenAPI/Schema/示例、生成源一致性、AGENTS/README/docs 递归本地链接 | Python 3.11+、Git、requirements-review 中的契约验证依赖 |
+| quick（默认） | Harness 故障回归、审查工具回归、Symphony 模型路由协议回归、OpenAPI/Schema/示例、生成源一致性、AGENTS/README/docs 递归本地链接 | Python 3.11+、Git、requirements-review 中的契约验证依赖 |
 | frontend | quick + 草稿面板乱序响应回归 + Vue 生产构建 | Node、npm、已通过 npm ci 安装的前端依赖 |
 | ingestion | quick + 草稿面板回归 + 当前后端源码独立 Maven package（含测试）+ 原有隔离入库 API/Edge 验收 | Windows、项目 .local 中 PostgreSQL 17/JDK 21、Maven、Redis、Node、前端依赖、psycopg、Playwright、Edge |
 
@@ -48,4 +48,4 @@ python scripts/harness.py check --profile ingestion
 
 入库 profile 不运行历史候选七表数据库验收；候选结构校验不属于已实现业务的数据库证明。Docker Nginx 路由、LAN、真实客户端加载仍需独立验收。
 
-将真实验收摘要加入 [验证记录](06-validation.md)；需要提交专项 JSON 时只提升人工核对后的证据，避免把本机绝对路径或敏感日志一起提交。扩展入口时先明确测试环境、副作用和完成证据，再加入 profile。以后是否接 CI 或 Agent 调度，见 [基础决策](decisions/0001-harness-baseline.md)。
+正式证据的保存和引用遵循 [证据索引](evidence/README.md)。将真实验收摘要加入 [验证记录](06-validation.md)；需要提交专项 JSON 时只提升人工核对后的证据，避免把本机绝对路径或敏感日志一起提交。扩展入口时先明确测试环境、副作用和完成证据，再加入 profile。以后是否接 CI 或 Agent 调度，见 [基础决策](decisions/0001-harness-baseline.md)。

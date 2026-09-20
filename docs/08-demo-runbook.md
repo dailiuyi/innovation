@@ -60,20 +60,19 @@ python scripts/local_demo.py backend
 
 ## 构建与验收
 
+日常验证按 [专项优先流程](16-fast-review.md) 和 [Harness](13-harness.md) 选择范围：
+
 ```powershell
-python -m pip install --target .local/python -r scripts/requirements-review.txt
-python -m pip install --target .local/python playwright==1.63.0
-$env:PYTHONPATH = "$PWD/.local/python"
-python scripts/generate_contracts.py
-python scripts/verify_design.py
-python scripts/verify_framework.py
-python scripts/verify_demo.py
-python scripts/verify_initialization.py
-python scripts/verify_browser.py
-npm --prefix frontend run build:prod
+python scripts/harness.py doctor --profile quick
+python scripts/harness.py check --profile quick
+# 前端行为修改时追加：
+python scripts/harness.py doctor --profile frontend
+python scripts/harness.py check --profile frontend
 ```
 
-测试脚本只针对上述本机端口，使用合成账号和数据，会创建场景、修改测试账号密码。禁止将这些脚本改指生产环境。`verify_initialization.py` 创建独立空数据库并保留用于复核；性能测试的一万条数据在事务中回滚。浏览器测试使用已安装的 Microsoft Edge，截图仅保存在 `.local`。
+入库、存储、发布及恢复变更追加 ingestion；账号变更使用专项账号验收。依赖缺失按 doctor 提示准备，修改契约时才运行生成器。报告保存在 `.local/harness/`，不得以旧 Jar 或历史报告代替当前源码验收。
+
+旧 `verify_framework.py`、`verify_demo.py`、`verify_initialization.py` 和 `verify_browser.py` 是历史专项入口，部分会连接固定本机端口、创建场景或修改合成账号，并写入 docs 报告。不要把它们作为日常一键检查；确需复现时先核对连接目标、输出和清理方式，在隔离环境执行。旧初始化脚本会保留独立空库供复核；浏览器脚本使用 Microsoft Edge。
 
 `scripts/adapt_ruoyi.py` 是首次移植的历史辅助脚本，已有应用上会拒绝重跑。日常开发直接修改工程，通过新增 Flyway 迁移演进。
 

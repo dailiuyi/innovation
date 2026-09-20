@@ -48,16 +48,18 @@ Do not `up --build gateway` in a way that recreates `backend`.
 
 ## Build, Test, and Development Commands
 
-Run from the repository root in a Python environment:
+Run the shortest requirement-specific check first; see [专项验收](16-fast-review.md). For documentation, repository rules and contracts, run from the repository root:
 
 ```powershell
-python -m pip install -r scripts/requirements-review.txt
-python scripts/generate_contracts.py
-python scripts/verify_design.py
-python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
+python scripts/harness.py doctor --profile quick
+python scripts/harness.py check --profile quick
 ```
 
-Edit `scripts/generate_contracts.py`, then regenerate contracts. Design validation checks schemas, examples, authentication declarations, and links. Database validation starts and stops its own temporary Windows PostgreSQL instance. Adjust the binary path and record the tested version; PostgreSQL 18.4 results do not establish PostgreSQL 17 compatibility.
+Use [Harness profiles](13-harness.md) to add frontend or ingestion checks by risk. Reports stay under `.local/harness/`; quick does not establish HTTP or browser acceptance. Prepare missing dependencies according to doctor, then rerun it.
+
+Only when changing contracts, edit `scripts/generate_contracts.py`, run `python scripts/generate_contracts.py`, then run quick. Validation must not regenerate contracts to hide drift.
+
+`verify_design.py` and `verify_ingestion.py` retain legacy defaults that overwrite reports in docs; use harness for routine checks. `verify_database.py` checks the historical seven-table candidate and writes `docs/validation-database.json`; it is not the current application database acceptance entrypoint. Historical reproduction belongs in a separate checkout. Record the tested PostgreSQL version; PostgreSQL 18 results do not establish PostgreSQL 17 compatibility.
 
 ## Coding Style & Naming Conventions
 
@@ -67,11 +69,11 @@ The V0.1 scripts initialize an empty database. Use descriptive Flyway names such
 
 ## Testing Guidelines
 
-Use JSON Schema/OpenAPI validators and psycopg with real PostgreSQL. Add descriptive checks for changed invariants: immutable versions, verified assets, day/night separation, publication conflicts, rollback, and audit history. No percentage coverage threshold exists. Record results and limitations in `docs/06-validation.md`; SQL tests do not verify HTTP, cloud storage, or client behavior.
+Use JSON Schema/OpenAPI validators and psycopg with real PostgreSQL. For current business changes, check affected invariants such as verified files, published-file freezing, publication pointer replacement, physical deletion/recovery and audit consistency. Day/night variants and historical version rollback remain candidate checks, not current acceptance requirements. No percentage coverage threshold exists. Record results and limitations in `docs/06-validation.md`; SQL tests do not verify HTTP, cloud storage, or client behavior.
 
 ## Commit & Pull Request Guidelines
 
-Git history was unavailable. Use imperative subjects, optionally prefixed `docs:`, `db:`, or `contracts:`. PRs should explain changed behavior, the reason for the change, validation commands, database version, and remaining assumptions.
+Use imperative subjects, optionally prefixed `docs:`, `db:`, or `contracts:`. PRs should explain changed behavior, the reason for the change, validation commands, database version, and remaining assumptions.
 
 ## Security & Configuration
 

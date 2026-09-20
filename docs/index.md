@@ -10,7 +10,7 @@
 | 应该跑什么检查 | [Harness 使用说明](13-harness.md) | profile 通过只覆盖声明的范围 |
 | 如何审查改动 | [Code Review 默认规则](14-code-review.md) | 短提示指定范围与重点，默认独立审查、不修改 |
 | 如何快速验收并提供预览 | [专项检查与审查实例](16-fast-review.md) | 先需求专项，固定提交目录，独立审查后交付回环实例 |
-| 以前验证过什么 | [验证记录](06-validation.md) | 历史报告不证明当前未提交修改 |
+| 以前验证过什么 | [验证记录](06-validation.md)、[证据索引](evidence/README.md) | 历史报告不证明当前未提交修改 |
 | API 与数据库在哪里 | [OpenAPI](../contracts/openapi.yaml)、[数据库说明](../database/README.md) | API 按 implemented/candidate 区分；实际迁移在 backend 的 db/demo |
 | 为什么作出某项决定 | [决策记录](decisions/README.md) | 记录原因、约束和重新考虑的条件 |
 | 如何跨会话交接 | [任务管理](tasks/README.md) | 任务记录进度，完成后归档 |
