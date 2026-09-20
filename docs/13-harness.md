@@ -44,7 +44,7 @@ python scripts/harness.py check --profile ingestion
 
 ## 怎么选检查
 
-文档、契约、规则修改先跑 quick。纯文案/按钮还需按开发工作流检查引用该控件的选择器；frontend profile 不代替人工视觉检查。前端行为改动跑 frontend；涉及入库、文件删除、恢复、审计或对应鉴权时跑 ingestion。账号等其他业务仍需对应专项验收，当前 harness 不宣称覆盖所有业务。
+文档、契约、规则修改先跑 quick。纯文案/按钮还需按开发工作流检查引用该控件的选择器；frontend profile 不代替人工视觉检查，视口与列宽类布局可用 `scripts/verify_scene_list_ui.py`（Vite 加真实浏览器、Playwright 返回合成响应，不连后端）先做专项自查。前端行为改动跑 frontend；涉及入库、文件删除、恢复、审计或对应鉴权时跑 ingestion。账号等其他业务仍需对应专项验收，当前 harness 不宣称覆盖所有业务。
 
 入库 profile 不运行历史候选七表数据库验收；候选结构校验不属于已实现业务的数据库证明。Docker Nginx 路由、LAN、真实客户端加载仍需独立验收。
 

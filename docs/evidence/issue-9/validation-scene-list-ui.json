@@ -1,0 +1,258 @@
+[
+  {
+    "name": "场景列表直接提供场景信息入口",
+    "passed": true
+  },
+  {
+    "name": "场景列表直接提供版本与文件入口",
+    "passed": true
+  },
+  {
+    "name": "1280px 操作列直接展示四个按钮",
+    "passed": true
+  },
+  {
+    "name": "1280px 操作列按钮组为场景信息/版本与文件/启用或停用/删除",
+    "passed": true
+  },
+  {
+    "name": "1280px 按钮文字未被截断",
+    "passed": true
+  },
+  {
+    "name": "1280px 按钮不换行",
+    "passed": true
+  },
+  {
+    "name": "1280px 按钮不重叠且间距保持",
+    "passed": true
+  },
+  {
+    "name": "1280px 状态列紧凑",
+    "passed": true
+  },
+  {
+    "name": "1280px 修订号列紧凑",
+    "passed": true
+  },
+  {
+    "name": "1280px 地址列宽于名称列",
+    "passed": true
+  },
+  {
+    "name": "1280px 操作列预留宽度容纳按钮组",
+    "passed": true
+  },
+  {
+    "name": "1280px 无需横向滚动",
+    "passed": true
+  },
+  {
+    "name": "1280px 操作列未被表格右边界截断",
+    "passed": true
+  },
+  {
+    "name": "1440px 操作列直接展示四个按钮",
+    "passed": true
+  },
+  {
+    "name": "1440px 操作列按钮组为场景信息/版本与文件/启用或停用/删除",
+    "passed": true
+  },
+  {
+    "name": "1440px 按钮文字未被截断",
+    "passed": true
+  },
+  {
+    "name": "1440px 按钮不换行",
+    "passed": true
+  },
+  {
+    "name": "1440px 按钮不重叠且间距保持",
+    "passed": true
+  },
+  {
+    "name": "1440px 状态列紧凑",
+    "passed": true
+  },
+  {
+    "name": "1440px 修订号列紧凑",
+    "passed": true
+  },
+  {
+    "name": "1440px 地址列宽于名称列",
+    "passed": true
+  },
+  {
+    "name": "1440px 操作列预留宽度容纳按钮组",
+    "passed": true
+  },
+  {
+    "name": "1440px 无需横向滚动",
+    "passed": true
+  },
+  {
+    "name": "1440px 操作列未被表格右边界截断",
+    "passed": true
+  },
+  {
+    "name": "1920px 操作列直接展示四个按钮",
+    "passed": true
+  },
+  {
+    "name": "1920px 操作列按钮组为场景信息/版本与文件/启用或停用/删除",
+    "passed": true
+  },
+  {
+    "name": "1920px 按钮文字未被截断",
+    "passed": true
+  },
+  {
+    "name": "1920px 按钮不换行",
+    "passed": true
+  },
+  {
+    "name": "1920px 按钮不重叠且间距保持",
+    "passed": true
+  },
+  {
+    "name": "1920px 状态列紧凑",
+    "passed": true
+  },
+  {
+    "name": "1920px 修订号列紧凑",
+    "passed": true
+  },
+  {
+    "name": "1920px 地址列宽于名称列",
+    "passed": true
+  },
+  {
+    "name": "1920px 操作列预留宽度容纳按钮组",
+    "passed": true
+  },
+  {
+    "name": "1920px 无需横向滚动",
+    "passed": true
+  },
+  {
+    "name": "1920px 操作列未被表格右边界截断",
+    "passed": true
+  },
+  {
+    "name": "地址列随窗口变宽获得剩余空间",
+    "passed": true
+  },
+  {
+    "name": "超长名称使用省略显示",
+    "passed": true
+  },
+  {
+    "name": "超长地址使用省略显示",
+    "passed": true
+  },
+  {
+    "name": "悬停可查看完整名称",
+    "passed": true
+  },
+  {
+    "name": "表格高度未被超长内容撑破",
+    "passed": true
+  },
+  {
+    "name": "1024px 窄窗口允许表格横向滚动",
+    "passed": true
+  },
+  {
+    "name": "1024px 未滚动时操作按钮仍在表格可见区内",
+    "passed": true
+  },
+  {
+    "name": "表格可滚动到最右侧",
+    "passed": true
+  },
+  {
+    "name": "1024px 横向滚动后操作列固定在右侧",
+    "passed": true
+  },
+  {
+    "name": "1024px 横向滚动后按钮仍完整可见",
+    "passed": true
+  },
+  {
+    "name": "首页入口说明指向版本与文件入口",
+    "passed": true
+  },
+  {
+    "name": "场景信息弹窗只保留关闭与保存",
+    "passed": true
+  },
+  {
+    "name": "场景信息弹窗不再包含版本与文件按钮",
+    "passed": true
+  },
+  {
+    "name": "场景信息弹窗展示名称与地址字段",
+    "passed": true
+  },
+  {
+    "name": "版本与文件入口直接打开该场景资源面板",
+    "passed": true
+  },
+  {
+    "name": "资源面板显示所属场景名称",
+    "passed": true
+  },
+  {
+    "name": "资源面板按点击行加载场景",
+    "passed": true
+  },
+  {
+    "name": "打开资源面板未经过场景信息弹窗",
+    "passed": true
+  },
+  {
+    "name": "发布后返回列表刷新修订号",
+    "passed": true
+  },
+  {
+    "name": "发布后资源面板显示新的发布版本",
+    "passed": true
+  },
+  {
+    "name": "关闭资源面板回到场景列表",
+    "passed": true
+  },
+  {
+    "name": "第二个场景的资源面板对应正确",
+    "passed": true
+  },
+  {
+    "name": "关闭第二个场景资源面板回到列表",
+    "passed": true
+  },
+  {
+    "name": "填写原因后停用生效并刷新状态",
+    "passed": true
+  },
+  {
+    "name": "填写原因后启用生效并刷新状态",
+    "passed": true
+  },
+  {
+    "name": "删除确认仍显示场景名称",
+    "passed": true
+  },
+  {
+    "name": "取消删除后场景仍在列表",
+    "passed": true
+  },
+  {
+    "name": "浏览器无页面错误",
+    "passed": true
+  },
+  {
+    "name": "未出现未拦截的接口调用",
+    "passed": true
+  }
+]

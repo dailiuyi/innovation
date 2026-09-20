@@ -27,7 +27,9 @@ with sync_playwright() as p:
     dialog.get_by_role('button',name='保存',exact=True).click()
     dialog.wait_for(state='hidden')
     row=page.get_by_role('row').filter(has_text=name)
-    row.get_by_role('button',name='编辑',exact=True).click()
+    row.get_by_role('button',name='场景信息',exact=True).click()
+    assert dialog.get_by_role('button',name='版本与文件',exact=True).count()==0
+    assert [item.inner_text().strip() for item in dialog.locator('.el-dialog__footer').get_by_role('button').all()]==['关闭','保存']
     dialog.locator('input').nth(1).fill('浏览器修改后的地点')
     dialog.get_by_role('button',name='保存',exact=True).click()
     dialog.wait_for(state='hidden')
@@ -49,5 +51,5 @@ with sync_playwright() as p:
     page.wait_for_url('**/login**')
     assert not errors, errors
     browser.close()
-(ROOT/'docs/validation-browser.json').write_text(json.dumps({'browser':'Microsoft Edge headless','viewport':'1440x1000','passed':True,'checks':['login','create scene','edit scene','disable scene','read audit detail','logout'],'pageErrors':errors},ensure_ascii=False,indent=2),encoding='utf-8')
+(ROOT/'docs/validation-browser.json').write_text(json.dumps({'browser':'Microsoft Edge headless','viewport':'1440x1000','passed':True,'checks':['login','create scene','scene info dialog','disable scene','read audit detail','logout'],'pageErrors':errors},ensure_ascii=False,indent=2),encoding='utf-8')
 print('PASS browser workflow')

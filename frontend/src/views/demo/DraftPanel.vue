@@ -1,5 +1,6 @@
 <template>
-  <el-drawer :model-value="!!sceneId" title="内容版本草稿" size="90%" :close-on-click-modal="false" :before-close="close">
+  <el-drawer :model-value="!!sceneId" :title="sceneName?'内容版本草稿 · '+sceneName:'内容版本草稿'" size="90%" :close-on-click-modal="false" :before-close="close">
+    <p>所属场景：{{sceneName||sceneId||''}}<span v-if="sceneName">（编号 {{sceneId}}）</span></p>
     <p>文件仅供管理员入库管理。已发布版本文件冻结，仅可修改说明；未发布草稿不能供客户端加载。AAR 请登记为客户端集成库。选择文件夹会在确认后替换当前草稿的全部文件。</p>
     <el-alert v-if="error" :title="error" type="error" :closable="false" />
     <section class="published-card" :class="{empty:!published}">
@@ -109,7 +110,7 @@ const route=useRoute(),router=useRouter()
 const drafts=ref([]),draftTotal=ref(0),draftPage=ref(1),description=ref(''),selected=ref(null),editDescription=ref('')
 const files=ref([]),fileTotal=ref(0),filePage=ref(1),maxBytes=ref(0),collectionMaxFiles=ref(200),collectionMaxBytes=ref(0),kind=ref('RESOURCE_FILE'),picker=ref(null),folderPicker=ref(null)
 const busy=ref(false),creating=ref(false),saving=ref(false),loadingFiles=ref(false),error=ref(''),progress=ref(0),progressText=ref('')
-const removing=ref(false),publishing=ref(false),published=ref(null),sceneLockVersion=ref(0)
+const removing=ref(false),publishing=ref(false),published=ref(null),sceneLockVersion=ref(0),sceneName=ref('')
 const replacement=ref(null),zipPreparing=ref(false),manifestVisible=ref(false),manifest=ref(null)
 const replacing=ref(false)
 const states={PENDING:'待上传',UPLOADING:'处理中',AVAILABLE:'已校验入库',FAILED:'失败',DELETING:'正在删除',DELETE_FAILED:'删除失败'}
@@ -368,13 +369,22 @@ async function downloadZip(){
   finally{zipPreparing.value=false}
 }
 function close(done){if(busy.value || removing.value){ElMessage.warning('请等待上传结束或先取消上传');return}emit('close');done?.()}
+async function loadSceneName(id,sequence){
+  try{
+    const scene=await request.get(`/api/v1/scenes/${id}`)
+    if(sequence!==sceneRequest)return
+    sceneName.value=scene?.name||''
+  }catch{if(sequence===sceneRequest)sceneName.value=''}
+}
 watch(()=>props.sceneId,async id=>{
   const sceneSequence=++sceneRequest,selectionSequence=++selectionRequest
   ++fileRequest;++draftRequest
   selected.value=null;files.value=[];drafts.value=[];fileTotal.value=0;draftTotal.value=0
   published.value=null;sceneLockVersion.value=0;loadingFiles.value=false;error.value='';draftPage.value=1
   replacing.value=false;replacement.value=null;manifestVisible.value=false;manifest.value=null;progressText.value=''
+  sceneName.value=''
   if(!id)return
+  loadSceneName(id,sceneSequence)
   const restoredId=route.query.draftScene===id ? route.query.draftId : null
   try{
     const cfg=await request.get('/api/v1/drafts/config')
