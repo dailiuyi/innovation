@@ -1,4 +1,4 @@
-<template><div class="app-container"><h2>个人设置</h2><p>修改密码后需要重新登录。</p><el-form style="max-width:480px" label-width="100px"><el-form-item label="当前密码"><el-input type="password" v-model="oldPassword" autocomplete="current-password"/></el-form-item><el-form-item label="新密码"><el-input type="password" v-model="newPassword" autocomplete="new-password" show-password placeholder="12–64 个字符"/></el-form-item><el-button type="primary" :loading="saving" @click="save">修改密码</el-button></el-form></div></template>
+<template><div class="app-container"><h2>个人设置</h2><p>修改密码后需要重新登录。</p><el-form style="max-width:480px" label-width="100px"><el-form-item label="当前密码"><el-input type="password" v-model="oldPassword" autocomplete="current-password"/></el-form-item><el-form-item label="新密码"><el-input type="password" v-model="newPassword" autocomplete="new-password" show-password maxlength="64" placeholder="6–64 个字符"/></el-form-item><el-button type="primary" :loading="saving" @click="save">修改密码</el-button></el-form></div></template>
 <script setup>
 import request from '@/utils/request'
 import {removeToken} from '@/utils/auth'

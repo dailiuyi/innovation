@@ -4764,7 +4764,7 @@ components:
           type: string
         password:
           type: string
-          minLength: 12
+          minLength: 6
           maxLength: 64
       required:
       - username
@@ -5362,7 +5362,7 @@ components:
           maxLength: 30
         password:
           type: string
-          minLength: 12
+          minLength: 6
           maxLength: 64
       required:
       - userName
@@ -5392,7 +5392,7 @@ components:
           format: int64
         password:
           type: string
-          minLength: 12
+          minLength: 6
           maxLength: 64
       required:
       - userId
@@ -5405,7 +5405,7 @@ components:
           type: string
         newPassword:
           type: string
-          minLength: 12
+          minLength: 6
           maxLength: 64
       required:
       - oldPassword

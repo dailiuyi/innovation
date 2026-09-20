@@ -3,7 +3,7 @@
   <el-table :data="items" v-loading="loading"><el-table-column prop="userName" label="账号"/><el-table-column prop="nickName" label="姓名"/><el-table-column label="状态"><template #default="{row}">{{row.status==='0'?'正常':'停用'}}</template></el-table-column>
   <el-table-column label="操作"><template #default="{row}"><template v-if="row.userName!=='bootstrap'"><el-button link type="primary" @click="status(row)">{{row.status==='0'?'禁用':'启用'}}</el-button><el-button link type="primary" @click="reset(row)">重置密码</el-button></template><el-button link type="danger" :disabled="deleting" @click="remove(row)">删除</el-button></template></el-table-column></el-table>
   <pagination :total="total" v-model:page="page" v-model:limit="limit" @pagination="load"/>
-  <el-dialog v-model="open" title="新增账号" width="480px"><el-form label-width="90px"><el-form-item label="账号"><el-input v-model="form.userName" maxlength="30"/></el-form-item><el-form-item label="姓名"><el-input v-model="form.nickName" maxlength="30"/></el-form-item><el-form-item label="初始密码"><el-input type="password" v-model="form.password" show-password autocomplete="new-password" placeholder="12–64 个字符"/></el-form-item></el-form><template #footer><el-button @click="open=false">取消</el-button><el-button type="primary" :loading="saving" @click="save">创建</el-button></template></el-dialog>
+  <el-dialog v-model="open" title="新增账号" width="480px"><el-form label-width="90px"><el-form-item label="账号"><el-input v-model="form.userName" maxlength="30"/></el-form-item><el-form-item label="姓名"><el-input v-model="form.nickName" maxlength="30"/></el-form-item><el-form-item label="初始密码"><el-input type="password" v-model="form.password" show-password autocomplete="new-password" maxlength="64" placeholder="6–64 个字符"/></el-form-item></el-form><template #footer><el-button @click="open=false">取消</el-button><el-button type="primary" :loading="saving" @click="save">创建</el-button></template></el-dialog>
 </div></template>
 <script setup>
 import request from '@/utils/request'
@@ -14,7 +14,7 @@ async function load(){loading.value=true;try{const r=await request.get('/system/
 function search(){page.value=1;load()}
 async function save(){saving.value=true;try{await request.post('/system/user',form.value);open.value=false;form.value={};ElMessage.success('账号已创建');await load()}finally{saving.value=false}}
 async function status(row){try{await ElMessageBox.confirm('确认'+(row.status==='0'?'禁用':'启用')+'该账号？','账号状态');await request.put('/system/user/changeStatus',{userId:row.userId,status:row.status==='0'?'1':'0'});await load()}catch{}}
-async function reset(row){try{const {value}=await ElMessageBox.prompt('填写 12–64 个字符的新密码','重置密码',{inputType:'password',inputValidator:v=>v?.length>=12&&v.length<=64||'长度应为 12–64 个字符'});await request.put('/system/user/resetPwd',{userId:row.userId,password:value});ElMessage.success('密码已重置')}catch{}}
+async function reset(row){try{const {value}=await ElMessageBox.prompt('填写 6–64 个字符的新密码','重置密码',{inputType:'password',inputValidator:v=>v?.length>=6&&v.length<=64||'长度应为 6–64 个字符'});await request.put('/system/user/resetPwd',{userId:row.userId,password:value});ElMessage.success('密码已重置')}catch{}}
 async function remove(row){
   if(deleting.value) return
   deleting.value=true

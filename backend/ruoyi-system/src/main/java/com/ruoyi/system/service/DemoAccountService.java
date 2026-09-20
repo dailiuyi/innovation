@@ -14,8 +14,8 @@ public class DemoAccountService {
     private final ISysUserService users;
     public DemoAccountService(JdbcTemplate jdbc, ISysUserService users) { this.jdbc = jdbc; this.users = users; }
     public static void validatePassword(String password) {
-        if (password == null || password.length() < 12 || password.length() > 64)
-            throw new ServiceException("密码长度必须为 12–64 个字符");
+        if (password == null || password.length() < 6 || password.length() > 64)
+            throw new ServiceException("密码长度必须为 6–64 个字符");
     }
     private void lock() { jdbc.queryForObject("select role_id from sys_role where role_id=100 for update", Long.class); }
     @Transactional
