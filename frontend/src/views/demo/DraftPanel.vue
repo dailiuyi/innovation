@@ -358,15 +358,29 @@ async function showManifest(){
     manifestVisible.value=true
   }catch(e){error.value=message(e)}
 }
+const zipResultUnconfirmed='请求等待超时，ZIP 构建结果尚未确认，后端可能仍在处理。请稍后重试。'
+const zipDownloadFailed='ZIP 下载失败，请重试'
 async function downloadZip(){
   zipPreparing.value=true
+  error.value=''
+  progressText.value='正在准备 ZIP'
   try{
-    progressText.value='正在准备 ZIP'
-    const exported=await request.post(`/api/v1/drafts/${selected.value.id}/zip-exports`,{collectionId:selected.value.currentCollectionId,generation:selected.value.collectionGeneration},{timeout:0})
-    await downloadAuthorized(exported.downloadPath,exported.downloadPath.endsWith('/content')?'draft.zip':'draft.zip')
-    progressText.value='ZIP 已开始下载'
-  }catch(e){error.value=message(e);progressText.value='ZIP 未准备成功'}
-  finally{zipPreparing.value=false}
+    let exported
+    try{
+      exported=await request.post(`/api/v1/drafts/${selected.value.id}/zip-exports`,{collectionId:selected.value.currentCollectionId,generation:selected.value.collectionGeneration},{timeout:0})
+    }catch(e){
+      // A gateway 504, a client timeout or an interrupted connection never proves the build failed.
+      const unconfirmed=e?.response?.status===504||(!e?.response&&(e?.isAxiosError||!!e?.request))
+      error.value=unconfirmed?zipResultUnconfirmed:message(e)
+      progressText.value=unconfirmed?'ZIP 准备结果未确认，可手动重试':'ZIP 准备失败，可手动重试'
+      return
+    }
+    progressText.value='ZIP 已准备好，开始下载'
+    try{
+      await downloadAuthorized(exported.downloadPath,exported.downloadPath.endsWith('/content')?'draft.zip':'draft.zip')
+      progressText.value='ZIP 已开始下载'
+    }catch{error.value=zipDownloadFailed;progressText.value='ZIP 已准备好，下载未完成，可手动重试'}
+  }finally{zipPreparing.value=false}
 }
 function close(done){if(busy.value || removing.value){ElMessage.warning('请等待上传结束或先取消上传');return}emit('close');done?.()}
 async function loadSceneName(id,sequence){
