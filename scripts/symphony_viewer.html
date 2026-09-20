@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Symphony · 会话详情</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,sans-serif;background:#101722;color:#e0e7ef}body{max-width:1200px;margin:32px auto;padding:0 24px}h1{font-size:26px;margin-bottom:8px}.muted{color:#9eafc4}header{border-bottom:1px solid #34445a;padding-bottom:22px}nav{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin:20px 0}select,input,button{background:#1b293b;color:inherit;border:1px solid #52657d;border-radius:6px;padding:9px}select{max-width:100%}a{color:#85c6ff}article,details.state{border:1px solid #34445a;border-radius:9px;margin:12px 0;background:#162130}summary{padding:14px;cursor:pointer}pre{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.65 Consolas,monospace;padding:0 16px 16px;margin:0}article>div{padding:12px 16px;color:#a8cfff;font-size:13px}.status{padding:12px;background:#1b293b;border-radius:6px}#events:empty:after{content:'暂无可展示记录，等待会话写入…';color:#9eafc4}label{display:flex;gap:6px;align-items:center}
+</style>
+<header><div class="muted">SYMPHONY / READ ONLY</div><h1>实时会话详情</h1><div class="muted">读取已保存的消息、工具调用和结果 · 每 2 秒刷新 · 不接管任务</div></header>
+<nav><select id="sessions" aria-label="选择会话"></select><input id="search" placeholder="搜索已加载内容" aria-label="搜索"><label><input type="checkbox" id="follow" checked>跟随最新</label><button id="pause">暂停刷新</button><a href="http://127.0.0.1:43190/" target="_blank" rel="noreferrer">调度面板 ↗</a></nav>
+<div id="status" class="status" role="status">连接中…</div>
+<details class="state"><summary>全局调度状态与 Token 用量（原始数据）</summary><pre id="state"></pre></details>
+<p class="muted">长工具结果可展开查看；日志中已截断的输出不能还原。模型内部推理不展示。暂停刷新不会暂停 Agent。</p><main id="events"></main>
+<script>
+const $=id=>document.getElementById(id);let offset=0,selected='',paused=false,busy=false,count=0,last='';
+const names={message:'消息',function_call:'工具调用',custom_tool_call:'工具调用',function_call_output:'工具结果',custom_tool_call_output:'工具结果',token_count:'Token 用量',task_started:'任务开始',task_complete:'任务完成',turn_aborted:'任务中断'};
+async function get(url){const r=await fetch(url);if(!r.ok)throw Error('HTTP '+r.status);return r.json()}
+function decode(v){if(typeof v==='string'){try{return decode(JSON.parse(v))}catch{return v}}if(Array.isArray(v))return v.map(decode).join('\n');if(v&&typeof v==='object'&&v.text)return decode(v.text);return JSON.stringify(v,null,2)}
+function pretty(d){if(d.type==='message')return (d.content||[]).map(c=>c.text||JSON.stringify(c)).join('\n');return decode(d.output??d.input??d.arguments??d)}
+function filter(){const q=$('search').value.toLowerCase();for(const el of $('events').children)el.hidden=!el.textContent.toLowerCase().includes(q)}
+function reset(){selected=$('sessions').value;offset=0;count=0;last='';$('events').replaceChildren();history.replaceState(null,'','#'+selected)}
+async function tick(){if(busy||paused)return;busy=true;try{
+const list=await get('/api/sessions');const old=selected;$('sessions').replaceChildren(...list.map(s=>{const o=document.createElement('option');o.value=s.id;o.textContent=s.id;return o}));
+if(list.some(s=>s.id===old))$('sessions').value=old;else{const hash=location.hash.slice(1);if(list.some(s=>s.id===hash))$('sessions').value=hash;reset()}
+const state=await get('/api/state');$('state').textContent=state.available?JSON.stringify(state.state,null,2):'调度服务不可达，仍可读取历史会话。';
+if(!selected){$('status').textContent='尚无持久化会话记录';return}
+const requested=selected,previousOffset=offset;const data=await get('/api/events?id='+encodeURIComponent(requested)+'&offset='+offset);if(requested!==selected)return;
+if(data.offset<offset){$('events').replaceChildren();count=0}offset=data.offset;
+for(const e of data.events){const el=document.createElement('article');const heading=document.createElement('div');heading.textContent=new Date(e.time).toLocaleString()+' · '+(names[e.type]||e.type)+(e.data.role?' · '+e.data.role:'');el.append(heading);const p=document.createElement('pre');p.textContent=pretty(e.data);if(e.type==='message' && e.data.role==='assistant'){el.append(p)}else{const detail=document.createElement('details'),summary=document.createElement('summary');summary.textContent=e.data.name||e.data.call_id||'展开完整记录';detail.append(summary,p);el.append(detail)}$('events').append(el);last=e.time;count++}
+filter();$('status').textContent=`已加载 ${count} 条记录 · 最后记录 ${last?new Date(last).toLocaleString():'—'} · ${offset<data.size?'正在加载历史…':'已同步'} · ${state.available?'调度在线':'调度离线'}`;
+if(data.events.length&&$('follow').checked)window.scrollTo(0,document.body.scrollHeight);
+if(offset<data.size && offset>previousOffset)setTimeout(tick,100);
+}catch(e){$('status').textContent='读取失败，将自动重试：'+e.message}finally{busy=false}}
+$('sessions').onchange=()=>{reset();tick()};$('search').oninput=filter;$('pause').onclick=()=>{paused=!paused;$('pause').textContent=paused?'继续刷新':'暂停刷新';if(!paused)tick()};setInterval(tick,2000);tick();
+</script></html>
