@@ -23,7 +23,7 @@ Administrator publication is one published draft pointer per scene: files freeze
 ## Repository map
 
 - `backend/`: pinned RuoYi Spring Boot 3, MyBatis, Bearer authentication, fixed-role accounts and ruoyi-ar. Only `classpath:db/demo` migrations initialize the application.
-- `frontend/`: pinned RuoYi Vue3; install with `npm ci` and preserve the lockfile.
+- `frontend/`: pinned RuoYi Vue3; use `scripts/agent_check.py --profile frontend` for task-local dependency/build reuse. It installs with `npm ci` when needed; preserve the lockfile and do not repeat installs/builds outside the entrypoint.
 - `database/migrations/`: historical candidate SQL, not current application migrations.
 - `contracts/`: generated OpenAPI and historical candidate manifest examples. Edit `scripts/generate_contracts.py`, then regenerate; never fix drift only in generated files.
 - `scripts/`: development, contract and acceptance tooling; `harness.py` is the common check entrypoint.
@@ -47,7 +47,7 @@ Run `python scripts/harness.py doctor --profile quick`, then `python scripts/har
 
 Optional Symphony development-task orchestration is configured in `WORKFLOW.md`; see [its runbook](docs/15-symphony.md). Only explicitly labeled issues are eligible, and delivery stops at a draft PR for human review. No automatic merge, deployment or unscoped repair loop is enabled. A failed check must be understood; do not weaken a test or edit a report to make it green. Promote reviewed acceptance evidence to docs explicitly; routine checks keep reports under `.local/harness/`.
 
-When preparing a Symphony issue, follow the runbook's model-selection procedure: inspect the container's GPT catalog, respect the user's explicit choice, record the selection reason, validate the model/effort pair, set the two routing labels, and add `symphony:ready` last. Missing routing labels default independently to `gpt-6-astra` and `low`; do not infer execution parameters from issue prose or silently replace an unavailable model.
+When preparing a Symphony issue, follow the runbook's model-selection procedure: inspect the container's model catalog (GPT plus the configured DeepSeek provider), respect the user's explicit choice, record the selection reason, validate the model/effort pair, set the two routing labels, and add `symphony:ready` last. Missing routing labels default independently to `gpt-6-astra` and `low`; do not infer execution parameters from issue prose or silently replace an unavailable model. DeepSeek uses the official `deepseek-flash` ID and a separately mounted API key; catalog/label validation alone does not prove authenticated inference.
 
 ## Conventions and security
 

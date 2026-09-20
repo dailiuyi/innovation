@@ -77,6 +77,10 @@ class HarnessTest(unittest.TestCase):
         git('-c', 'user.name=Harness Test', '-c', 'user.email=harness@example.invalid',
             '-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=' + str(self.root / 'no-hooks'), 'commit', '-qm', 'fixture')
         original = harness.source_identity(self.root)
+        nested = self.root / 'nested'
+        nested.mkdir()
+        with self.assertRaisesRegex(OSError, 'checkout root'):
+            harness.source_identity(nested)
         tracked.write_text('modified')
         dirty = harness.source_identity(self.root)
         self.assertEqual(original['head'], dirty['head'])

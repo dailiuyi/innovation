@@ -37,6 +37,8 @@ def source_identity(root=ROOT):
     """Include dirty and untracked nonignored content, not just the last commit."""
     def git(*args):
         return subprocess.check_output(['git', '-C', str(root), *args], stderr=subprocess.PIPE)
+    if Path(git('rev-parse', '--show-toplevel').decode().strip()).resolve() != root.resolve():
+        raise OSError('The check root must be the Git checkout root, not a nested directory')
     head = git('rev-parse', 'HEAD').decode().strip()
     paths = sorted(set(git('ls-files', '-z', '--cached', '--others', '--exclude-standard').split(b'\0')) - {b''})
     digest = hashlib.sha256()
@@ -132,7 +134,15 @@ def run_step(step, directory, env):
         with log.open('wb') as output:
             process = subprocess.Popen(result['command'], cwd=step.cwd, env=env, stdout=output, stderr=subprocess.STDOUT,
                                        start_new_session=os.name != 'nt')
-            result['exitCode'] = process.wait(timeout=step.timeout)
+            while True:
+                remaining = step.timeout - (time.monotonic() - started)
+                if remaining <= 0:
+                    raise subprocess.TimeoutExpired(result['command'], step.timeout)
+                try:
+                    result['exitCode'] = process.wait(timeout=min(30, remaining))
+                    break
+                except subprocess.TimeoutExpired:
+                    print(f'RUNNING {step.name}: {int(time.monotonic() - started)}s; log={log}', flush=True)
         if result['exitCode'] == 0:
             result['status'] = 'passed'
             if step.evidence:
@@ -167,13 +177,17 @@ def make_steps(profile, directory, root=ROOT):
              Step('review-tool-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'), '-p', 'test_review.py'], root),
              Step('symphony-routing-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'),
                                                '-p', 'test_symphony_codex_adapter.py'], root),
+             Step('symphony-publish-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'),
+                                               '-p', 'test_symphony_publish.py'], root),
+             Step('execution-control-tests', [sys.executable, '-m', 'unittest', 'discover',
+                  '-s', str(Path(__file__).parent), '-p', 'test_frontend_control.py'], root),
              Step('contracts-and-links', [sys.executable, root / 'scripts/verify_design.py', '--report-dir', evidence], root,
                   evidence=evidence / 'validation-contracts.json')]
     if profile in ('frontend', 'ingestion'):
         steps.append(Step('draft-panel', ['node', root / 'scripts/verify_draft_panel.mjs'], root))
     if profile == 'frontend':
-        steps.append(Step('frontend-build', ['npm.cmd' if os.name == 'nt' else 'npm', '--prefix', root / 'frontend',
-                                            'run', 'build:prod'], root, 300))
+        steps.append(Step('frontend-build', [sys.executable, Path(__file__).with_name('frontend_control.py'),
+                                            'build', '--root', root], root, 900))
     if profile == 'ingestion':
         # Copy source only: never replace the jar held by the running Windows Demo.
         backend = directory / 'backend'
@@ -211,7 +225,15 @@ def execute_steps(steps, directory, env):
             results.append({'name': step.name, 'status': 'skipped', 'reason': 'A previous step did not pass.'})
             continue
         print('RUN ' + step.name, flush=True)
-        result = run_step(step, directory, env)
+        if step.name == 'frontend-build':
+            from frontend_control import Blocked, operate
+            try:
+                result = {'name': step.name, **operate(step.cwd, env=env, timeout=step.timeout)}
+                result['name'] = step.name
+            except (Blocked, OSError, subprocess.SubprocessError) as exc:
+                result = {'name': step.name, 'status': 'blocked', 'reason': str(exc)}
+        else:
+            result = run_step(step, directory, env)
         results.append(result)
         print(result['status'].upper() + ' ' + step.name, flush=True)
     return results
@@ -228,27 +250,29 @@ def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('action', choices=('doctor', 'check'))
     parser.add_argument('--profile', choices=PROFILES, default='quick')
+    parser.add_argument('--root', type=Path, default=ROOT, help='Explicit checkout for centrally installed tooling')
     args = parser.parse_args(argv)
-    base = ROOT / '.local/harness'
+    root = args.root.resolve()
+    base = root / '.local/harness'
     base.mkdir(parents=True, exist_ok=True)
     directory = Path(tempfile.mkdtemp(prefix=datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-'), dir=base))
     report = {'schemaVersion': 1, 'action': args.action, 'profile': args.profile, 'startedAt': utc_now(),
               'status': 'blocked', 'steps': [], 'limitations': [
-                  'Only this profile and source fingerprint are covered; historical reports are not reused.',
+                  'Only this profile and source fingerprint are covered. Frontend build reuse verifies inputs and output; other checks run fresh.',
                   'No Docker/LAN deployment, client loading or production verification.',
                   'Doctor checks prerequisites, not application behavior; quick does not execute the application.']}
     try:
-        report['sourceBefore'] = source_identity()
-        report['prerequisites'] = prerequisites(args.profile)
+        report['sourceBefore'] = source_identity(root)
+        report['prerequisites'] = prerequisites(args.profile, root)
         for item in report['prerequisites']:
             print(item['status'].upper() + ' ' + item['name'] + (': ' + item['hint'] if item['hint'] else ''), flush=True)
         report['status'] = overall_status(report['prerequisites'])
         if args.action == 'check' and report['status'] == 'passed':
             report['status'] = 'blocked'  # A prepared or interrupted profile is never a passing run.
-            steps = make_steps(args.profile, directory)
+            steps = make_steps(args.profile, directory, root)
             if args.profile == 'ingestion':
-                shutil.copytree(ROOT / 'backend', directory / 'backend', ignore=shutil.ignore_patterns('target', '.git', 'logs'))
-            report['steps'] = execute_steps(steps, directory, environment())
+                shutil.copytree(root / 'backend', directory / 'backend', ignore=shutil.ignore_patterns('target', '.git', 'logs'))
+            report['steps'] = execute_steps(steps, directory, environment(root))
             report['status'] = overall_status(report['steps'])
         elif args.action == 'check':
             report['steps'] = [{'name': 'profile', 'status': 'skipped', 'reason': 'Prerequisites are blocked.'}]
@@ -256,11 +280,11 @@ def main(argv=None):
         report.update(status='blocked', reason=type(exc).__name__ + ': ' + str(exc))
     finally:
         if args.profile == 'ingestion':
-            leftovers = cleanup_ingestion(directory)
+            leftovers = cleanup_ingestion(directory, root)
             if leftovers:
                 report.update(status='blocked', cleanupRequired=leftovers)
         try:
-            report['sourceAfter'] = source_identity()
+            report['sourceAfter'] = source_identity(root)
             report['sourceUnchanged'] = report.get('sourceBefore') == report['sourceAfter']
             if not report['sourceUnchanged']:
                 report['reason'] = 'Source changed during this run; rerun against the final source.'

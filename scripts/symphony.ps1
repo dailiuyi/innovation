@@ -3,7 +3,8 @@ param(
     [string]$Action = 'Status',
     [switch]$UseHostCredentials,
     [string]$Model = 'gpt-6-astra',
-    [string]$Effort = 'low'
+    [string]$Effort = 'low',
+    [string]$DeepSeekKeyFile
 )
 
 $ErrorActionPreference = 'Stop'
@@ -71,7 +72,14 @@ if (-not (Test-Path -LiteralPath $workflowPath -PathType Leaf)) { throw "Missing
 if (-not (Test-Path -LiteralPath $seccompPath -PathType Leaf)) { throw "Missing sandbox profile: $seccompPath" }
 $adapterPath = Join-Path $PSScriptRoot 'symphony_codex_adapter.py'
 $probePath = Join-Path $PSScriptRoot 'symphony_model_probe.py'
-foreach ($routingPath in @($adapterPath, $probePath)) {
+$publishPath = Join-Path $PSScriptRoot 'symphony_publish.py'
+$executionFiles = @('agent_check.py', 'frontend_control.py', 'harness.py', 'test_frontend_control.py')
+foreach ($executionFile in $executionFiles) {
+    if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $executionFile) -PathType Leaf)) {
+        throw "Missing execution script: $executionFile"
+    }
+}
+foreach ($routingPath in @($adapterPath, $probePath, $publishPath)) {
     if (-not (Test-Path -LiteralPath $routingPath -PathType Leaf)) { throw "Missing routing script: $routingPath" }
 }
 
@@ -85,9 +93,23 @@ $dockerArguments = @(
     '--mount', "type=bind,source=$workflowPath,target=/config/WORKFLOW.md,readonly",
     '--mount', "type=bind,source=$adapterPath,target=/opt/symphony-routing/symphony_codex_adapter.py,readonly",
     '--mount', "type=bind,source=$probePath,target=/opt/symphony-routing/symphony_model_probe.py,readonly",
+    '--mount', "type=bind,source=$publishPath,target=/opt/symphony-routing/symphony_publish.py,readonly",
     '--mount', "type=bind,source=$dataRoot,target=/data",
     '--mount', "type=bind,source=$dataRoot\codex,target=/home/node/.codex"
 )
+
+foreach ($executionFile in $executionFiles) {
+    $executionPath = Join-Path $PSScriptRoot $executionFile
+    $dockerArguments += @('--mount', "type=bind,source=$executionPath,target=/opt/symphony-execution/$executionFile,readonly")
+}
+
+if (-not $DeepSeekKeyFile) {
+    $DeepSeekKeyFile = Join-Path $runtimeRoot 'secrets\deepseek-api-key'
+}
+if (Test-Path -LiteralPath $DeepSeekKeyFile -PathType Leaf) {
+    $resolvedKey = (Resolve-Path -LiteralPath $DeepSeekKeyFile).Path
+    $dockerArguments += @('--mount', "type=bind,source=$resolvedKey,target=/run/secrets/symphony-deepseek,readonly")
+}
 
 $oldGitHubToken = $env:GITHUB_TOKEN
 try {

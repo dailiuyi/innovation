@@ -26,15 +26,26 @@ def turn(labels=(), request_id=3, text=None, thread='thread-1'):
 
 
 class Client:
-    def __init__(self, mode='normal', timeout='2'):
+    def __init__(self, mode='normal', timeout='2', deepseek=False):
         self.directory = tempfile.TemporaryDirectory()
         self.log = Path(self.directory.name) / 'audit.jsonl'
         self.stderr = open(Path(self.directory.name) / 'stderr.log', 'wb')
+        env = os.environ.copy()
+        env.pop('DEEPSEEK_API_KEY', None)
+        if deepseek:
+            env['DEEPSEEK_API_KEY'] = 'sk-synthetic-test-only'
+        # Isolate tests from a production secret mounted at /run/secrets.
+        runner = Path(self.directory.name) / 'adapter_runner.py'
+        runner.write_text('import sys\nfrom pathlib import Path\n'
+                          f'sys.path.insert(0, {str(Path(__file__).parent)!r})\n'
+                          'import symphony_codex_adapter as adapter\n'
+                          f'adapter.DEEPSEEK_KEY_FILE = Path({str(Path(self.directory.name) / "absent-key")!r})\n'
+                          'sys.exit(adapter.main())\n', encoding='utf-8')
         self.process = subprocess.Popen([
-            sys.executable, str(Path(__file__).with_name('symphony_codex_adapter.py')),
+            sys.executable, str(runner),
             '--catalog-timeout', timeout, '--audit-log', str(self.log), '--',
             sys.executable, __file__, '--fake', mode],
-            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr)
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=self.stderr, env=env)
         self.messages = queue.Queue()
         self.reader = threading.Thread(target=self.read, daemon=True)
         self.reader.start()
@@ -116,17 +127,69 @@ class SelectionTests(unittest.TestCase):
 
 
 class ProtocolTests(unittest.TestCase):
-    def client(self, *args):
-        client = Client(*args)
+    def client(self, *args, **kwargs):
+        client = Client(*args, **kwargs)
         self.addCleanup(client.close)
         client.initialize()
         return client
+
+    def test_deepseek_provider_tools_policies_and_continuation(self):
+        client = self.client(deepseek=True)
+        client.send(turn(['symphony:model:deepseek-flash', 'symphony:effort:high']))
+        first = client.receive('id', 3)['result']
+        self.assertEqual(first['model'], 'deepseek-flash')
+        self.assertEqual(first['actualThreadId'], 'deepseek-thread')
+        self.assertEqual(first['starts'], 2)
+        self.assertEqual([t['name'] for t in first['startParams']['dynamicTools']], ['github_api', 'github_publish_files'])
+        self.assertEqual(first['startParams']['modelProvider'], 'deepseek')
+        self.assertIs(first['startParams']['config']['features.apps'], False)
+        self.assertIn('DEEPSEEK_API_KEY', first['startParams']['config']['shell_environment_policy.exclude'])
+        self.assertEqual(first['sandboxPolicy'], turn()['params']['sandboxPolicy'])
+        self.assertEqual(first['approvalPolicy'], turn()['params']['approvalPolicy'])
+        client.send(turn(request_id=4, text='Continue without routing metadata.'))
+        second = client.receive('id', 4)['result']
+        self.assertEqual(second['starts'], 2)
+        self.assertEqual(second['effort'], 'high')
+        client.send({'id': 5, 'method': 'thread/read', 'params': {'threadId': 'thread-1'}})
+        self.assertEqual(client.receive('id', 5)['result'],
+                         {'thread': {'id': 'thread-1'}, 'actualThreadId': 'deepseek-thread'})
+        self.assertNotIn('sk-synthetic', client.log.read_text())
+
+    def test_deepseek_missing_key_and_failed_provider_do_not_fallback(self):
+        for mode, enabled, reason in [('normal', False, 'deepseek_credentials_missing'),
+                                     ('provider_error', True, 'deepseek_thread_start_failed')]:
+            client = self.client(mode, deepseek=enabled)
+            client.send(turn(['symphony:model:deepseek-flash']))
+            self.assertIn(reason, client.receive('id', 3)['error']['message'])
+            self.assertEqual(client.process.wait(timeout=6), 1)
+            self.assertNotIn('turn_requested', client.log.read_text())
+
+    def test_deepseek_effort_is_provider_specific(self):
+        for effort in ('low', 'high', 'max'):
+            self.assertEqual(select_route(['symphony:model:deepseek-flash',
+                                          'symphony:effort:' + effort], {})['effort'], effort)
+        with self.assertRaises(RoutingError):
+            select_route(['symphony:model:deepseek-flash', 'symphony:effort:medium'], {})
+
+    def test_deepseek_switch_timeout_and_tool_thread_mapping(self):
+        client = self.client('provider_stall', timeout='0.3', deepseek=True)
+        client.send(turn(['symphony:model:deepseek-flash']))
+        self.assertIn('deepseek_thread_start_timeout', client.receive('id', 3)['error']['message'])
+        self.assertEqual(client.process.wait(timeout=6), 1)
+        client = self.client('tool', deepseek=True)
+        client.send(turn(['symphony:model:deepseek-flash']))
+        request = client.receive('method', 'item/tool/call')
+        self.assertEqual(request['params']['threadId'], 'thread-1')
+        client.send({'id': 3, 'result': {'success': True}})
+        self.assertEqual(client.receive('method', 'tool_reply_seen')['params'], {'success': True})
 
     def test_paginated_catalog_override_and_continuation(self):
         client = self.client()
         client.send(turn(['symphony:model:gpt-test', 'symphony:effort:medium']))
         result = client.receive('id', 3)['result']
         self.assertEqual((result['model'], result['effort']), ('gpt-test', 'medium'))
+        self.assertIs(result['startParams']['config']['features.apps'], False)
+        self.assertEqual([t['name'] for t in result['startParams']['dynamicTools']], ['github_api', 'github_publish_files'])
         self.assertEqual(result['sandboxPolicy'], turn()['params']['sandboxPolicy'])
         self.assertEqual(result['approvalPolicy'], turn()['params']['approvalPolicy'])
         client.send(turn(request_id=4, text=envelope(['symphony:effort:low'])))
@@ -220,13 +283,25 @@ class ProtocolTests(unittest.TestCase):
 def fake_server(mode):
     def send(message):
         print(json.dumps(message), flush=True)
+    starts, start_params = 0, None
     for line in sys.stdin:
         msg = json.loads(line)
         method, request_id = msg.get('method'), msg.get('id')
         if method == 'initialize':
             send({'id': request_id, 'result': {}})
         elif method == 'thread/start':
-            send({'id': request_id, 'result': {'thread': {'id': 'thread-1'}}})
+            starts += 1
+            start_params = msg['params']
+            if starts > 1 and mode == 'provider_stall':
+                continue
+            if starts > 1 and mode == 'provider_error':
+                send({'id': request_id, 'error': {'message': 'private provider error'}})
+            else:
+                send({'id': request_id, 'result': {'thread': {
+                    'id': 'thread-1' if starts == 1 else 'deepseek-thread'}}})
+        elif method == 'thread/read':
+            send({'id': request_id, 'result': {'thread': {'id': msg['params']['threadId']},
+                  'actualThreadId': msg['params']['threadId']}})
         elif method == 'model/list':
             if mode == 'stall':
                 continue
@@ -244,10 +319,12 @@ def fake_server(mode):
                   'nextCursor': 'page2' if not second or mode == 'cycle' else None}})
         elif method == 'turn/start':
             params = msg['params']
-            send({'id': request_id, 'result': {k: params[k] for k in
-                  ['model', 'effort', 'sandboxPolicy', 'approvalPolicy']}})
+            send({'id': request_id, 'result': {
+                  **{k: params[k] for k in ['model', 'effort', 'sandboxPolicy', 'approvalPolicy']},
+                  'actualThreadId': params['threadId'], 'starts': starts, 'startParams': start_params}})
             if mode == 'tool':
-                send({'id': 3, 'method': 'item/tool/call', 'params': {'name': 'github_api'}})
+                send({'id': 3, 'method': 'item/tool/call', 'params': {
+                    'name': 'github_api', 'threadId': params['threadId']}})
             else:
                 send({'method': 'turn/completed', 'params': {'turn': {'id': 't1', 'status': 'completed'}}})
         elif 'result' in msg:

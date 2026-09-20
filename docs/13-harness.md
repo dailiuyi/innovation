@@ -4,6 +4,18 @@
 
 Harness 把仓库约束、验证脚本与交接记录组织成统一工作流。当前版本提供人工触发的验证入口，不调度模型、不自动修复、不合并、不部署。
 
+## Agent 安装与构建复用
+
+无人值守任务使用 `python scripts/agent_check.py --profile frontend`（无前端变更用 `quick`）。它准备必要依赖后运行 harness，并保存 `.local/frontend-control/handoff.json`：`container_checks_passed`、`code_check_failed` 或 `environment_blocked`。前端 profile 已包含 quick，不需重复执行两个 profile；专项业务验收仍由任务要求决定。
+
+`frontend_control.py` 在每个工作区独立保存安装和构建记录，OS 文件锁避免并发重复操作，进程退出自动释放锁。第一次无可信记录时执行一次 `npm ci --prefer-offline --no-audit --no-fund --include=dev`，随后核对锁文件、npm 配置、Node/npm/平台、相关环境和已安装包内容再复用；不共享任务 node_modules。完整内容校验本身有 I/O 成本，但能发现依赖删除或损坏。Vite 开发缓存 `.vite`、`.vite-temp` 和 `.cache` 不参与依赖摘要。
+
+构建键包括整个 frontend 输入（含未跟踪和忽略的 `.env`，排除 node_modules/dist/.git）、依赖内容、运行环境和控制器版本。仅成功记录、输入相同且 dist 内容完整一致时复用；报告 `mode=reused` 并引用原构建日志，不伪装为本轮重新构建。文档变更不强制重建前端，前端源码/配置/依赖变化会失效。构建过程中输入变化不算通过。
+
+单次构建上限 900 秒，每 30 秒输出耗时和日志位置。相同输入失败、超时或中断后保留状态，不再自动重试；代码失败仍返回 failed，不能变成“仅环境待验收”。调查并修复后，使用 `python scripts/agent_check.py --profile frontend --retry-reason "具体修复条件"` 明确重试一次。不要绕过入口再次直接运行 npm 构建。历史无记录 dist 不自动采信。
+
+quick、草稿面板、浏览器、数据库和真实业务验收不缓存；复用构建不是业务验收或合并批准。当前环境指纹针对本项目 Vite 配置使用的 VITE_/NODE_/NPM_CONFIG_/AR_/SASS_、CI、PATH、语言/时区和 SOURCE_DATE_EPOCH；以后新增其他构建环境输入或外部文件读取时须扩展指纹。记录保存在 `.local/`，不打印环境变量或 npm 配置值。
+
 ## 使用
 
 在仓库根目录运行（入口也支持从其他目录调用）：
@@ -38,7 +50,7 @@ python scripts/harness.py check --profile ingestion
 
 报告包含 UTC 时间、命令、工作目录、退出码、日志路径、Git HEAD 及包含未提交/未忽略新增文件的源码 SHA256。开始和结束指纹必须一致；恢复任务时需重新核对指纹，不能仅凭旧 HEAD 或旧绿色报告宣告完成。忽略的运行时文件和依赖不属于源码指纹；环境结果仅对应本次本机环境。
 
-契约和入库步骤同时要求进程成功与非空、全部通过的结构化证据。不读取过去的报告补齐结果。每步有时限，遇错停止后续步骤；超时/中断尝试停止本次子进程树，并停止本次证据目录下遗留的 PostgreSQL。主机崩溃或直接强杀整个 harness 无法保证执行清理，应检查该运行目录和进程，不得扩大到日常 Demo。
+契约和入库步骤同时要求进程成功与非空、全部通过的结构化证据。除上述带输入和产物校验的前端构建外，不读取过去的报告补齐结果。每步有时限，遇错停止后续步骤；超时/中断尝试停止本次子进程树，并停止本次证据目录下遗留的 PostgreSQL。主机崩溃或直接强杀整个 harness 无法保证执行清理，应检查该运行目录和进程，不得扩大到日常 Demo。
 
 现有 `verify_design.py` 和 `verify_ingestion.py` 新增 `--report-dir`；未指定时保留写入 docs 的旧行为。入库脚本另支持 `--backend-jar`。只有 harness 的 ingestion profile 保证先构建当前源码，再验收该产物；单独运行旧命令仍需自行确认 Jar 来源。
 

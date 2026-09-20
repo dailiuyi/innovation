@@ -1,6 +1,23 @@
 # V0.1 验证记录
 
+## 2026-09-20 拉取 main 并更新 LAN 网关
+
+- 用户明确要求拉取最新代码并部署 Docker；main 从 `5806c68` 快进到 `8119b854e87b3a6fd7c2b251086b0c0f04b8b2e4`。原有未提交修改保留，验证记录的自动暂存冲突按独立段落合并，恢复备份仍留在 Git stash。
+- `python scripts/harness.py doctor --profile quick`、`check --profile quick`、`python scripts/agent_check.py --profile frontend` 通过；frontend 报告 `.local/harness/20260920T084420Z-31rgtn15/report.json` 的 `sourceUnchanged=true`，对应写入本段之前的源码。
+- `verify_scene_list_ui.py --channel msedge` 首次在停用状态断言失败：等待“停用”文字会匹配刷新前的操作按钮。仅在 `.local/deploy-8119b85/ui-wait-diagnostic.py` 诊断副本改为等待“启用”按钮，原有断言全部保留，64 项通过。仓库测试脚本未修改；这些检查使用合成响应，不证明真实业务闭环。
+- 执行 `docker compose --env-file config/compose.env build gateway` 和 `up -d --no-deps --wait gateway`。新网关镜像 `sha256:c2ab0401e15385e65f1f245b5dded78a65b1a69c5537b3aa1e6037ff7b86a36f`；回退标签 `innovation-gateway:rollback-20260920-8119b85`。后端、PostgreSQL 17.6 和 Redis 未重建，数据库未迁移。
+- 四服务 healthy，`nginx -t` 通过；本机访问 `http://192.168.0.12:43174/` 返回 HTTP 200，`/prod-api/captchaImage` code=200。Edge 登录页可见且无页面脚本错误，证据 `.local/deploy-8119b85/browser.json`。未验证其他局域网设备访问，未执行真实账号登录后的业务流程。
+
+## 2026-09-20 GH-9 发布通道与草稿交付
+
+- GH-9 已移除 `symphony:ready` 并停止当前会话，保留 `/data/workspaces/GH-9`、原始补丁及草稿 PR #10；Symphony 容器未重启，Demo/LAN 未操作。Issue 改为 `symphony:review`。
+- 新增按路径文件发布工具：程序读取字节，复用 tracker 的 `github_api` 认证通道上传并校验 blob SHA；绑定 Issue 工作区、拒绝越界/链接/忽略与运行时文件、限制大小，检查源文件及远端 head 变化、不 force push，不自动重试或回退手工搬运内容。旧适配器与 WORKFLOW 备份保留于 `.local/symphony/publish-fix-20260920/`。
+- Windows 发布回归 12 项（符号链接测试因权限跳过 1 项）；Linux 发布回归 12 项全部通过、路由协议 18 项全部通过。测试夹具显式隔离生产 DeepSeek 密钥挂载，未进行真实模型推理。大二进制字节、远端并发变化、错误 blob、输入变化、重复请求、认证失败不重试、禁止手工 blob 回退及线程映射均有覆盖。
+- 实际通过同一发布器的宿主 gh 传输补交 `scripts/verify_ingestion.py` 与 `docs/06-validation.md`，提交 `5b8ff6636f60472771777e5bc8fc5b75376f7157`；远端 13 个 PR 文件的 Git blob SHA 均与保留工作区相同。证据：`.local/symphony/publish-fix-20260920/receipt.json`、`file-verification.json`。新增系统工具留在宿主工作区，不混入 GH-9 的界面功能 PR。
+- 宿主 Windows ingestion、真实后端/数据库、Edge 登录点击、三视口人工观感、独立审查和同提交 preview 均待完成；PR 保持 draft，未合并或部署。本轮没有重装前端依赖或重跑构建。系统工具测试与上传哈希不代表 GH-9 业务验收通过。
+
 本文按阶段保留历史结论；各段“当前”“未完成”只对应所记日期与源码。后续记录可能补充验收，但不追改当时结果。正式证据与保留快照的区别见 [证据索引](evidence/README.md)。本机 `.local` 路径仅是查证线索，不保证其他检出环境可访问。
+
 
 ## GH-9 场景列表入口拆分与列宽（2026-09-20）
 
@@ -10,6 +27,22 @@
 - Linux（Python 3.11.2、Node 22.23.2、npm 10.9.8）：`doctor --profile quick` 与 `check --profile quick` 通过且 `sourceUnchanged=true`，报告 `.local/harness/20260920T075839Z-iplkgd57/report.json`（HEAD `5806c68`，`dirty=true`，源码指纹 `280ee8af2bc0e88c6633c816d253e2ba8f1e6db75cf3954316d4f826d936040f`）。该报告对应写入本段说明之前的树；写入说明后的最终 quick 复核报告路径记在 Issue #9 唯一进展评论。
 - `check --profile frontend`：contracts-and-links 与 draft-panel 通过；`frontend-build` 步骤在 harness 固定的 300 秒超时内未完成，该 profile 记为 blocked，不能算通过。同一命令直接执行 `npm --prefix frontend run build:prod` 退出码 0（墙钟 6 分 56 秒，user 28 秒），产物含 `"min-width":"180"`、`"min-width":"320"`、`width:"80"`、`label:"操作",width:"300",fixed:"right"` 与资源面板场景名文案。
 - 未执行：Windows ingestion、Edge 真实后端登录点击、真实发布/上传/下载/删除业务闭环、数据库、Docker/LAN、部署与客户端加载。详见 [GH-9 证据记录](evidence/issue-9/README.md)。
+
+## 2026-09-20 Symphony 管理页面简体中文补丁（待空闲应用）
+
+- 新增 `scripts/prepare_symphony_zh_cn.py`，固定校验本机 v0.0.3 上游模板指纹，生成并独立编译两个页面模块。翻译页面标题、指标、状态、表头、按钮反馈、空状态、快照错误、时长单位及 HTML 语言；保留原始日志、错误诊断与 JSON API。
+- `python scripts/prepare_symphony_zh_cn.py --verify` 通过：独立 Elixir VM 编译成功，合成 empty/running/blocked/retry/error 状态渲染通过，诊断与会话 ID 保持原值。编译输出位于 `.local/symphony/data/ui-zh-CN/ebin/`，源文件指纹见同目录上一层 `manifest.json`。
+- 原页面模块已备份至 `.local/symphony/ui-zh-CN-backup-20260920/`。用户授权本次文案更新例外，要求当前任务结束、队列空闲后应用并重启；准备阶段 GH-9 仍在执行，因此尚未替换运行模块，原地址仍为英文。不得将模板验证当作实际页面已更新。
+- Windows quick 的首轮 doctor/check 通过（`.local/harness/20260920T064753Z-akgydp23/report.json`），后续最终源码检查另存 `.local/harness/`。该检查不证明当前运行页面已经切换，也不涉及业务 Java、数据库、ingestion 或日常 Demo。
+
+## 2026-09-20 Symphony 接入 DeepSeek 官方 API
+
+- 保留 Codex CLI 0.154.0 / Symphony v0.0.3 / `innovation-symphony:0.0.3-java-v2`，增加显式 `deepseek-flash` 路由及 `low/high/max` 深度。GPT 默认 `gpt-6-astra/low` 不变。提供商在线程创建时切换，原沙箱、审批、动态工具保留；异常不换模型。密钥仅在忽略的 secrets 目录及只读容器挂载中，未进入源码或报告。
+- 官方 `/models` 认证查询返回 `deepseek-flash` 和 `deepseek-v4-pro`；此次只接入用户指定的 Flash。独立、无 GitHub 凭据容器的 `symphony_model_probe.py exercise --model deepseek-flash --effort high` 通过：真实两轮、沙箱文件读写、1 次合成动态工具回调，rollout 两轮均为 `deepseek-flash/high`，session provider 为 `deepseek`。证据 `.local/symphony/deepseek-validation/exercise.json`。首次 smoke 因隔离 home 目录尚未创建而失败，修正后通过；失败不计入验收。
+- 路由回归 Windows 18 项中通过 17 项、跳过 Linux 进程组项；相同镜像无网络、无凭据 Linux 回归 18 项全通过，包括缺密钥、提供商失败/超时、工具线程 ID 映射、连续轮次、原 GPT 目录和进程树清理。quick doctor/check 通过，阶段报告 `.local/harness/20260920T055641Z-ncz8c_34/report.json`；文档补写后的最终报告保存在 `.local/harness/`，以交付列出的路径为准。没有数据库变更或 PostgreSQL 验收，不运行无关 frontend/ingestion。
+- 确认 ready 队列和 running/retrying 均为空后，新建带只读密钥挂载的 `innovation-symphony`，健康接口通过；原容器 `innovation-symphony-before-deepseek` 停止保留。新容器真实 DeepSeek smoke 和无标签 GPT smoke 均通过，分别核对 `deepseek-flash/high/deepseek` 与 `gpt-6-astra/low/openai`；证据 `.local/symphony/data/logs/deepseek-live-smoke.json`、`gpt-after-deepseek-smoke.json`。
+- 本次未创建/修改远端 Issue、提交 PR 或派发业务任务；真实 Issue 到 draft PR 尚未验收。日常 Demo/LAN 未变更。回退方法见 [Symphony 手册](15-symphony.md)。
+
 
 ## 2026-09-20 文档状态与证据引用整理
 
@@ -304,3 +337,26 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 - `docker compose --env-file E:/code/java/innovation/config/compose.env up -d --no-deps --wait --wait-timeout 180 backend gateway` 成功；四服务 healthy，数据库/Redis 未重建，Nginx 配置检查通过。实际后端镜像 sha256:4238e50071aee2fac320e980fb88829cb6d2939893ed1629636e3eef81276bf5，网关 sha256:a009766600e0110511630f8fb4586767da3a98b4750010d0713e19b7e4d087e1，均与新构建一致。
 - 本机访问 http://192.168.0.12:43174/ 与 /prod-api/captchaImage 均 HTTP 200，后者业务 code=200；Flyway 最新 013 成功。
 - 范围限制：本次未执行完整 ingestion、真实账号登录/改密浏览器流程、第二台 LAN 设备访问或客户端加载验收；单元测试及健康检查不替代这些验收。
+
+
+## 2026-09-20 Symphony 无人值守交付与人工阻塞修复
+
+基线 HEAD `5806c68680212dccc3874b94a0ddd49dde080a5a`，工作区含先前 DeepSeek 接入及文档修改，本次保留。GH-9 在 06:40:37Z、07:11:58Z 调用 Apps GitHub 评论工具触发人工授权；`turn_ended_with_error` 覆盖阻塞事件，调度器随后重试。
+
+- 适配器固定线程配置 `features.apps=false`，保留注入的 `github_api`。WORKFLOW 明确所有 GitHub 操作使用该动态工具，宿主验收待完成可以交付草稿 PR，并禁止为宿主专属检查反复补系统/浏览器依赖。
+- `python scripts/prepare_symphony_blocking_fix.py --verify`：固定上游 SHA256 后生成调度器补丁；独立 Elixir VM 执行 6 组实际回调序列全部通过，覆盖输入/审批事件被结束错误与通知覆盖、仅结束错误携带阻塞原因、普通错误仍重试。保留阻塞只限同一 worker 生命周期。
+- Windows `python -m unittest discover -s scripts -p test_symphony_codex_adapter.py -v`：18 项中 17 通过，Linux 进程树项跳过。无网络、无凭据的 `innovation-symphony:0.0.3-java-v2` 临时容器执行同套测试：18 项全部通过。首次误在挂密钥的运行容器测试，缺密钥案例无法成立；改到无凭据容器后验证，未放宽断言。
+- `python scripts/harness.py doctor --profile quick` 与 `check --profile quick` 通过，初次报告 `.local/harness/20260920T072640Z-d0wgcptm/report.json`，`sourceUnchanged=true`；后续文档记录不属于该指纹，最终检查见本次交付报告。
+- 本次已应用：临时移除 GH-9 ready，等待 running/retrying/blocked 和 ready 队列全空，备份工作区源码、差异与原 BEAM 后停止原容器，只替换 Orchestrator 模块并启动。已安装模块与测试产物 SHA256 同为 `27f8d1caa4c92c24f1b5d52a7044c4849a285a67d9483133cdcdbcc2cb0eaae3`；HTTP API 健康后恢复 GH-9 ready。未重建镜像、未操作 Demo。
+- 回退备份：`.local/symphony/blocking-fix-20260920/`；补丁及编译产物：`.local/symphony/data/blocking-fix/`。回退前先暂停调度至空闲，将备份 `Elixir.SymphonyElixir.Orchestrator.beam` 恢复到原容器同名 ebin 路径，再启动并检查健康；源码与 data 不删除。重建容器后补丁需重新应用。
+- 限制：协议/调度回归不证明 GH-9 功能、布局或真实后端验收完成；GH-9 继续执行，最终草稿 PR 和宿主验收分别核对。未运行数据库验收，本次不涉及数据库行为。
+
+
+## 2026-09-20 安装与前端构建复用
+
+- 基线 HEAD `5806c68680212dccc3874b94a0ddd49dde080a5a`，保留此前 DeepSeek/调度修复等未提交改动。新增 `agent_check.py`、`frontend_control.py`，接入 harness frontend build、WORKFLOW 和 Symphony 只读工具目录；不重启、不修改 GH-9 工作区、Demo 或 LAN。
+- `python -m unittest discover -s scripts -p test_frontend_control.py`：Windows 15 项通过；无网络/无凭据 `innovation-symphony:0.0.3-java-v2` 临时容器同套 15 项通过。覆盖输入/环境/锁文件变化、包损坏、产物损坏、日志丢失、并发锁、超时/中断暂停、显式重试、构建期间源码变化。普通 quick 与业务检查不复用。
+- Windows 独立副本 `.local/execution-reuse-validation` 实际 npm ci：14.4 秒，528 包；实际生产构建成功。连续两次 `agent_check.py --root <副本> --profile frontend` 全部通过，分别 56.5 秒和 25.8 秒，第二次安装及构建 `reused`，原日志引用保留、源码与 dist 重新校验；quick、契约、草稿面板检查仍执行。报告分别为该副本 `.local/harness/20260920T081319Z-9y_olpn4/report.json`、`20260920T081416Z-hgfroei5/report.json`，均 `sourceUnchanged=true`。计时汇总在副本 `integration-benchmark.json`。
+- 测试环境首次缺少 Python 验证依赖，且沙箱创建的测试目录与宿主用户 Git 所有权不同，入口如实返回 blocked。随后以子进程级 safe.directory 和现有只读 `.local/python` 完成验证，未修改全局 Git 配置；同时收紧 harness --root 必须是实际 Git 根目录，避免嵌套目录误用外层仓库指纹。
+- 当前工具安装至 `/opt/symphony-execution`，root 所有且文件只读；未来新容器由 symphony.ps1 逐文件只读挂载。运行中的旧会话不会自动获得新提示；新会话使用统一入口。构建上限 900 秒，失败同输入暂停而不是切换命令再次构建；明确修复后才带 `--retry-reason` 重试。
+- 限制：完整依赖哈希有 I/O 成本；Windows 测速不证明 Docker 挂载盘相同速度。只有本项目已声明的文件/环境输入纳入构建键，新增外部输入须扩展。代码失败不降级为环境待验收；复用构建不证明 HTTP/浏览器/数据库/客户端验收。此次未运行数据库验收，无数据库版本结论。
