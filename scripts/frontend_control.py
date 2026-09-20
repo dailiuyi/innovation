@@ -48,6 +48,7 @@ def has_evidence(state, base):
 
 def hash_files(base, excluded=()):
     """Content hashes include ignored/untracked input, env files, additions and deletions."""
+    started = time.monotonic()
     result = hashlib.sha256()
     count = 0
     if not base.is_dir():
@@ -67,6 +68,8 @@ def hash_files(base, excluded=()):
         for name in dirs:
             if (Path(folder) / name).is_symlink():
                 raise Blocked('Directory symlinks are not supported in cached inputs')
+    if base.name == 'node_modules':
+        print(f'VERIFIED dependency contents: {count} files in {time.monotonic() - started:.3f}s', flush=True)
     return {'sha256': result.hexdigest(), 'files': count}
 
 

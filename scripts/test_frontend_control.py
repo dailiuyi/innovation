@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import frontend_control as control
 
@@ -160,6 +161,46 @@ class ControlTests(unittest.TestCase):
         result = self.run_control()
         Path(result['log']).unlink()
         self.assertEqual(self.run_control()['mode'], 'executed')
+
+    def test_warm_build_scans_dependencies_once_before_and_once_after(self):
+        self.run_control()
+        (self.front / 'app.vue').write_text('new build')
+        with patch.object(control, 'package_tree', wraps=control.package_tree) as scan:
+            self.assertEqual(self.run_control()['status'], 'passed')
+            self.assertEqual(scan.call_count, 2)
+
+    def test_dependency_change_during_build_is_still_blocked(self):
+        self.run_control()
+        (self.front / 'app.vue').write_text('new build')
+        original = self.runner
+        def changed(*args):
+            result = original(*args)
+            if args[-1] == 'build':
+                (self.front / 'node_modules/vite/bin/vite.js').write_text('mutated')
+            return result
+        result = control.operate(self.root, env={}, context=self.context, run=changed)
+        self.assertEqual(result['status'], 'blocked')
+
+    def test_agent_entrypoint_defers_dependency_work_and_forwards_retry(self):
+        import agent_check
+        import harness
+        def check(command):
+            self.assertIn('--retry-reason', command)
+            self.assertEqual(command[-1], 'environment repaired')
+            evidence = self.root / '.local/harness/synthetic'
+            evidence.mkdir(parents=True)
+            (evidence / 'report.json').write_text(json.dumps({
+                'status': 'passed', 'sourceAfter': {}, 'sourceUnchanged': True}))
+            return 0
+        with patch.object(harness, 'main', side_effect=check), patch.object(control, 'operate') as operation:
+            self.assertEqual(agent_check.main(['--root', str(self.root), '--profile', 'frontend',
+                                              '--retry-reason', 'environment repaired']), 0)
+            operation.assert_not_called()
+
+    def test_cold_frontend_prerequisites_defer_install_to_controller(self):
+        import harness
+        checks = harness.prerequisites('frontend', self.root)
+        self.assertNotIn('frontend dependencies', [item['name'] for item in checks])
 
 
 if __name__ == '__main__':

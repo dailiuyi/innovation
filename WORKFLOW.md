@@ -33,7 +33,7 @@ agent:
   max_turns: 5
   max_retry_backoff_ms: 300000
 codex:
-  command: env PIP_CACHE_DIR=/data/cache/pip NPM_CONFIG_CACHE=/data/cache/npm python3 /opt/symphony-routing/symphony_codex_adapter.py --audit-log /data/logs/model-routing.jsonl --control-root /data/task-control --execution-root /opt/symphony-execution
+  command: env PYTHONPATH=/opt/symphony-routing JAVA_HOME=/opt/java/openjdk PATH=/opt/java/openjdk/bin:/usr/share/maven/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin PIP_CACHE_DIR=/data/cache/pip NPM_CONFIG_CACHE=/data/cache/npm python3 /opt/symphony-routing/symphony_codex_adapter.py --audit-log /data/logs/model-routing.jsonl --control-root /data/task-control --execution-root /opt/symphony-execution
   approval_policy:
     granular:
       sandbox_approval: false

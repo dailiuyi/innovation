@@ -200,8 +200,9 @@ class Bridge:
                 'status': 'blocked', 'issue': self.issue, 'reason': 'missing_or_invalid_operator_plan',
                 'runId': uuid.uuid4().hex, 'checks': [], 'updatedAt': now()})
             raise RoutingError('missing_or_invalid_operator_plan') from None
-        if not self.task.begin():
-            raise RoutingError('task_terminal_operator_resume_required')
+        if not self.task.begin(environment_lock=os.environ.get('SYMPHONY_ENVIRONMENT_LOCK')):
+            raise RoutingError('environment_preflight_failed' if self.task.state.get('reason') == 'environment_preflight_failed'
+                               else 'task_terminal_operator_resume_required')
 
     def start_checks(self, completion):
         self.completed_message = completion

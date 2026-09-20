@@ -207,5 +207,18 @@ class PublishTests(unittest.TestCase):
         self.assertEqual(len(calls), 1)
 
 
+
+
+class GitScanTimeoutTests(unittest.TestCase):
+    def test_slow_workspace_scans_have_a_bounded_separate_budget(self):
+        from symphony_publish import git
+        with patch('symphony_publish.subprocess.run', return_value=SimpleNamespace(returncode=0, stdout=b'')) as invoke:
+            for operation in ('diff', 'ls-files'):
+                git(Path('.'), operation, '--name-only')
+                self.assertEqual(invoke.call_args.kwargs['timeout'], 120)
+            git(Path('.'), 'rev-parse', 'HEAD')
+            self.assertEqual(invoke.call_args.kwargs['timeout'], 15)
+
+
 if __name__ == '__main__':
     unittest.main()

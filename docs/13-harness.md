@@ -6,9 +6,9 @@ Harness 把仓库约束、验证脚本与交接记录组织成统一工作流。
 
 ## Agent 安装与构建复用
 
-受控 Symphony 任务由程序调用入口，编码模型不自行执行。人工使用 `python scripts/agent_check.py --profile frontend`（无前端变更用 `quick`）。它准备必要依赖后运行 harness，并保存 `.local/frontend-control/handoff.json`：`container_checks_passed`、`code_check_failed` 或 `environment_blocked`。前端 profile 已包含 quick，不需重复执行两个 profile；专项业务验收仍由任务要求决定。
+受控 Symphony 任务由程序调用入口，编码模型不自行执行。人工使用 `python scripts/agent_check.py --profile frontend`（无前端变更用 `quick`）。它运行 harness，由前端构建控制器在同一文件锁内准备依赖和构建，并保存 `.local/frontend-control/handoff.json`：`container_checks_passed`、`code_check_failed` 或 `environment_blocked`。前端 profile 已包含 quick，不需重复执行两个 profile；专项业务验收仍由任务要求决定。
 
-`frontend_control.py` 在每个工作区独立保存安装和构建记录，OS 文件锁避免并发重复操作，进程退出自动释放锁。第一次无可信记录时执行一次 `npm ci --prefer-offline --no-audit --no-fund --include=dev`，随后核对锁文件、npm 配置、Node/npm/平台、相关环境和已安装包内容再复用；不共享任务 node_modules。完整内容校验本身有 I/O 成本，但能发现依赖删除或损坏。Vite 开发缓存 `.vite`、`.vite-temp` 和 `.cache` 不参与依赖摘要。
+`frontend_control.py` 在每个工作区独立保存安装和构建记录，OS 文件锁避免并发重复操作，进程退出自动释放锁。第一次无可信记录时执行一次 `npm ci --prefer-offline --no-audit --no-fund --include=dev`，随后核对锁文件、npm 配置、Node/npm/平台、相关环境和已安装包内容再复用；不共享任务 node_modules。暖依赖的一次实际构建只做一次构建前依赖内容扫描，构建后再扫描一次验证输入稳定；外层 agent_check 不重复预扫描。缺少依赖由构建控制器安装，frontend doctor 只核对工具链可用性；ingestion 仍要求已有前端依赖。完整内容校验本身有 I/O 成本，但能发现依赖删除或损坏。Vite 开发缓存 `.vite`、`.vite-temp` 和 `.cache` 不参与依赖摘要。
 
 构建键包括整个 frontend 输入（含未跟踪和忽略的 `.env`，排除 node_modules/dist/.git）、依赖内容、运行环境和控制器版本。仅成功记录、输入相同且 dist 内容完整一致时复用；报告 `mode=reused` 并引用原构建日志，不伪装为本轮重新构建。文档变更不强制重建前端，前端源码/配置/依赖变化会失效。构建过程中输入变化不算通过。
 

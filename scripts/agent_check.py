@@ -26,17 +26,11 @@ def main(argv=None):
         agent_base = root / '.local/agent-check'
         agent_base.mkdir(parents=True, exist_ok=True)
         with frontend_control.locked(agent_base):
-            if args.profile == 'frontend':
-                deps = frontend_control.operate(root, 'deps', env=harness.environment(root), retry_reason=args.retry_reason)
-                decision['dependencies'] = deps
-                if deps['status'] != 'passed':
-                    raise frontend_control.Blocked('Dependency preparation did not pass; see dependency evidence')
-                if args.retry_reason:
-                    # Explicit retry is performed once here; harness subsequently reuses
-                    # success or holds failure rather than starting a second build.
-                    decision['retry'] = frontend_control.operate(root, env=harness.environment(root), retry_reason=args.retry_reason)
             before = set((root / '.local/harness').glob('*/report.json'))
-            code = harness.main(['check', '--profile', args.profile, '--root', str(root)])
+            command = ['check', '--profile', args.profile, '--root', str(root)]
+            if args.retry_reason:
+                command += ['--retry-reason', args.retry_reason]
+            code = harness.main(command)
             reports = set((root / '.local/harness').glob('*/report.json')) - before
             if len(reports) != 1:
                 raise frontend_control.Blocked('Cannot identify this check report unambiguously')

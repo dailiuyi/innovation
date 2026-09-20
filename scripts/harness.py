@@ -81,6 +81,7 @@ def prerequisites(profile, root=ROOT):
         probe('Node.js', ['node', '--version'], 'Install Node.js supported by frontend/package.json.')
         probe('Node repository access', ['node', '-e', "require('node:fs').realpathSync(process.argv[1])", str(root / 'scripts/verify_draft_panel.mjs')],
               'Check repository access. If the agent sandbox denies access, request permission to run this profile outside it.')
+    if profile == 'ingestion':
         record('frontend dependencies', (root / 'frontend/node_modules/vite/bin/vite.js').is_file(), 'Run npm --prefix frontend ci.')
     if profile == 'frontend':
         record('npm', shutil.which('npm.cmd' if os.name == 'nt' else 'npm') is not None, 'Install npm with Node.js.')
@@ -188,6 +189,12 @@ def make_steps(profile, directory, root=ROOT):
                   '-s', str(Path(__file__).parent), '-p', 'test_frontend_control.py'], root),
              Step('task-control-tests', [sys.executable, '-m', 'unittest', 'discover',
                   '-s', str(Path(__file__).parent), '-p', 'test_symphony_task.py'], root),
+             Step('workspace-migration-tests', [sys.executable, '-m', 'unittest', 'discover',
+                                               '-s', str(Path(__file__).parent),
+                                               '-p', 'test_migrate_symphony_workspaces.py'], root),
+             Step('environment-lock-tests', [sys.executable, '-m', 'unittest', 'discover',
+                                             '-s', str(Path(__file__).parent),
+                                             '-p', 'test_symphony_environment_lock.py'], root),
              Step('contracts-and-links', [sys.executable, root / 'scripts/verify_design.py', '--report-dir', evidence], root,
                   evidence=evidence / 'validation-contracts.json')]
     if profile in ('frontend', 'ingestion'):
@@ -225,7 +232,7 @@ def cleanup_ingestion(directory, root=ROOT):
     return failures
 
 
-def execute_steps(steps, directory, env):
+def execute_steps(steps, directory, env, retry_reason=None):
     results = []
     for step in steps:
         if results and results[-1]['status'] != 'passed':
@@ -235,7 +242,7 @@ def execute_steps(steps, directory, env):
         if step.name == 'frontend-build':
             from frontend_control import Blocked, operate
             try:
-                result = {'name': step.name, **operate(step.cwd, env=env, timeout=step.timeout)}
+                result = {'name': step.name, **operate(step.cwd, env=env, timeout=step.timeout, retry_reason=retry_reason)}
                 result['name'] = step.name
             except (Blocked, OSError, subprocess.SubprocessError) as exc:
                 result = {'name': step.name, 'status': 'blocked', 'reason': str(exc)}
@@ -258,7 +265,10 @@ def main(argv=None):
     parser.add_argument('action', choices=('doctor', 'check'))
     parser.add_argument('--profile', choices=PROFILES, default='quick')
     parser.add_argument('--root', type=Path, default=ROOT, help='Explicit checkout for centrally installed tooling')
+    parser.add_argument('--retry-reason', help='Explicit repaired condition for a held frontend attempt')
     args = parser.parse_args(argv)
+    if args.retry_reason is not None and not args.retry_reason.strip():
+        parser.error('--retry-reason must describe a repaired condition')
     root = args.root.resolve()
     base = root / '.local/harness'
     base.mkdir(parents=True, exist_ok=True)
@@ -279,7 +289,7 @@ def main(argv=None):
             steps = make_steps(args.profile, directory, root)
             if args.profile == 'ingestion':
                 shutil.copytree(root / 'backend', directory / 'backend', ignore=shutil.ignore_patterns('target', '.git', 'logs'))
-            report['steps'] = execute_steps(steps, directory, environment(root))
+            report['steps'] = execute_steps(steps, directory, environment(root), retry_reason=args.retry_reason)
             report['status'] = overall_status(report['steps'])
         elif args.action == 'check':
             report['steps'] = [{'name': 'profile', 'status': 'skipped', 'reason': 'Prerequisites are blocked.'}]

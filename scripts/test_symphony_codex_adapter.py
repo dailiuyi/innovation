@@ -32,6 +32,8 @@ class Client:
         self.stderr = open(Path(self.directory.name) / 'stderr.log', 'wb')
         env = os.environ.copy()
         env.pop('DEEPSEEK_API_KEY', None)
+        # Protocol fixtures have their own synthetic runtime; environment gating has separate tests.
+        env.pop('SYMPHONY_ENVIRONMENT_LOCK', None)
         if deepseek:
             env['DEEPSEEK_API_KEY'] = 'sk-synthetic-test-only'
         self.workspace = Path(self.directory.name) / 'GH-9'

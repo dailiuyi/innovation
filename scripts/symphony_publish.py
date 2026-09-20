@@ -38,8 +38,10 @@ def blob_sha(data):
 
 
 def git(root, *args):
+    # Working-tree scans on Docker Desktop bind mounts can exceed metadata-command latency.
+    timeout = 120 if args and args[0] in ('diff', 'ls-files') else 15
     result = subprocess.run(['git', '-C', str(root), *args], stdin=subprocess.DEVNULL,
-                            capture_output=True, timeout=15)
+                            capture_output=True, timeout=timeout)
     if result.returncode:
         raise PublishError('git_preflight_failed')
     return result.stdout

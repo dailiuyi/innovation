@@ -3,10 +3,11 @@ import json
 from pathlib import Path
 import subprocess
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
-from symphony_task import Task, delivery, inspect_uncertain_delivery, lock, save, validate_plan
+from symphony_task import Task, delivery, inspect_uncertain_delivery, lock, save, validate_plan, build_slot, run_checks
 from symphony_publish import blob_sha
 
 
@@ -30,6 +31,52 @@ class TaskTests(unittest.TestCase):
         self.task = Task(self.control, 'GH-9', self.root)
         self.assertTrue(self.task.begin())
         self.edit('changed')
+
+    def test_quick_only_checks_do_not_reserve_build_slot(self):
+        with patch('symphony_task._run_checks', return_value={'status': 'passed'}), patch('symphony_task.build_slot') as slot:
+            self.assertEqual(run_checks(self.task, self.base)['status'], 'passed')
+            slot.assert_not_called()
+
+    def test_frontend_checks_reserve_and_release_build_slot(self):
+        self.task.plan['profile'] = 'frontend'
+        with patch('symphony_task._run_checks', return_value={'status': 'passed'}), patch('symphony_task.build_slot', wraps=build_slot) as slot:
+            self.assertEqual(run_checks(self.task, self.base)['status'], 'passed')
+            slot.assert_called_once()
+        self.assertEqual(self.task.state['buildSlot']['status'], 'released')
+
+    def test_build_slot_waits_then_releases_without_overlapping(self):
+        cancel, entered = threading.Event(), threading.Event()
+        def second():
+            with build_slot(self.control, cancel, 1):
+                entered.set()
+        with build_slot(self.control, cancel, 1):
+            thread = threading.Thread(target=second)
+            thread.start()
+            self.assertFalse(entered.wait(0.15))
+        thread.join(3)
+        self.assertFalse(thread.is_alive())
+        self.assertTrue(entered.is_set())
+        with build_slot(self.control, cancel, 1):
+            pass
+
+    def test_build_slot_wait_is_cancellable(self):
+        cancel = threading.Event()
+        with build_slot(self.control, threading.Event(), 1):
+            cancel.set()
+            with self.assertRaises(InterruptedError):
+                with build_slot(self.control, cancel, 1):
+                    self.fail('Cancelled waiter entered')
+        with self.assertRaises(ValueError):
+            with build_slot(self.control, threading.Event(), 0):
+                self.fail('Invalid concurrency accepted')
+
+    def test_preflight_failure_blocks_before_coding(self):
+        self.task.update(status='prepared')
+        with patch('symphony_environment.task_preflight', return_value={'status': 'blocked', 'reason': 'Maven missing'}):
+            self.assertFalse(self.task.begin(environment_lock=Path('synthetic-lock.json')))
+        self.assertEqual(self.task.state['status'], 'blocked')
+        self.assertEqual(self.task.state['reason'], 'environment_preflight_failed')
+        self.assertEqual(self.task.state['environment']['reason'], 'Maven missing')
 
     def git(self, *args):
         return subprocess.check_output(['git', '-C', str(self.root), *args], stderr=subprocess.PIPE).decode().strip()

@@ -15,6 +15,7 @@
 | API 与数据库在哪里 | [OpenAPI](../contracts/openapi.yaml)、[数据库说明](../database/README.md) | API 按 implemented/candidate 区分；实际迁移在 backend 的 db/demo |
 | 为什么作出某项决定 | [决策记录](decisions/README.md) | 记录原因、约束和重新考虑的条件 |
 | 如何跨会话交接 | [任务管理](tasks/README.md) | 任务记录进度，完成后归档 |
+| 如何核对或恢复 Agent 环境 | [环境版本与自检](18-symphony-environment.md) | 镜像/控制器配套、轻量自检与构建并发；不替代宿主业务验收 |
 | 如何运行开发任务调度 | [Symphony 本地安装](15-symphony.md) | GitHub Issue 标签入队；草稿 PR 等待人工审查，Windows 入库验收另行执行 |
 
 `docs/01` 至 `docs/05`、`docs/07`、根目录 `database/migrations/` 和 runtime-manifest 示例包含历史候选设计。它们的结构检查可以通过，但不表示当前 Spring Boot 已提供相应接口。

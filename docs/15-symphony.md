@@ -191,3 +191,19 @@ quick profile 包含无网络、无凭据的假 App Server 协议测试；Linux 
 镜像验收在无网络、无凭据的临时容器运行 `python3 -m unittest discover -s /tests -p test_symphony_environment.py -v`，只读挂载 scripts 为 `/tests`，挂载隔离数据目录为 `/data`，使用本仓库 Symphony seccomp 配置。该检查验证离线初始化、任务依赖隔离、缓存路径及 Codex CLI 沙箱可写范围；Windows quick 不替代该 Linux 镜像验收。
 
 停止 Symphony 不停止日常 Demo。容器重启策略为 `unless-stopped`，Docker 启动后会恢复未手动停止的容器；宿主机休眠或 Docker 停止期间不会领取任务。
+
+
+### Linux 原生工作区卷
+
+`symphony.ps1 Start` 默认把 Docker 命名卷 `innovation-symphony-workspaces` 挂载到 `/data/workspaces`，可用 `-WorkspaceVolume` 指定另一个已准备的卷。每个 Issue 的源码、`.local/m2`、venv、`frontend/node_modules` 和 dist 仍属于自己的工作区，不共享已安装依赖。`/data` 其余目录仍绑定宿主，task-control、日志、Codex 会话和 pip/npm 下载缓存的位置不变，Codex Trace 不需迁移。
+
+已有 Windows 工作区不能直接被空卷遮蔽。迁移前确认 running/retrying 与 open ready 队列为空，停止并改名保留旧容器；源目录只读挂载到 `/legacy`，空原生卷挂载到 `/native`，以 uid 1000 运行 `scripts/migrate_symphony_workspaces.py --source /legacy --destination /native`。脚本拒绝非空目标、重叠路径、源文件变化与特殊文件，保留文件模式和符号链接，逐文件核对 SHA-256，成功后写入 `.migration-verified.json` 和清单。启动脚本遇到旧工作区但卷无验证标记时拒绝启动。失败时保留不完整副本供检查，不自动删除或覆盖。
+
+本机旧路径 `.local/symphony/data/workspaces/` 在切换后仅是迁移时的回退副本，不再表示当前任务。读取当前源码和工作区证据使用 `docker exec innovation-symphony ...`；需要宿主文件时用 `docker cp innovation-symphony:/data/workspaces/GH-13/具体文件 <本地目标>` 导出。PR 宿主审查仍由 `review.py prepare` 按远端固定 SHA 创建独立目录。任务状态与发布保留副本仍可从宿主 task-control 读取。
+
+回退前再次确认队列空闲，停止并改名保留新容器，再将迁移前旧容器改回 `innovation-symphony` 并启动。原宿主工作区和原生卷都保留。若新卷已有后续任务修改，先导出这些修改及证据，不能假定旧工作区包含它们。不停止或重建日常 Demo。
+
+
+### 环境版本与轻量自检
+
+当前镜像、控制器与补丁由 `deploy/symphony-environment.lock.json` 配套核对。`scripts/symphony.ps1 Doctor -Issue N` 按计划检查已有工作区；受控任务在开始编码前自动检查，失败持久化阻塞。默认 4 个 Agent 编码、1 路重构建；版本更新、离线恢复与并发实测见 [环境手册](18-symphony-environment.md)。

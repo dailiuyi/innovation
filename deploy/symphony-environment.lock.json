@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "image": "innovation-symphony:0.0.3-java-v2",
+  "imageId": "sha256:fdb5e753aaa6e200e38b90a2d326957038fd04d6d8fc2b40ee784eac988fa42e",
+  "symphonyVersion": "0.0.3",
+  "codexVersion": "0.154.0",
+  "releaseSha256": "ea35a04a54a6d37c0cafe3f195da871e47614a8c05765b90dbb4cac32e1435ee",
+  "files": [
+    {
+      "source": "WORKFLOW.md",
+      "runtime": "/config/WORKFLOW.md",
+      "sha256": "dbe73a8b6d1fe816af6bc91b40e1f4f37172f0a5d5c74aabd7f239dc6589dd84"
+    },
+    {
+      "source": "scripts/agent_check.py",
+      "runtime": "/opt/symphony-execution/agent_check.py",
+      "sha256": "d95ae6142d84a7cc4d04865bd48ca71ef9a91f9d7e67ecd159199f6545d4bda7"
+    },
+    {
+      "source": "scripts/frontend_control.py",
+      "runtime": "/opt/symphony-execution/frontend_control.py",
+      "sha256": "d5e48cdf7f15473a5bd9f19b2b8884579e41e6e91ccbe038218603e1e8273a06"
+    },
+    {
+      "source": "scripts/harness.py",
+      "runtime": "/opt/symphony-execution/harness.py",
+      "sha256": "f23e975464a4dbdfca8f14d30f16050c211308ceae9a0eddc8166fb074c97b33"
+    },
+    {
+      "source": "scripts/check_java.py",
+      "runtime": "/opt/symphony-execution/check_java.py",
+      "sha256": "4071e434b1679524b483817994f3cca4545307763cdd1db44b3725ca0e9d2874"
+    },
+    {
+      "source": "scripts/test_frontend_control.py",
+      "runtime": "/opt/symphony-execution/test_frontend_control.py",
+      "sha256": "50ccfc0900b34c1e5d1def423c728764c7ae1ddd3c3138f83da033a507e2afdb"
+    },
+    {
+      "source": "scripts/test_symphony_task.py",
+      "runtime": "/opt/symphony-execution/test_symphony_task.py",
+      "sha256": "b06e31c898814b67e4e99ac973fb4a8768627f9a4a2339fba5d6b66e5c542a52"
+    },
+    {
+      "source": "scripts/test_symphony_publish.py",
+      "runtime": "/opt/symphony-execution/test_symphony_publish.py",
+      "sha256": "823db3b9a69891552226c21c9b37ca04d56dc1423fe7887a8f17c060e3fe15af"
+    },
+    {
+      "source": "scripts/symphony_task.py",
+      "runtime": "/opt/symphony-execution/symphony_task.py",
+      "sha256": "1fee2f162c7ee51d395a1134194093b9381f764b4a7715ca612bc8ce7b55b11a"
+    },
+    {
+      "source": "scripts/symphony_publish.py",
+      "runtime": "/opt/symphony-execution/symphony_publish.py",
+      "sha256": "502de7a71260c5b1c04b1d99a7ecf769071538c3696a5b91fcc6a55de9e28f98"
+    },
+    {
+      "source": "scripts/symphony_entrypoint.py",
+      "runtime": "/opt/symphony-execution/symphony_entrypoint.py",
+      "sha256": "fe3ee3e093214b3242d22792cc8407051a5f34110cde69d6823c5e81723d950a"
+    },
+    {
+      "source": "scripts/migrate_symphony_workspaces.py",
+      "runtime": "/opt/symphony-execution/migrate_symphony_workspaces.py",
+      "sha256": "6e905d33499608f50d6c62eb37ad594252c746d762a46932aa7a76a6081b5a4e"
+    },
+    {
+      "source": "scripts/test_migrate_symphony_workspaces.py",
+      "runtime": "/opt/symphony-execution/test_migrate_symphony_workspaces.py",
+      "sha256": "11a432c57a2fca48b79af40daee2a139cc5d3db85e27333fd367b8fef80dc243"
+    },
+    {
+      "source": "scripts/symphony_environment.py",
+      "runtime": "/opt/symphony-execution/symphony_environment.py",
+      "sha256": "c093baae70a1ba0c1f72ba20d6f4cc9dbf2c3597315f6b3a1165d6227baeed8d"
+    },
+    {
+      "source": "scripts/test_symphony_environment_lock.py",
+      "runtime": "/opt/symphony-execution/test_symphony_environment_lock.py",
+      "sha256": "8b02904cab275661d35d01b4913803d1ea260f75e960a5a9f479b064d0b0eeed"
+    },
+    {
+      "source": "scripts/verify_symphony_concurrency.py",
+      "runtime": "/opt/symphony-execution/verify_symphony_concurrency.py",
+      "sha256": "a78219d7231d67e86c720c5aff8e5f4d7fe7a753b14a40a9e7635f75eebb8f22"
+    },
+    {
+      "source": "scripts/symphony_codex_adapter.py",
+      "runtime": "/opt/symphony-routing/symphony_codex_adapter.py",
+      "sha256": "d15d8815e7f4e6ba70607d5f35483f6bcd7cd096e17b201f09898e75726840db"
+    },
+    {
+      "source": "scripts/symphony_model_probe.py",
+      "runtime": "/opt/symphony-routing/symphony_model_probe.py",
+      "sha256": "4f1c66c73ab45924780471bee636b391fbe789b5221c375b639a8383f24b466a"
+    },
+    {
+      "source": "scripts/symphony_publish.py",
+      "runtime": "/opt/symphony-routing/symphony_publish.py",
+      "sha256": "502de7a71260c5b1c04b1d99a7ecf769071538c3696a5b91fcc6a55de9e28f98"
+    },
+    {
+      "source": "scripts/symphony_task.py",
+      "runtime": "/opt/symphony-routing/symphony_task.py",
+      "sha256": "1fee2f162c7ee51d395a1134194093b9381f764b4a7715ca612bc8ce7b55b11a"
+    },
+    {
+      "source": "scripts/symphony_environment.py",
+      "runtime": "/opt/symphony-routing/symphony_environment.py",
+      "sha256": "c093baae70a1ba0c1f72ba20d6f4cc9dbf2c3597315f6b3a1165d6227baeed8d"
+    },
+    {
+      "source": "scripts/symphony_entrypoint.py",
+      "runtime": "/opt/symphony-entrypoint.py",
+      "sha256": "fe3ee3e093214b3242d22792cc8407051a5f34110cde69d6823c5e81723d950a"
+    },
+    {
+      "source": ".local/symphony/data/blocking-fix/manifest.json",
+      "runtime": "/opt/symphony-patches/manifest.json",
+      "sha256": "1bbd188239830526b2fa0e7b5cdf8dfd2d3781ba51026903d79b0ab2aafe4979"
+    },
+    {
+      "source": ".local/symphony/data/blocking-fix/ebin/Elixir.SymphonyElixir.Codex.AppServer.beam",
+      "runtime": "/opt/symphony-patches/Elixir.SymphonyElixir.Codex.AppServer.beam",
+      "sha256": "993a69d26b9e1c609fabde9b5f48fedc6772795535ab80f7aba638bba5475f70"
+    },
+    {
+      "source": ".local/symphony/data/blocking-fix/ebin/Elixir.SymphonyElixir.Orchestrator.beam",
+      "runtime": "/opt/symphony-patches/Elixir.SymphonyElixir.Orchestrator.beam",
+      "sha256": "89a98f978b53a9f7075fb2e0f5b9d7f1d04f6a0b12eab3acdd58a298f90905ef"
+    },
+    {
+      "source": ".local/symphony/data/blocking-fix/ebin/Elixir.SymphonyElixirWeb.DashboardLive.beam",
+      "runtime": "/opt/symphony-patches/Elixir.SymphonyElixirWeb.DashboardLive.beam",
+      "sha256": "522b4a7d97e117be316ec0eb3346601e23a2b6c9bc7dd55e81b7471e28810877"
+    },
+    {
+      "source": ".local/symphony/data/blocking-fix/ebin/Elixir.SymphonyElixirWeb.Layouts.beam",
+      "runtime": "/opt/symphony-patches/Elixir.SymphonyElixirWeb.Layouts.beam",
+      "sha256": "04f1805197ae9acea8bab39aecfc7615c97c76ee58ce2147a86ddeb6d81232a7"
+    },
+    {
+      "source": "scripts/symphony.ps1",
+      "runtime": null,
+      "sha256": "eb4440bff22cb32ac43907a467c4420be30d37082e0d7f60557c6fe41809235a"
+    },
+    {
+      "source": "scripts/prepare_symphony_workspace.py",
+      "runtime": null,
+      "sha256": "b20e8fd50aba4d28a53ca4b7bcdf1abb163949fe93410090e9f3e63130decda5"
+    },
+    {
+      "source": "scripts/prepare_symphony_blocking_fix.py",
+      "runtime": null,
+      "sha256": "a6a02230ec593f9c4a420974ef53654d292891a5d7490ec624b75672ed0bdf70"
+    },
+    {
+      "source": "scripts/verify_symphony_blocking.exs",
+      "runtime": null,
+      "sha256": "67b9df324cb2b0435ac6995cac90819488a85b11d43d782e76cf91ae88c89f99"
+    },
+    {
+      "source": "scripts/test_symphony_environment.py",
+      "runtime": null,
+      "sha256": "1d48440f9d5e278acc24c293b2756cec076929afb17c29364a8e345a45e88a71"
+    },
+    {
+      "source": "deploy/symphony.Dockerfile",
+      "runtime": null,
+      "sha256": "723c527a9ffb3f9a3f0f1f281e9acc3ef4d92c127687f6f7e2b29f50f157393d"
+    },
+    {
+      "source": "deploy/symphony-base.Dockerfile",
+      "runtime": null,
+      "sha256": "14d83d7b4a4cc7a3fb77a976ebe1e85b993f8b8c233ae127c357eab777cefabf"
+    },
+    {
+      "source": "deploy/symphony-seccomp.json",
+      "runtime": null,
+      "sha256": "6f462edbce2259f8f051a806484f1bc0e0012cc02cc39c095a2fba8641c08a1d"
+    },
+    {
+      "source": "scripts/requirements-review.txt",
+      "runtime": null,
+      "sha256": "e59037dcff6b95555d6a05622e97a0e49e920b2bf04af2d0318be2f010288246"
+    }
+  ],
+  "tools": {
+    "python": "Python 3.11.2",
+    "git": "git version 2.39.5",
+    "node": "v22.23.2",
+    "npm": "10.9.8",
+    "java": "openjdk version \"21.0.9\" 2025-10-21 LTS",
+    "maven": "Apache Maven 3.9.11 (3e54c93a704957b63ee3494413a2b544fd3d825b)",
+    "codex": "codex-cli 0.154.0"
+  },
+  "imageFiles": {
+    "/opt/symphony-validation/installed.txt": "8065c1ad9a64d58001a10d557d3e1c71b36212c74b919f629caf217ed2d5c54b",
+    "/opt/symphony-tools/prepare_workspace.py": "b20e8fd50aba4d28a53ca4b7bcdf1abb163949fe93410090e9f3e63130decda5"
+  }
+}

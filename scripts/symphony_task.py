@@ -2,6 +2,7 @@
 import argparse
 from contextlib import contextmanager
 from datetime import datetime, timezone
+import errno
 import fnmatch
 import hashlib
 import json
@@ -122,11 +123,21 @@ class Task:
         self.state.update(fields, updatedAt=now())
         save(self.state_path, self.state)
 
-    def begin(self):
+    def begin(self, environment_lock=None):
         if self.state['status'] != 'prepared':
             if self.state['status'] not in TERMINAL:
                 self.update(status='blocked', reason='previous_execution_interrupted; explicit resume required')
             return False
+        if environment_lock is not None:
+            try:
+                from symphony_environment import task_preflight
+                environment = task_preflight(self.root, self.plan['profile'], self.plan['javaModules'], environment_lock)
+            except (OSError, ValueError, KeyError, RuntimeError, ImportError, subprocess.SubprocessError) as exc:
+                environment = {'status': 'blocked', 'reason': str(exc)}
+            self.update(environment=environment)
+            if environment['status'] != 'passed':
+                self.update(status='blocked', reason='environment_preflight_failed')
+                return False
         base = git(self.root, 'rev-parse', 'HEAD').decode().strip()
         self.update(status='coding', baseCommit=base, startedAt=now())
         return True
@@ -200,7 +211,52 @@ class Task:
         save(evidence / 'handoff.json', {'plan': self.plan, 'state': self.state})
 
 
+@contextmanager
+def build_slot(control_root, cancel, limit):
+    if not 1 <= limit <= 4:
+        raise ValueError('Build concurrency must be between 1 and 4')
+    homes = [Path(control_root) / 'build-slots' / str(i) for i in range(limit)]
+    # Fail immediately on directory/file access errors, rather than waiting on a bad path.
+    for home in homes:
+        home.mkdir(parents=True, exist_ok=True)
+        with (home / 'owner.lock').open('a+b'):
+            pass
+    while not cancel.is_set():
+        for home in homes:
+            lease = lock(home)
+            try:
+                lease.__enter__()
+            except OSError as exc:
+                if exc.errno not in (errno.EACCES, errno.EAGAIN):
+                    raise
+                continue
+            try:
+                yield
+            finally:
+                lease.__exit__(None, None, None)
+            return
+        cancel.wait(0.25)
+    raise InterruptedError('Build slot wait cancelled')
+
+
 def run_checks(task, execution_root):
+    if task.plan['profile'] == 'quick' and not task.plan['javaModules']:
+        return _run_checks(task, execution_root)
+    try:
+        limit = int(os.environ.get('SYMPHONY_BUILD_CONCURRENCY', '1'))
+        task.update(buildSlot={'status': 'waiting', 'limit': limit, 'since': now()})
+        with build_slot(task.home.parent, task.cancel, limit):
+            task.update(buildSlot={'status': 'acquired', 'limit': limit, 'since': now()})
+            try:
+                return _run_checks(task, execution_root)
+            finally:
+                task.update(buildSlot={'status': 'released', 'limit': limit, 'since': now()})
+    except (OSError, ValueError) as exc:
+        task.update(buildSlot={'status': 'blocked', 'reason': str(exc)})
+        return {'status': 'blocked', 'reason': 'build_slot_unavailable: ' + str(exc)}
+
+
+def _run_checks(task, execution_root):
     """Runs while the model is idle. Each underlying process has its own timeout."""
     from harness import Step, run_step, environment
     evidence = task.home / 'runs' / task.state['runId'] / ('check-' + str(len(task.state['checks'])))

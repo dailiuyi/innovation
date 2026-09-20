@@ -384,3 +384,25 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 - 测试环境首次缺少 Python 验证依赖，且沙箱创建的测试目录与宿主用户 Git 所有权不同，入口如实返回 blocked。随后以子进程级 safe.directory 和现有只读 `.local/python` 完成验证，未修改全局 Git 配置；同时收紧 harness --root 必须是实际 Git 根目录，避免嵌套目录误用外层仓库指纹。
 - 当前工具安装至 `/opt/symphony-execution`，root 所有且文件只读；未来新容器由 symphony.ps1 逐文件只读挂载。运行中的旧会话不会自动获得新提示；新会话使用统一入口。构建上限 900 秒，失败同输入暂停而不是切换命令再次构建；明确修复后才带 `--retry-reason` 重试。
 - 限制：完整依赖哈希有 I/O 成本；Windows 测速不证明 Docker 挂载盘相同速度。只有本项目已声明的文件/环境输入纳入构建键，新增外部输入须扩展。代码失败不降级为环境待验收；复用构建不证明 HTTP/浏览器/数据库/客户端验收。此次未运行数据库验收，无数据库版本结论。
+
+
+## 2026-09-20 Symphony 原生工作区与构建前扫描去重
+
+- 按用户要求把 `/data/workspaces` 切换到 Docker 命名卷 `innovation-symphony-workspaces`，各 Issue 的源码、node_modules、Maven 仓库和 venv 独立；其余 `/data`、共享下载缓存、任务状态与 Codex Trace 保持原挂载。先核对 running/retrying/blocked 和 open ready 为空，停止并保留旧容器，源工作区只读迁移。
+- 迁移 GH-13 共 31,355 个条目、342,332,120 字节，逐文件 SHA-256 校验通过；与宿主独立枚举的条目数一致。一次性读取 Windows 旧目录耗时 1,062.344 秒。证据在 `.local/symphony/native-workspace-migration/migration.json`，完整清单在原生卷根目录 `.migration-inventory.json`。源目录未删除。
+- `agent_check.py` 取消前置 deps 调用，统一由 harness 的 frontend-build 在同一把锁内检查依赖并构建；已安装依赖的真实构建仅保留一次构建前扫描与一次构建后变化检查。显式 retry reason 透传，冷工作区由该控制器安装依赖，失败暂停、输入/产物校验与任务隔离仍保留。
+- Windows 前端控制测试 19 项通过；Linux 同套 19 项通过。迁移测试 Windows 3 项通过、1 项 Linux 专属跳过，Linux 4 项全部通过，覆盖拒绝覆盖/重叠路径、读取失败不生成成功标记、文件权限及符号链接。迁移回归已纳入 quick。PowerShell 语法检查与 git diff --check 通过。
+- 原生卷中执行 `/data/workspaces/GH-13/.local/venv/bin/python /opt/symphony-execution/agent_check.py --root /data/workspaces/GH-13 --profile frontend`，全部通过。镜像保持 `innovation-symphony:0.0.3-java-v2`，2 核/4 GiB；源码指纹始终为 `974a523d2d69154dfbe6003d9bdad9b822c2d8b0e099f22ed62e4d0054023a5b`。检查总耗时由 1,149.850 秒降为 21.598 秒（本次计时包含 docker exec），实际构建由 465.019 秒降为 13.554 秒，mode=executed，依赖 reused。24,429 个依赖文件的构建前/后扫描分别 0.880/0.676 秒；311 个产物文件的内容指纹与迁移前一致。此次单次对比不是并发负载或所有任务的性能保证。
+- 容器报告 `/data/workspaces/GH-13/.local/harness/20260920T130655Z-k5ahnh5j/report.json`，sourceUnchanged=true；宿主导出、构建日志与前后耗时保存在 `.local/symphony/native-workspace-migration/`。GH-13 仍处于 review，未重启模型执行、未更新 PR。43190 API 与 43191 Codex Trace HTTP 验证通过，deepseek-flash/high 目录校验通过（不代表此次发起过模型推理）。
+- 回退容器 `innovation-symphony-before-native-workspaces` 已停止保留，原 `.local/symphony/data/workspaces` 仅为回退副本。回退前须确认空闲，保留当前卷的新修改，再停止并改名新容器，恢复旧容器名称并启动。工具变更前副本在 `.local/symphony/native-workspace-migration/rollback/before-*.py` 与 `before-symphony.ps1`；没有删除任何工作区、合并或修改 Demo/LAN。此次未改 Java/数据库行为，也未执行业务 HTTP/浏览器验收。
+
+
+## 2026-09-20 Symphony 版本固化、自检与并发验收
+
+- 新增环境清单与显式 freeze/只读 verify、Doctor，固定已接受的镜像 ID、运行工具和控制器/补丁摘要；保留原镜像，导出无凭据镜像归档和模块副本。基础 Dockerfile 纳入仓库，BuildBase 校验官方发行文件摘要；源码重建可能改变镜像 ID，不声称 apt/传递依赖逐字节可重复。
+- 编码前按外置计划做轻量自检，失败持久化 blocked，不自动更换环境或重试。实测正常任务检查 0.537 秒，最终 Doctor 的容器探测 0.569 秒；在合成控制状态下移除 Java/Maven PATH，0.314 秒内在编码前阻塞。未修改 GH-13 的真实计划、状态或 PR，没有发起模型推理。
+- 无网络、无凭据的同镜像 Linux 临时容器执行 46 项环境/版本/生命周期/路由测试全部通过。Windows 版本测试 6 项、生命周期测试 18 项通过；最终构建槽位调整后，Linux 生命周期 18 项再次通过，覆盖 quick 不占槽位及 frontend 释放槽位。覆盖脚本/镜像漂移拒绝、按 profile 选择工具、缺少 Maven、跨任务写入隔离、构建槽位等待/取消/释放。后续新增的计划选择与配置校验另由 Doctor 和真实 Task.begin 集成验证。
+- 独立 2 核/4 GiB 容器、原生验证卷，以只读 GH-13 指纹 `974a523d2d69154dfbe6003d9bdad9b822c2d8b0e099f22ed62e4d0054023a5b` 复制三份源码和独立暖依赖。基线 Java/前端分别 15.280/12.857 秒，总计 28.138 秒；并发 A 26.745/21.000 秒，B 26.744/21.654 秒，共 48.438 秒。每个执行 22 项 Java 测试，全部通过；源码指纹不变，311 个前端产物内容指纹一致。匿名内存峰值 3,022,139,392 字节，含缓存峰值 4,171,456,512 字节；oom/oom_kill/max 计数增量均为 0。
+- 两路吞吐约提升 16%，内存余量有限，因此仍允许 4 个编码 Agent，控制器默认最多 1 路重构建；等待不计入命令超时，可取消，文件锁随进程退出释放。不引入新 Worker/服务。
+- 首次并发实验在卷权限阶段失败；随后发现复制夹具过度排除依赖包 dist，Java 通过但 Vite 缺文件。已修复空卷初始化与复制范围，增加回归与复制后依赖哈希校验，使用新空目录完成上述实验。失败记录保留，没有放宽业务断言。
+- 证据 `.local/symphony/environment-lock-validation/`；成功实验 `concurrency-report.json`，轻量自检 `doctor-final.log`、`task-gate-integration.json`，Linux 测试 `linux-tests.log`。回退容器 `innovation-symphony-before-environment-lock`、原脚本 rollback 与镜像/补丁 recovery 保留。限制：没有四路压力、冷下载、HTTP/数据库/浏览器验收结论，未合并或部署 Demo。

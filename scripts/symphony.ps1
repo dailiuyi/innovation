@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Build', 'Start', 'StartOffline', 'Stop', 'Status', 'Logs', 'Models', 'ValidateModel', 'PrepareTask', 'TaskStatus', 'ResumeTask')]
+    [ValidateSet('Build', 'BuildBase', 'Doctor', 'Start', 'StartOffline', 'Stop', 'Status', 'Logs', 'Models', 'ValidateModel', 'PrepareTask', 'TaskStatus', 'ResumeTask')]
     [string]$Action = 'Status',
     [switch]$UseHostCredentials,
     [string]$Model = 'gpt-6-astra',
@@ -7,7 +7,11 @@ param(
     [string]$DeepSeekKeyFile,
     [int]$Issue,
     [string]$PlanFile,
-    [string]$Reason
+    [string]$Reason,
+    [string]$WorkspaceVolume = 'innovation-symphony-workspaces',
+    [ValidateSet('quick', 'frontend')][string]$Profile = 'quick',
+    [switch]$Java,
+    [ValidateRange(1, 4)][int]$BuildConcurrency = 1
 )
 
 $ErrorActionPreference = 'Stop'
@@ -24,6 +28,34 @@ function Invoke-Docker {
 }
 
 switch ($Action) {
+    'Doctor' {
+        & python (Join-Path $PSScriptRoot 'symphony_environment.py') verify
+        if ($LASTEXITCODE -ne 0) { throw 'Environment version check failed; inspect drift before updating its baseline.' }
+        $baseline = Get-Content -LiteralPath (Join-Path $repoRoot 'deploy/symphony-environment.lock.json') -Raw | ConvertFrom-Json
+        $actualImage = & docker inspect --format '{{.Image}}' $containerName
+        if ($LASTEXITCODE -ne 0 -or $actualImage -ne $baseline.imageId) { throw 'Running container uses another image.' }
+        $probeArgs = @('exec', $containerName, 'python3', '/opt/symphony-execution/symphony_environment.py',
+            'probe', '--lock', '/opt/symphony-execution/environment.lock.json', '--profile', $Profile)
+        if ($Java) { $probeArgs += '--java' }
+        if ($Issue -gt 0) { $probeArgs += @('--workspace', "/data/workspaces/GH-$Issue", '--plan', "/data/task-control/GH-$Issue/plan.json") }
+        Invoke-Docker -Arguments $probeArgs
+        return
+    }
+    'BuildBase' {
+        $asset = Join-Path $runtimeRoot 'downloads/symphony-v0.0.3-linux_x86_64'
+        $expected = 'ea35a04a54a6d37c0cafe3f195da871e47614a8c05765b90dbb4cac32e1435ee'
+        if (-not (Test-Path -LiteralPath $asset) -or (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) {
+            throw 'Provide the checksum-verified official Symphony v0.0.3 Linux x86_64 release under .local/symphony/downloads first.'
+        }
+        $buildRoot = Join-Path $runtimeRoot 'build-base'
+        New-Item -ItemType Directory -Force -Path (Join-Path $buildRoot 'downloads') | Out-Null
+        @('*', '!Dockerfile', '!downloads/', '!downloads/symphony-v0.0.3-linux_x86_64') |
+            Set-Content -LiteralPath (Join-Path $buildRoot '.dockerignore') -Encoding utf8
+        Copy-Item -LiteralPath (Join-Path $repoRoot 'deploy/symphony-base.Dockerfile') -Destination (Join-Path $buildRoot 'Dockerfile')
+        Copy-Item -LiteralPath $asset -Destination (Join-Path $buildRoot 'downloads/symphony-v0.0.3-linux_x86_64')
+        Invoke-Docker -Arguments @('build', '--tag', 'innovation-symphony:0.0.3', $buildRoot)
+        return
+    }
     { $_ -in 'PrepareTask', 'TaskStatus', 'ResumeTask' } {
         if ($Issue -lt 1) { throw 'Positive -Issue required' }
         $taskArgs = @((Join-Path $PSScriptRoot 'symphony_task.py'),
@@ -74,6 +106,8 @@ switch ($Action) {
 if ($Action -eq 'Start' -and -not $UseHostCredentials) {
     throw 'Authenticated startup requires explicit -UseHostCredentials: shares the GitHub CLI token with Symphony and mounts Codex auth.json read-only. StartOffline needs neither.'
 }
+& python (Join-Path $PSScriptRoot 'symphony_environment.py') verify
+if ($LASTEXITCODE -ne 0) { throw 'Unverified environment version; inspect drift and run explicit validation before refreshing the lock.' }
 $existing = & docker ps -a --filter "name=^/$containerName$" --format '{{.Names}}'
 if ($LASTEXITCODE -ne 0) { throw 'Docker is not available.' }
 if ($existing) {
@@ -91,7 +125,7 @@ $adapterPath = Join-Path $PSScriptRoot 'symphony_codex_adapter.py'
 $probePath = Join-Path $PSScriptRoot 'symphony_model_probe.py'
 $publishPath = Join-Path $PSScriptRoot 'symphony_publish.py'
 $taskPath = Join-Path $PSScriptRoot 'symphony_task.py'
-$executionFiles = @('agent_check.py', 'frontend_control.py', 'harness.py', 'check_java.py', 'test_frontend_control.py', 'test_symphony_task.py', 'test_symphony_publish.py', 'symphony_task.py', 'symphony_publish.py', 'symphony_entrypoint.py')
+$executionFiles = @('agent_check.py', 'frontend_control.py', 'harness.py', 'check_java.py', 'test_frontend_control.py', 'test_symphony_task.py', 'test_symphony_publish.py', 'symphony_task.py', 'symphony_publish.py', 'symphony_entrypoint.py', 'migrate_symphony_workspaces.py', 'test_migrate_symphony_workspaces.py', 'symphony_environment.py', 'test_symphony_environment_lock.py', 'verify_symphony_concurrency.py')
 foreach ($executionFile in $executionFiles) {
     if (-not (Test-Path -LiteralPath (Join-Path $PSScriptRoot $executionFile) -PathType Leaf)) {
         throw "Missing execution script: $executionFile"
@@ -101,6 +135,29 @@ foreach ($routingPath in @($adapterPath, $probePath, $publishPath, $taskPath)) {
     if (-not (Test-Path -LiteralPath $routingPath -PathType Leaf)) { throw "Missing routing script: $routingPath" }
 }
 
+# Keep task working trees and task-local dependencies on Linux-native storage.
+# Existing Windows working trees must be copied and verified explicitly before hiding them.
+if ($WorkspaceVolume -notmatch '^[a-zA-Z0-9][a-zA-Z0-9_.-]+$') { throw 'Invalid workspace volume name' }
+Invoke-Docker -Arguments @('volume', 'create', '--label', 'app=innovation-symphony', $WorkspaceVolume)
+$legacyWorkspaces = Join-Path $dataRoot 'workspaces'
+$legacyNonEmpty = (Test-Path -LiteralPath $legacyWorkspaces) -and
+    @(Get-ChildItem -LiteralPath $legacyWorkspaces -Directory).Count -gt 0
+if ($legacyNonEmpty) {
+    Invoke-Docker -Arguments @('run', '--rm', '--network', 'none', '--user', '1000:1000',
+        '--mount', "type=volume,source=$WorkspaceVolume,target=/workspaces", '--entrypoint', 'python3',
+        $imageName, '-c', 'import json; p=json.load(open("/workspaces/.migration-verified.json")); assert p["verified"] is True, "Migrate and verify legacy workspaces first"')
+}
+Invoke-Docker -Arguments @('run', '--rm', '--network', 'none', '--user', '0:0',
+    '--cap-drop', 'ALL', '--cap-add', 'CHOWN', '--security-opt', 'no-new-privileges',
+    '--mount', "type=volume,source=$WorkspaceVolume,target=/workspaces", '--entrypoint', 'python3',
+    $imageName, '-c', 'import os
+from pathlib import Path
+os.chown("/workspaces",0,0)
+try:
+    Path("/workspaces/.volume-initialized").touch()
+finally:
+    os.chown("/workspaces",1000,1000)')
+
 $dockerArguments = @(
     'run', '-d', '--name', $containerName,
     '--label', 'app=innovation-symphony', '--restart', 'unless-stopped',
@@ -108,13 +165,18 @@ $dockerArguments = @(
     '--security-opt', "seccomp=$seccompPath",
     '--pids-limit', '512', '--memory', '4g', '--cpus', '2',
     '--env', 'SYMPHONY_CONTROL_ROOT=/data/task-control',
+    '--env', "SYMPHONY_BUILD_CONCURRENCY=$BuildConcurrency",
+    '--env', 'SYMPHONY_ENVIRONMENT_LOCK=/opt/symphony-execution/environment.lock.json',
+    '--mount', "type=bind,source=$repoRoot/deploy/symphony-environment.lock.json,target=/opt/symphony-execution/environment.lock.json,readonly",
     '-p', '127.0.0.1:43190:43190',
     '--mount', "type=bind,source=$workflowPath,target=/config/WORKFLOW.md,readonly",
     '--mount', "type=bind,source=$adapterPath,target=/opt/symphony-routing/symphony_codex_adapter.py,readonly",
     '--mount', "type=bind,source=$probePath,target=/opt/symphony-routing/symphony_model_probe.py,readonly",
     '--mount', "type=bind,source=$publishPath,target=/opt/symphony-routing/symphony_publish.py,readonly",
     '--mount', "type=bind,source=$taskPath,target=/opt/symphony-routing/symphony_task.py,readonly",
+    '--mount', "type=bind,source=$PSScriptRoot/symphony_environment.py,target=/opt/symphony-routing/symphony_environment.py,readonly",
     '--mount', "type=bind,source=$dataRoot,target=/data",
+    '--mount', "type=volume,source=$WorkspaceVolume,target=/data/workspaces",
     '--mount', "type=bind,source=$dataRoot\codex,target=/home/node/.codex"
 )
 
