@@ -1,5 +1,40 @@
 # V0.1 验证记录
 
+## 2026-09-20 需求专项优先与固定审查实例
+
+- 新增 `scripts/check_java.py` 和 `scripts/review.py`，流程见 [固定审查入口](16-fast-review.md)。先验证需求实际路径，再按风险追加 quick/frontend/ingestion；零测试或跳过不得作为 Java 交付通过。
+- Java 镜像 `innovation-symphony:0.0.3-java-v2`（Temurin 21.0.9/Maven 3.9.11）构建成功；无网络、无凭据环境测试 5 项通过。只读挂载 PR #8 后端并复制到隔离容器目录，执行 `mvn -f /tmp/backend/pom.xml -pl ruoyi-framework -am -Dmaven.repo.local=/cache test -B -ntp`，实际 6 项通过、零跳过。初次离线尝试因宿主缓存仓库标识及 Maven 默认插件差异失败；最终采用独立 Linux 缓存在线补齐，耗时约 4 分 27 秒，没有把失败记录视为通过。
+- PR #8 提交 `78c147e54276f0caf8c28e298c69b4b88b1e77ac` 的 `review.py check --suite accounts --online` 通过（约 48 秒）：23 项 Java 测试、48 项账号 HTTP 断言，包含六位 bootstrap 登录、创建/重置/个人改密边界和两份旧 Token 失效；PostgreSQL 17.6。证据在 `.local/reviews/pr-8/78c147e54276f0caf8c28e298c69b4b88b1e77ac/check-522f3f79efa9/report.json`。首次 offline 因缺 maven-clean-plugin 失败；显式 online 补齐后重跑。
+- 同版 `check --suite frontend` 通过（约 62 秒），证据 `check-de025cb9408b/report.json`；两项 sourceUnchanged=true。`test_review.py` 六项通过；root quick 增加该测试步骤，doctor/quick 检查通过。
+- 审查后启动同版隔离实例，`http://127.0.0.1:9584` 页面、API 代理、真实登录及独立 status 健康通过。凭据仅存实例目录，未写入本文。已验证前一实例正常 stop，保留证据和数据。实际用户浏览器点击、其他设备访问和完整 ingestion 未验收；没有合并、推送或改变日常 Demo。
+- Symphony 在空闲及 ready 队列为空时完成运行镜像切换，健康与模型选择校验通过；旧容器 `innovation-symphony-before-java-v2` 保留。首次启动的上游关闭任务自动清理阻塞健康接口，GH-7 残余目录已停止清理后归档；详情、限制与回退见 [任务交接](tasks/completed/2026-09-20-fast-review.md)。
+
+## 2026-09-20 Symphony 验证依赖预装与共享缓存
+
+- 扩展镜像 `innovation-symphony:0.0.3-validation-v1` 构建通过，image ID `sha256:4098208ef5fc0d57a5292ea610ee91ed6a0e57d8e3311fa8cf77461416b1ba8f`；保留 Symphony v0.0.3、Codex CLI 0.154.0、原基础镜像及并发上限 4。实际 Python 依赖版本记录在镜像 `/opt/symphony-validation/installed.txt`，`pip check` 通过。
+- 最终 Linux 镜像在无网络无凭据容器中通过 4 项环境检查：离线初始化、只读镜像依赖与独立 venv、变更依赖只安装到本任务、共享缓存路径与沙箱隔离。轻量 venv 不复制 pip；Linux 临时目录初始化约 0.3 秒，Windows 挂载目录实测 1.425 秒，当前常驻容器合成工作区实测 1.703 秒。这些时间只包含 Python 环境准备，不包含克隆仓库或 npm 安装。
+- 两个隔离任务的 pip 安装均命中共享下载缓存；另一个 `--network none` 容器通过 `npm ci --offline` 从持久缓存安装相同锁文件依赖，保持独立 node_modules。证据 `.local/symphony/environment-validation/warm.json`、`offline.json`，覆盖小型合成包，不声称完整前端依赖已预热。
+- 实际 App Server 使用与 WORKFLOW 相同的 `workspaceWrite` 和两个缓存 writableRoots，模型执行合成脚本确认当前工作区及缓存可写、另一任务工作区被拒绝；结果 `.local/symphony/environment-validation/appserver-cache.json`。测试仅使用 Codex 登录，不带 GitHub 凭据，不操作业务数据。
+- 未中断 GH-3/GH-4：先将已验收镜像中的两个新增 `/opt` 目录同步到原容器，校验只读权限、`pip check` 和脚本 SHA256 一致。任务全部结束，ready 队列及 running/retrying 均为空后正式切到验证镜像；健康和 Astra low 模型校验通过。原容器 `innovation-symphony-before-cache` 停止保留，缓存随 `/data` 挂载持久化到 `.local/symphony/data/cache/`。
+- quick doctor/check 通过，阶段报告 `.local/harness/20260919T160018Z-igi1txta/report.json`；最终文档及测试准备项整理后的复核报告保存在 `.local/harness/`。未运行业务 ingestion 或修改前端锁文件、任务 node_modules；未重建业务镜像。
+
+## 2026-09-19 Symphony 模型与思考深度路由
+
+- 保留官方 Symphony v0.0.3 / Codex CLI 0.154.0；新增 stdio 适配器，将 Issue 的 `symphony:model:` 与 `symphony:effort:` 标签校验后写入 `turn/start`，缺省为 `gpt-6-astra / low`。同一会话保持组合，配置错误在推理前失败。
+- 无网络无凭据 Linux 镜像中 `python3 -m unittest discover -s /opt/routing -p test_symphony_codex_adapter.py -v`：14 项全部通过；Windows Python 3.12.5 的 quick 中 13 项通过、Linux 进程组清理 1 项明确跳过（已由 Linux 补验）。覆盖分页、目录错误/超时、重复/未知/不支持组合、正文伪造、后续轮次、独立任务、工具请求转发及退出清理。
+- 使用发行包实际 Solid 1.2.2 引擎加载当前 WORKFLOW，以合成 Issue 渲染完整模板；换行标签经编码后保持单条元数据，正文示例没有覆盖标签。结果 `.local/symphony/routing-validation/template.json`。
+- 两个无 GitHub 凭据的一次性隔离容器完成真实短请求：无标签得到 `gpt-6-astra / low`，显式标签得到 `gpt-5.6-luna / medium`。均为 `turnStatus=completed`，实际 rollout 的 `turn_context` 与预期一致；证据为 `.local/symphony/routing-validation/default.json`、`explicit.json` 及对应审计文件。原始 rollout 随临时容器移除，保留的证据包含线程 ID 和实际参数，不含原始提示。
+- quick doctor/check 通过，报告 `.local/harness/20260919T152334Z-pd4k03tt/report.json`；HEAD `a0df970d5c191c4c6ce001a4c3c50cbf1ce0e70e`，源码指纹 `f5bd5da00cfff7c8b15181e0fb3403bcb030124a2eba2bef6a294997bebf972c`，`sourceUnchanged=true`。该快照在补写本段记录之前；文档整理后的最终复核报告仍保存在 `.local/harness/`。
+- 确认 ready 队列、running/retrying 均为空后切换常驻容器；43190 健康，`Models` 和 `ValidateModel` 通过，两个脚本挂载均为只读。旧容器 `innovation-symphony-before-routing` 已停止保留，工作流备份在 `.local/symphony/routing-validation/rollback/`，data 未删除。
+- 未执行：新建或修改远端验收 Issue、真实 Issue 到执行/PR 的本次路由验收、独立代码审查及业务 ingestion。未重建业务镜像或操作 Demo/LAN Compose；既有会话查看器改动保留。
+
+## 2026-09-19 Symphony 只读会话详情页
+
+- Windows / Python 3.12.5：新增 `scripts/symphony_viewer.py` 与独立 HTML 页面，仅监听 `127.0.0.1:43191`，读取 Symphony 的持久化会话目录和本机调度状态；不接管任务，不重启容器。
+- `python scripts/test_symphony_viewer.py` 通过：验证半行写入后的增量续读、不重复返回、中文内容及内部推理过滤。
+- `python scripts/harness.py doctor --profile quick` 与 `check --profile quick` 通过；后续页面调整后再次执行 quick，以最终报告为准。未涉及数据库，未运行 ingestion 或业务前端构建。
+- 在应用内浏览器确认真实会话记录增量更新、搜索、暂停/继续刷新及切换历史会话。详情仅覆盖实际落盘记录；工具自身截断的内容无法恢复，不展示内部推理。长工具返回使用展开式呈现。
+
 ## 2026-09-19 Symphony 首个真实任务启动修复
 
 - GH-1 暴露安装冒烟检查未覆盖的 App Server 协议问题：`reject` 审批对象被 Codex CLI 0.154.0 拒绝。根据该二进制导出的 schema 改为 `granular`，五类字段均为 false，保留 workspace-write 与拒绝越权的规则。
@@ -233,3 +268,22 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 ## GH-7 管理员密码长度与登录返工（2026-09-20）
 
 密码设置与实际登录入口统一使用 6–64 长度常量，补充真实登录服务路径的边界回归。Linux quick 检查已通过；Java 测试、Windows 专项账号矩阵、旧 Token 失效与独立审查仍待完成。[本次证据及隔离验收步骤](evidence/issue-7/README.md)区分原提交历史结果和返工证据；前端最终结果见现有 PR #8。未部署，无数据库迁移。
+
+## 2026-09-20 最新主线 LAN 网关部署
+
+- 当前分支快进至 `origin/main` 的 `b2b0200`，原有未提交修改经 autostash 恢复；部署输入 frontend 与网关配置没有本地差异。
+- `python scripts/harness.py doctor --profile quick`、`check --profile quick`、`check --profile frontend`、`doctor --profile ingestion`、`check --profile ingestion` 均通过。frontend 与 ingestion 报告均为 `sourceUnchanged=true`；报告分别保留在 `.local/harness/20260919T161707Z-1apjlois/`、`.local/harness/20260919T161810Z-iilcbd4k/`。
+- 隔离 PostgreSQL 17.6 / Redis / Spring Boot / Vite / Edge 验证通过，包含真实登录、默认展示发布文件、替换发布后展示新文件、手动选择与刷新保持。浏览器收尾日志有 CancelledError；进程退出码为 0，结构化业务检查全部通过。
+- 执行 `docker compose --env-file config/compose.env build gateway` 及 `up -d --no-deps --wait gateway`，仅更新网关；后端容器 ID 与启动时间未变，数据库和 Redis 未重建。
+- 新网关镜像 ID：`sha256:7488cd88d8ce15398becfdc545965acd1926f7153f8806b202abaa87301d5ca2`。旧网关镜像保留为 `innovation-gateway:rollback-20260920-b2b0200`。
+- 四个服务 healthy；本机访问 `http://192.168.0.12:43174/` 返回 HTTP 200，`/prod-api/captchaImage` 返回 code 200。未做另一台 LAN 设备访问或线上日常账号登录验证；不包含真实客户端加载验收。
+
+## 2026-09-20 最新 main 局域网部署（c604236）
+
+- 从 origin/main 获取 c604236b1e6b617fcbb3dcd64dcbf3dabe948906，在 `.local/deploy-c604236` 独立 worktree 构建；主工作区分支及已有未提交修改保留。
+- 最新 worktree 执行 `python scripts/harness.py doctor --profile quick`、`python scripts/harness.py check --profile quick` 通过；复用主工作区 `.local/python` 依赖。报告 `.local/deploy-c604236/.local/harness/20260920T023206Z-7nd3vhx4/report.json`，sourceUnchanged=true，SHA256=c6a197c7dd11406af6e03e6c8543d995d9f4a2286249723bd338a5b4815b5f20。
+- `node scripts/verify_draft_panel.mjs` 通过；`docker compose --env-file E:/code/java/innovation/config/compose.env build backend gateway` 通过。Maven 3.9.11/JDK 21 构建实际执行 23 项测试，零失败/错误/跳过，包含 DemoAccountServiceTest 1 项、SysLoginServiceTest 5 项；Node 22.18.0 前端生产构建通过。
+- 数据库 PostgreSQL 17.6；备份 `.local/deployment-20260920-c604236/database.dump`（79419 字节），pg_restore --list 可读取。旧后端保留为 innovation-backend:rollback-20260920；旧网关镜像底层内容缺失，无法 tag/commit，已备份 gateway-html 和 gateway-default.conf，可据此重建回退网关。
+- `docker compose --env-file E:/code/java/innovation/config/compose.env up -d --no-deps --wait --wait-timeout 180 backend gateway` 成功；四服务 healthy，数据库/Redis 未重建，Nginx 配置检查通过。实际后端镜像 sha256:4238e50071aee2fac320e980fb88829cb6d2939893ed1629636e3eef81276bf5，网关 sha256:a009766600e0110511630f8fb4586767da3a98b4750010d0713e19b7e4d087e1，均与新构建一致。
+- 本机访问 http://192.168.0.12:43174/ 与 /prod-api/captchaImage 均 HTTP 200，后者业务 code=200；Flyway 最新 013 成功。
+- 范围限制：本次未执行完整 ingestion、真实账号登录/改密浏览器流程、第二台 LAN 设备访问或客户端加载验收；单元测试及健康检查不替代这些验收。

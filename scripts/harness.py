@@ -164,6 +164,9 @@ def make_steps(profile, directory, root=ROOT):
     evidence = directory / 'evidence'
     evidence.mkdir()
     steps = [Step('harness-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'), '-p', 'test_harness.py'], root),
+             Step('review-tool-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'), '-p', 'test_review.py'], root),
+             Step('symphony-routing-tests', [sys.executable, '-m', 'unittest', 'discover', '-s', str(root / 'scripts'),
+                                               '-p', 'test_symphony_codex_adapter.py'], root),
              Step('contracts-and-links', [sys.executable, root / 'scripts/verify_design.py', '--report-dir', evidence], root,
                   evidence=evidence / 'validation-contracts.json')]
     if profile in ('frontend', 'ingestion'):

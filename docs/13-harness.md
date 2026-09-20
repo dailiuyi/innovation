@@ -1,5 +1,7 @@
 # 基础 Harness
 
+先按 [专项优先流程](16-fast-review.md) 执行需求对应的最短检查，再按风险选择 profile。Java 专项使用 `scripts/check_java.py`；账号 HTTP 与同提交人工实例使用 `scripts/review.py`。通用 ingestion 不替代专项验收，也不是所有改动的默认门槛。
+
 Harness 把仓库约束、验证脚本与交接记录组织成统一工作流。当前版本提供人工触发的验证入口，不调度模型、不自动修复、不合并、不部署。
 
 ## 使用
@@ -17,7 +19,7 @@ python scripts/harness.py check --profile ingestion
 
 | Profile | 检查范围 | 前置条件 |
 |---|---|---|
-| quick（默认） | Harness 故障回归、OpenAPI/Schema/示例、生成源一致性、AGENTS/README/docs 递归本地链接 | Python 3.11+、Git、requirements-review 中的契约验证依赖 |
+| quick（默认） | Harness 故障回归、Symphony 模型路由协议回归、OpenAPI/Schema/示例、生成源一致性、AGENTS/README/docs 递归本地链接 | Python 3.11+、Git、requirements-review 中的契约验证依赖 |
 | frontend | quick + 草稿面板乱序响应回归 + Vue 生产构建 | Node、npm、已通过 npm ci 安装的前端依赖 |
 | ingestion | quick + 草稿面板回归 + 当前后端源码独立 Maven package（含测试）+ 原有隔离入库 API/Edge 验收 | Windows、项目 .local 中 PostgreSQL 17/JDK 21、Maven、Redis、Node、前端依赖、psycopg、Playwright、Edge |
 
