@@ -3,6 +3,7 @@
     <p>所属场景：{{sceneName||sceneId||''}}<span v-if="sceneName">（编号 {{sceneId}}）</span></p>
     <p>文件仅供管理员入库管理。已发布版本文件冻结，仅可修改说明；未发布草稿不能供客户端加载。AAR 请登记为客户端集成库。选择文件夹会在确认后替换当前草稿的全部文件。</p>
     <el-alert v-if="error" :title="error" type="error" :closable="false" />
+    <el-alert v-if="downloadError" :title="downloadError" type="error" :closable="false" />
     <section class="published-card" :class="{empty:!published}">
       <div class="published-head">
         <h3>当前发布版本</h3>
@@ -111,15 +112,26 @@ const drafts=ref([]),draftTotal=ref(0),draftPage=ref(1),description=ref(''),sele
 const files=ref([]),fileTotal=ref(0),filePage=ref(1),maxBytes=ref(0),collectionMaxFiles=ref(200),collectionMaxBytes=ref(0),kind=ref('RESOURCE_FILE'),picker=ref(null),folderPicker=ref(null)
 const busy=ref(false),creating=ref(false),saving=ref(false),loadingFiles=ref(false),error=ref(''),progress=ref(0),progressText=ref('')
 const removing=ref(false),publishing=ref(false),published=ref(null),sceneLockVersion=ref(0),sceneName=ref('')
-const replacement=ref(null),zipPreparing=ref(false),manifestVisible=ref(false),manifest=ref(null)
+const replacement=ref(null),zipPreparing=ref(false),manifestVisible=ref(false),manifest=ref(null),downloadError=ref('')
 const replacing=ref(false)
 const states={PENDING:'待上传',UPLOADING:'处理中',AVAILABLE:'已校验入库',FAILED:'失败',DELETING:'正在删除',DELETE_FAILED:'删除失败'}
 let worker,controller,retryRow,cancelled=false,createKey=null,poll
-let draftRequest=0,fileRequest=0,selectionRequest=0,sceneRequest=0
+let draftRequest=0,fileRequest=0,selectionRequest=0,sceneRequest=0,downloadEpoch=0
 function key(text){const h=sha256(text);return `${h.slice(0,8)}-${h.slice(8,12)}-4${h.slice(13,16)}-a${h.slice(17,20)}-${h.slice(20,32)}`}
 function randomKey(){const bytes=new Uint32Array(4);crypto.getRandomValues(bytes);return key(Array.from(bytes).join('-'))}
 function size(n){return n>=1048576?`${(n/1048576).toFixed(1)} MiB`:`${n??0} B`}
 function message(e){return e.response?.data?.message||e.message||'请求失败，请刷新核对后重试'}
+// 下载提示、下载错误和准备中按钮状态都属于发起时的那个草稿：切换对象后作废旧请求，
+// 晚到的成功或失败不再写回新面板；别的流程写入的 error 不受影响。
+function clearDownloadState(){
+  ++downloadEpoch
+  zipPreparing.value=false
+  progressText.value=''
+  downloadError.value=''
+  manifestVisible.value=false
+  manifest.value=null
+}
+function downloadStillCurrent(epoch,draftId){return epoch===downloadEpoch&&selected.value?.id===draftId}
 function formatTime(value){
   if(!value) return ''
   const d=new Date(value)
@@ -155,6 +167,7 @@ async function loadReplacement(draft){
 async function selectDraft(id){
   const sequence=++selectionRequest,sceneId=props.sceneId
   ++fileRequest;selected.value=null;files.value=[];fileTotal.value=0;loadingFiles.value=false;replacing.value=false;replacement.value=null
+  clearDownloadState()
   try{
     const draft=await request.get(`/api/v1/drafts/${id}`)
     if(sequence!==selectionRequest||sceneId!==props.sceneId)return
@@ -214,6 +227,7 @@ async function removeDraft(row){
     await request.delete(`/api/v1/drafts/${row.id}`)
     if(selected.value?.id===row.id){
       selected.value=null;files.value=[];fileTotal.value=0;replacing.value=false;replacement.value=null
+      clearDownloadState()
       const query={...route.query};delete query.draftId
       await router.replace({query})
     }
@@ -346,17 +360,21 @@ async function downloadAuthorized(path,fallbackName){
   saveAs(new Blob([res.data]),filenameFromDisposition(res.headers['content-disposition'],fallbackName))
 }
 async function downloadOne(row){
+  const epoch=downloadEpoch,draftId=selected.value.id
   try{
     const collectionId=selected.value.currentCollectionId
     const generation=selected.value.collectionGeneration
-    await downloadAuthorized(`/api/v1/drafts/${selected.value.id}/files/${row.id}/content?collectionId=${collectionId}&generation=${generation}`,row.fileName)
-  }catch(e){error.value=message(e)}
+    await downloadAuthorized(`/api/v1/drafts/${draftId}/files/${row.id}/content?collectionId=${collectionId}&generation=${generation}`,row.fileName)
+  }catch(e){if(downloadStillCurrent(epoch,draftId))downloadError.value=message(e)}
 }
 async function showManifest(){
+  const epoch=downloadEpoch,draftId=selected.value.id
   try{
-    manifest.value=await request.get(`/api/v1/drafts/${selected.value.id}/download-manifest`)
+    const result=await request.get(`/api/v1/drafts/${draftId}/download-manifest`)
+    if(!downloadStillCurrent(epoch,draftId))return
+    manifest.value=result
     manifestVisible.value=true
-  }catch(e){error.value=message(e)}
+  }catch(e){if(downloadStillCurrent(epoch,draftId))downloadError.value=message(e)}
 }
 const zipResultUnconfirmed='请求等待超时，ZIP 构建结果尚未确认，后端可能仍在处理。请稍后重试。'
 const zipStillPreparing='ZIP 正在准备，构建结果尚未确认。请稍后手动重试。'
@@ -371,25 +389,35 @@ function prepareFailure(e){
   return{error:message(e),progress:'ZIP 准备失败，可手动重试'}
 }
 async function downloadZip(){
+  const epoch=downloadEpoch,draftId=selected.value.id
+  const collectionId=selected.value.currentCollectionId,generation=selected.value.collectionGeneration
   zipPreparing.value=true
   error.value=''
+  downloadError.value=''
   progressText.value='正在准备 ZIP'
   try{
     let exported
     try{
-      exported=await request.post(`/api/v1/drafts/${selected.value.id}/zip-exports`,{collectionId:selected.value.currentCollectionId,generation:selected.value.collectionGeneration},{timeout:0})
+      exported=await request.post(`/api/v1/drafts/${draftId}/zip-exports`,{collectionId,generation},{timeout:0})
     }catch(e){
+      if(!downloadStillCurrent(epoch,draftId))return
       const failure=prepareFailure(e)
-      error.value=failure.error
+      downloadError.value=failure.error
       progressText.value=failure.progress
       return
     }
+    if(!downloadStillCurrent(epoch,draftId))return
     progressText.value='ZIP 已准备好，开始下载'
     try{
       await downloadAuthorized(exported.downloadPath,exported.downloadPath.endsWith('/content')?'draft.zip':'draft.zip')
+      if(!downloadStillCurrent(epoch,draftId))return
       progressText.value='ZIP 已开始下载'
-    }catch{error.value=zipDownloadFailed;progressText.value='ZIP 已准备好，下载未完成，可手动重试'}
-  }finally{zipPreparing.value=false}
+    }catch{
+      if(!downloadStillCurrent(epoch,draftId))return
+      downloadError.value=zipDownloadFailed
+      progressText.value='ZIP 已准备好，下载未完成，可手动重试'
+    }
+  }finally{if(epoch===downloadEpoch)zipPreparing.value=false}
 }
 function close(done){if(busy.value || removing.value){ElMessage.warning('请等待上传结束或先取消上传');return}emit('close');done?.()}
 async function loadSceneName(id,sequence){
@@ -404,7 +432,7 @@ watch(()=>props.sceneId,async id=>{
   ++fileRequest;++draftRequest
   selected.value=null;files.value=[];drafts.value=[];fileTotal.value=0;draftTotal.value=0
   published.value=null;sceneLockVersion.value=0;loadingFiles.value=false;error.value='';draftPage.value=1
-  replacing.value=false;replacement.value=null;manifestVisible.value=false;manifest.value=null;progressText.value=''
+  replacing.value=false;replacement.value=null;clearDownloadState()
   sceneName.value=''
   if(!id)return
   loadSceneName(id,sceneSequence)
@@ -419,7 +447,7 @@ watch(()=>props.sceneId,async id=>{
     if(initialId)await selectDraft(String(initialId))
   }catch(e){if(sceneSequence===sceneRequest)error.value=message(e)}
 },{immediate:true})
-onBeforeUnmount(()=>{cancel();clearInterval(poll)})
+onBeforeUnmount(()=>{clearDownloadState();cancel();clearInterval(poll)})
 </script>
 <style scoped>
 .draft-files{margin-top:24px}.upload-bar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:20px}.digest{word-break:break-all}.el-alert{margin-bottom:16px}

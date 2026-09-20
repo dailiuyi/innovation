@@ -2,9 +2,12 @@
 
 只启动本仓库的 Vite 开发服务器和真实浏览器，由 Playwright 拦截并返回合成接口响应；
 不连接后端、数据库、日常 Demo 或真实存储，因此它证明页面结构和布局，不证明发布、上传、
-下载、删除等业务闭环。真实后端点击验收仍按开发工作流在 Windows 隔离环境执行。
+下载、删除等业务闭环。资源面板部分另用合成 ZIP 响应检查当前对象可下载、切换场景或版本后
+上一对象的下载提示与下载错误不再残留，以及准备期间切换对象时旧请求不会写回新面板。
+真实后端点击验收仍按开发工作流在 Windows 隔离环境执行。
 """
 import argparse
+import io
 import json
 import os
 import re
@@ -14,6 +17,7 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import zipfile
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
@@ -32,6 +36,25 @@ LONG_ADDRESS = '某省某市某区某街道' + '很长的地址内容' * 40
 SHORT_ID = '11111111-1111-4111-8111-111111111111'
 LONG_ID = '22222222-2222-4222-8222-222222222222'
 DRAFT_ID = '33333333-3333-4333-8333-333333333333'
+LONG_DRAFT_ID = '55555555-5555-4555-8555-555555555555'
+LONG_SPARE_ID = '66666666-6666-4666-8666-666666666666'
+ZIP_EXPORT_ID = '77777777-7777-4777-8777-777777777777'
+ZIP_FILENAME = 'layout-check.zip'
+# 每个场景各自的草稿；资源面板用两个草稿验证切换版本时的下载状态。
+DRAFTS = {
+    SHORT_ID: [(DRAFT_ID, '布局检查草稿')],
+    LONG_ID: [(LONG_DRAFT_ID, '布局检查草稿'), (LONG_SPARE_ID, '布局检查备用草稿')],
+}
+
+
+def synthetic_zip():
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, 'w') as archive:
+        archive.writestr('layout-check.txt', '布局检查')
+    return buffer.getvalue()
+
+
+ZIP_BYTES = synthetic_zip()
 
 
 def check(name, condition):
@@ -59,6 +82,8 @@ class Api:
         self.calls = []
         self.detail_requests = []
         self.scene_in_panel = None
+        self.zip_stall = False
+        self.zip_deferred = []
 
     def scene(self, scene_id):
         return next(scene for scene in self.scenes if scene['id'] == scene_id)
@@ -71,9 +96,10 @@ class Api:
         self.scene_in_panel = scene_id
         scene = self.scene(scene_id)
         published = self.published.get(scene_id)
-        items = [{'id': DRAFT_ID, 'sceneId': scene_id, 'description': '布局检查草稿', 'published': False,
-                  'lockVersion': 0, 'creatorName': '布局检查', 'fileCount': 0, 'createdAt': '2026-09-20T00:00:00Z'}]
-        return {'code': 200, 'items': items, 'total': 1, 'sceneLockVersion': scene['lockVersion'],
+        items = [{'id': draft_id, 'sceneId': scene_id, 'description': description, 'published': published == draft_id,
+                  'lockVersion': 0, 'creatorName': '布局检查', 'fileCount': 0, 'createdAt': '2026-09-20T00:00:00Z'}
+                 for draft_id, description in DRAFTS.get(scene_id, [])]
+        return {'code': 200, 'items': items, 'total': len(items), 'sceneLockVersion': scene['lockVersion'],
                 'published': {'id': published, 'description': '布局检查发布版本', 'publishedByName': '布局检查',
                               'publishedAt': '2026-09-20T00:00:00Z'} if published else None}
 
@@ -81,8 +107,10 @@ class Api:
         scene_id = next((sid for sid, did in self.published.items() if did == draft_id), self.scene_in_panel or SHORT_ID)
         self.scene_in_panel = scene_id
         scene = self.scene(scene_id)
-        return {'code': 200, 'id': draft_id, 'sceneId': scene_id, 'description': '布局检查发布版本',
-                'published': True, 'lockVersion': scene['lockVersion'], 'fileCount': 0,
+        published = self.published.get(scene_id) == draft_id
+        return {'code': 200, 'id': draft_id, 'sceneId': scene_id,
+                'description': '布局检查发布版本' if published else '布局检查草稿',
+                'published': published, 'lockVersion': scene['lockVersion'], 'fileCount': 0,
                 'currentCollectionId': '44444444-4444-4444-8444-444444444444', 'collectionGeneration': 1,
                 'createdAt': '2026-09-20T00:00:00Z'}
 
@@ -128,6 +156,18 @@ def route_handler(api, unmocked):
         matched = re.fullmatch(r'/api/v1/scenes/([^/]+)/drafts', path)
         if matched and request.method == 'GET':
             return reply(api.drafts(matched.group(1)))
+        matched = re.fullmatch(r'/api/v1/drafts/([^/]+)/zip-exports', path)
+        if matched and request.method == 'POST':
+            # 需要检查“准备期间切换对象”时先挂起，由脚本稍后决定成功或失败。
+            if api.zip_stall:
+                api.zip_deferred.append(route)
+                return
+            return reply({'code': 200, 'downloadPath': f'/api/v1/drafts/{matched.group(1)}/zip-exports/{ZIP_EXPORT_ID}/content'})
+        matched = re.fullmatch(r'/api/v1/drafts/([^/]+)/zip-exports/([^/]+)/content', path)
+        if matched and request.method == 'GET':
+            return route.fulfill(status=200, content_type='application/zip',
+                                 headers={'content-disposition': f'attachment; filename={ZIP_FILENAME}'},
+                                 body=ZIP_BYTES)
         matched = re.fullmatch(r'/api/v1/drafts/([^/]+)/publish', path)
         if matched and request.method == 'POST':
             body = json.loads(request.post_data or '{}')
@@ -277,7 +317,7 @@ def main():
                     last = error
             if browser is None:
                 raise SystemExit(f'no usable browser: {last}')
-            context = browser.new_context(viewport={'width': VIEWPORTS[0], 'height': 1000})
+            context = browser.new_context(viewport={'width': VIEWPORTS[0], 'height': 1000}, accept_downloads=True)
             context.add_cookies([{'name': 'Admin-Token', 'value': 'layout-check-token', 'url': web}])
             page = context.new_page()
             # 首次访问需要 Vite 现场编译依赖，慢于 Playwright 默认超时；显式放宽避免把环境慢当成失败。
@@ -391,6 +431,69 @@ def main():
                   f'draftScene={LONG_ID}' in page.url and api.detail_requests == [LONG_ID])
             long_drawer.locator('.el-drawer__close-btn').click()
             check('关闭第二个场景资源面板回到列表', close_clears_scene_query(page))
+
+            # 当前对象的 ZIP 下载提示必须可用；切换版本后上一对象的提示、错误与准备状态必须清除。
+            api.zip_stall = False
+            long_row = page.get_by_role('row').filter(has_text=LONG_NAME[:12])
+            long_row.get_by_role('button', name='版本与文件', exact=True).click()
+            version_drawer = page.locator('.el-drawer').filter(has_text='所属场景').first
+            version_drawer.get_by_role('heading', name='内容版本草稿 · ' + LONG_NAME).wait_for()
+            view_files = version_drawer.get_by_role('button', name='查看文件', exact=True)
+            view_files.first.click()
+            version_drawer.get_by_role('heading').filter(has_text=LONG_DRAFT_ID).wait_for()
+            zip_button = version_drawer.get_by_role('button', name='下载 ZIP', exact=True)
+            zip_button.wait_for()
+            with page.expect_download() as zip_download:
+                zip_button.click()
+            version_drawer.get_by_text('ZIP 已开始下载', exact=True).wait_for(timeout=10000)
+            zip_name = zip_download.value.suggested_filename
+            check('当前对象下载 ZIP 后显示已开始下载',
+                  zip_name.startswith('layout-check') and zip_name.endswith('.zip')
+                  and version_drawer.locator('.el-alert--error').count() == 0)
+
+            view_files.nth(1).click()
+            version_drawer.get_by_role('heading').filter(has_text=LONG_SPARE_ID).wait_for()
+            check('切换版本后清除上一对象的 ZIP 提示与下载错误',
+                  version_drawer.get_by_text('ZIP 已开始下载', exact=True).count() == 0
+                  and version_drawer.get_by_text('正在准备 ZIP', exact=False).count() == 0
+                  and version_drawer.locator('.el-alert--error').count() == 0)
+            version_drawer.locator('.el-drawer__close-btn').click()
+            check('切换版本后关闭资源面板回到列表', close_clears_scene_query(page))
+
+            # 准备期间切换场景：旧请求稍后返回也不得写回新面板，关闭重开同样适用。
+            api.zip_stall = True
+            api.zip_deferred.clear()
+            short_row = page.get_by_role('row').filter(has_text=SHORT_NAME)
+            short_row.get_by_role('button', name='版本与文件', exact=True).click()
+            stalled_drawer = page.locator('.el-drawer').filter(has_text='所属场景').first
+            stalled_zip = stalled_drawer.get_by_role('button', name='下载 ZIP', exact=True)
+            stalled_zip.wait_for()
+            stalled_zip.click()
+            deadline = time.monotonic() + 10
+            while not api.zip_deferred and time.monotonic() < deadline:
+                page.wait_for_timeout(100)
+            check('准备中的 ZIP 请求可保持等待',
+                  len(api.zip_deferred) == 1
+                  and stalled_drawer.get_by_text('正在准备 ZIP', exact=False).count() >= 1)
+            stalled_drawer.locator('.el-drawer__close-btn').click()
+            check('准备期间关闭资源面板回到列表', close_clears_scene_query(page))
+
+            long_row.get_by_role('button', name='版本与文件', exact=True).click()
+            reopened_drawer = page.locator('.el-drawer').filter(has_text='所属场景').first
+            reopened_drawer.get_by_role('heading', name='内容版本草稿 · ' + LONG_NAME).wait_for()
+            check('关闭重开的新面板不显示上一对象的准备提示',
+                  reopened_drawer.get_by_text('正在准备 ZIP', exact=False).count() == 0
+                  and reopened_drawer.locator('.el-alert--error').count() == 0)
+            api.zip_deferred.pop().fulfill(
+                status=503, content_type='application/json',
+                body=json.dumps({'code': 'AR_503', 'message': 'ZIP 准备失败，请稍后重试'}, ensure_ascii=False))
+            api.zip_stall = False
+            page.wait_for_timeout(500)
+            check('上一对象的 ZIP 失败不污染新面板',
+                  reopened_drawer.get_by_text('ZIP 准备失败', exact=False).count() == 0
+                  and reopened_drawer.locator('.el-alert--error').count() == 0)
+            reopened_drawer.locator('.el-drawer__close-btn').click()
+            check('下载状态检查后关闭资源面板回到列表', close_clears_scene_query(page))
 
             short_row = page.get_by_role('row').filter(has_text=SHORT_NAME)
             short_row.get_by_role('button', name='停用', exact=True).click()

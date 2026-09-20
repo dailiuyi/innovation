@@ -181,7 +181,7 @@ async function beginZip() {
   zipPosts.length = 0
   zipGets.length = 0
   saved.length = 0
-  run(`selected.value=${JSON.stringify(zipDraft)};error.value='';progressText.value='';zipPreparing.value=false`)
+  run(`selected.value=${JSON.stringify(zipDraft)};error.value='';downloadError.value='';progressText.value='';zipPreparing.value=false`)
   const attempt = run('downloadZip()')
   await tick()
   assert.equal(zipPosts.length, 1)
@@ -214,7 +214,7 @@ for (const [label, error] of [
   const { attempt, post } = await beginZip()
   post.reject(error)
   await attempt
-  assert.equal(run('error.value'), zipTimeout, label)
+  assert.equal(run('downloadError.value'), zipTimeout, label)
   assert.equal(run('progressText.value'), 'ZIP 准备结果未确认，可手动重试', label)
   assert.equal(run('zipPreparing.value'), false, label)
 }
@@ -223,7 +223,7 @@ for (const [label, error] of [
   const { attempt, post } = await beginZip()
   post.reject(axiosError('Request failed with status code 503', { response: { status: 503, data: { code: 'AR_503', message: 'ZIP 准备失败，请稍后重试' } } }))
   await attempt
-  assert.equal(run('error.value'), 'ZIP 准备失败，请稍后重试')
+  assert.equal(run('downloadError.value'), 'ZIP 准备失败，请稍后重试')
   assert.equal(run('progressText.value'), 'ZIP 准备失败，可手动重试')
   assert.equal(run('zipPreparing.value'), false)
 }
@@ -233,7 +233,7 @@ for (const [label, error] of [
   // The response interceptor rejects payload-level failures as plain errors, not axios errors.
   post.reject(new Error('ZIP 准备失败，请稍后重试'))
   await attempt
-  assert.equal(run('error.value'), 'ZIP 准备失败，请稍后重试')
+  assert.equal(run('downloadError.value'), 'ZIP 准备失败，请稍后重试')
   assert.equal(run('zipPreparing.value'), false)
 }
 
@@ -241,7 +241,7 @@ for (const [label, error] of [
   const { attempt, get } = await beginZipDownload()
   get.reject(axiosError('Network Error', { code: 'ERR_NETWORK', request: {} }))
   await attempt
-  assert.equal(run('error.value'), zipDownloadFailed)
+  assert.equal(run('downloadError.value'), zipDownloadFailed)
   assert.equal(run('progressText.value'), 'ZIP 已准备好，下载未完成，可手动重试')
   assert.equal(run('zipPreparing.value'), false)
 }
@@ -250,7 +250,7 @@ for (const [label, error] of [
   const { attempt, get } = await beginZipDownload()
   get.resolve({ data: new Blob(['{"message":"ZIP 已失效，请重新准备下载"}'], { type: 'application/json' }), headers: {} })
   await attempt
-  assert.equal(run('error.value'), zipDownloadFailed)
+  assert.equal(run('downloadError.value'), zipDownloadFailed)
   assert.equal(run('zipPreparing.value'), false)
 }
 
@@ -259,9 +259,9 @@ for (const [label, error] of [
   const { attempt, post } = await beginZip()
   post.reject(axiosError('Request failed with status code 409', { response: { status: 409, data: { code: 'AR_409', message: 'ZIP 正在准备，请稍后重试' } } }))
   await attempt
-  assert.equal(run('error.value'), zipPreparing)
+  assert.equal(run('downloadError.value'), zipPreparing)
   assert.equal(run('progressText.value'), 'ZIP 正在准备，可稍后手动重试')
-  assert.equal(run('error.value').includes('准备失败'), false)
+  assert.equal(run('downloadError.value').includes('准备失败'), false)
   assert.equal(run('zipPreparing.value'), false)
 }
 
@@ -270,8 +270,8 @@ for (const [label, error] of [
   const { attempt, post } = await beginZip()
   post.reject(axiosError('Request failed with status code 409', { response: { status: 409, data: { code: 'AR_409', message: '文件集合已变化，请重新获取清单' } } }))
   await attempt
-  assert.equal(run('error.value'), '文件集合已变化，请重新获取清单')
-  assert.notEqual(run('error.value'), zipPreparing)
+  assert.equal(run('downloadError.value'), '文件集合已变化，请重新获取清单')
+  assert.notEqual(run('downloadError.value'), zipPreparing)
   assert.equal(run('progressText.value'), 'ZIP 准备失败，可手动重试')
   assert.equal(run('zipPreparing.value'), false)
 }
@@ -281,12 +281,12 @@ for (const [label, error] of [
   const first = await beginZip()
   first.post.reject(axiosError('Request failed with status code 504', { response: { status: 504, data: {} } }))
   await first.attempt
-  assert.equal(run('error.value'), zipTimeout)
+  assert.equal(run('downloadError.value'), zipTimeout)
   assert.equal(run('zipPreparing.value'), false)
   const second = await beginZip()
   second.post.reject(axiosError('Request failed with status code 409', { response: { status: 409, data: { code: 'AR_409', message: 'ZIP 正在准备，请稍后重试' } } }))
   await second.attempt
-  assert.equal(run('error.value'), zipPreparing)
+  assert.equal(run('downloadError.value'), zipPreparing)
   assert.equal(run('progressText.value'), 'ZIP 正在准备，可稍后手动重试')
   assert.equal(run('zipPreparing.value'), false)
   const third = await beginZip()
@@ -295,7 +295,7 @@ for (const [label, error] of [
   assert.equal(zipGets.length, 1)
   zipGets.shift().resolve({ data: new Blob([new Uint8Array([4, 5, 6])]), headers: { 'content-disposition': 'attachment; filename=场景A.zip' } })
   await third.attempt
-  assert.equal(run('error.value'), '')
+  assert.equal(run('downloadError.value'), '')
   assert.equal(run('progressText.value'), 'ZIP 已开始下载')
   assert.equal(run('zipPreparing.value'), false)
   assert.deepEqual(saved.map(item => item.name), ['场景A.zip'])
@@ -306,15 +306,112 @@ for (const [label, error] of [
   const { attempt, post } = await beginZip()
   post.reject(axiosError('Request failed with status code 504', { response: { status: 504, data: {} } }))
   await attempt
-  assert.equal(run('error.value'), zipTimeout)
+  assert.equal(run('downloadError.value'), zipTimeout)
   const retry = await beginZip()
   retry.post.resolve({ downloadPath: zipExportPath })
   await tick()
   zipGets.shift().resolve({ data: new Blob([new Uint8Array([1, 2, 3])]), headers: { 'content-disposition': 'attachment; filename=场景A.zip' } })
   await retry.attempt
-  assert.equal(run('error.value'), '')
+  assert.equal(run('downloadError.value'), '')
   assert.equal(run('progressText.value'), 'ZIP 已开始下载')
   assert.equal(run('zipPreparing.value'), false)
   assert.deepEqual(saved.map(item => item.name), ['场景A.zip'])
 }
-console.log('PASS: ZIP prepare timeout/interruption stay unconfirmed, a still-building 409 stays in progress while other conflicts surface, backend failures surface, download failures are separate, the button recovers and retry reuses the prepared ZIP')
+// Switching the viewed draft must drop the previous object's prompt, error and preparing state at once,
+// and a request that lands afterwards must never write back into the new panel.
+props.sceneId = 'scene-a'
+{
+  const { attempt, post } = await beginZip()
+  assert.equal(run('progressText.value'), '正在准备 ZIP')
+  const switching = run("selectDraft('next-draft')")
+  assert.equal(run('progressText.value'), '')
+  assert.equal(run('downloadError.value'), '')
+  assert.equal(run('zipPreparing.value'), false)
+  assert.equal(run('selected.value'), null)
+  await resolveNext('/api/v1/drafts/next-draft', draft('next-draft'))
+  await resolveNext('/api/v1/drafts/next-draft/files', response('next-draft.bin'))
+  await switching
+  assert.equal(run('selected.value.id'), 'next-draft')
+  // A late success must not download through, nor claim the ZIP started, for the new selection.
+  post.resolve({ downloadPath: zipExportPath })
+  await attempt
+  assert.equal(zipGets.length, 0)
+  assert.deepEqual(saved, [])
+  assert.equal(run('progressText.value'), '')
+  assert.equal(run('downloadError.value'), '')
+  assert.equal(run('zipPreparing.value'), false)
+}
+
+// A late failure of the previous object's request must not surface as the new object's error.
+{
+  const { attempt, post } = await beginZip()
+  assert.equal(run('progressText.value'), '正在准备 ZIP')
+  props.sceneId = 'scene-a'
+  const switching = run("selectDraft('next-draft')")
+  await resolveNext('/api/v1/drafts/next-draft', draft('next-draft'))
+  await resolveNext('/api/v1/drafts/next-draft/files', response('next-draft.bin'))
+  await switching
+  post.reject(axiosError('Request failed with status code 503', { response: { status: 503, data: { code: 'AR_503', message: 'ZIP 准备失败，请稍后重试' } } }))
+  await attempt
+  assert.equal(run('downloadError.value'), '')
+  assert.equal(run('error.value'), '')
+  assert.equal(run('progressText.value'), '')
+  assert.equal(run('zipPreparing.value'), false)
+}
+
+// Closing and reopening the panel (scene id cleared) follows the same rule.
+{
+  const { attempt, post } = await beginZip()
+  props.sceneId = ''
+  const closing = sceneChanged('')
+  assert.equal(run('selected.value'), null)
+  assert.equal(run('progressText.value'), '')
+  assert.equal(run('downloadError.value'), '')
+  assert.equal(run('zipPreparing.value'), false)
+  await closing
+  post.reject(axiosError('Network Error', { code: 'ERR_NETWORK', request: {} }))
+  await attempt
+  assert.equal(run('downloadError.value'), '')
+  assert.equal(run('progressText.value'), '')
+  assert.equal(run('zipPreparing.value'), false)
+}
+
+// The manifest and single-file downloads are invalidated the same way, while the current object still reports failures.
+props.sceneId = 'scene-a'
+{
+  pending.length = 0
+  zipGets.length = 0
+  run(`selected.value=${JSON.stringify(zipDraft)};error.value='';downloadError.value='';progressText.value=''`)
+  const manifestAttempt = run('showManifest()')
+  const switching = run("selectDraft('next-draft')")
+  await resolveNext('/api/v1/drafts/zip-draft/download-manifest', { collectionId: 'collection-a', fileCount: 1, totalBytes: 1, files: [] })
+  await resolveNext('/api/v1/drafts/next-draft', draft('next-draft'))
+  await resolveNext('/api/v1/drafts/next-draft/files', response('next-draft.bin'))
+  await Promise.all([manifestAttempt, switching])
+  assert.equal(run('manifestVisible.value'), false)
+  assert.equal(run('manifest.value'), null)
+
+  saved.length = 0
+  const stale = run("downloadOne({id:'file-1',fileName:'one.bin'})")
+  await tick()
+  assert.equal(zipGets.length, 1)
+  const staleGet = zipGets.shift()
+  const switchingAgain = run("selectDraft('third-draft')")
+  await resolveNext('/api/v1/drafts/third-draft', draft('third-draft'))
+  await resolveNext('/api/v1/drafts/third-draft/files', response('third-draft.bin'))
+  await switchingAgain
+  staleGet.reject(new Error('网络中断'))
+  await stale
+  assert.equal(run('downloadError.value'), '')
+  assert.equal(run('error.value'), '')
+  assert.deepEqual(saved, [])
+
+  const kept = run("downloadOne({id:'file-2',fileName:'two.bin'})")
+  await tick()
+  assert.equal(zipGets.length, 1)
+  zipGets.shift().reject(new Error('网络中断'))
+  await kept
+  assert.equal(run('downloadError.value'), '网络中断')
+  run("downloadError.value=''")
+}
+console.log('PASS: ZIP prepare timeout/interruption stay unconfirmed, a still-building 409 stays in progress while other conflicts surface, backend failures surface, download failures are separate, the button recovers and retry reuses the prepared ZIP; switching the viewed draft, version or scene clears the previous prompt, error and preparing state, and late success or failure never writes back')
