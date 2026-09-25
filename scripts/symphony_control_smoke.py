@@ -59,7 +59,7 @@ def main():
               *mounts, '--entrypoint', 'python3']
     # Clone with the execution platform's Git/line endings, just like Symphony.
     subprocess.run([*common[:-2], '--entrypoint', 'git', image, 'clone', '--depth', '1',
-                    'https://github.com/dailiuyi/innovation.git', '.'], check=True)
+                    'https://github.com/dailiuyi/innovation-ar-resource-platform.git', '.'], check=True)
     subprocess.run([*common, image, '/opt/symphony-tools/prepare_workspace.py'], check=True)
     command = [*common[:-2], '--name', name, '-i',
                '--mount', f'type=bind,source={home / "data/codex"},target=/home/node/.codex',

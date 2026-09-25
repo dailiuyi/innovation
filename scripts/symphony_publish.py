@@ -12,7 +12,7 @@ import re
 import subprocess
 import sys
 
-REPO = '/repos/dailiuyi/innovation'
+REPO = '/repos/dailiuyi/innovation-ar-resource-platform'
 TOOL_NAME = 'github_publish_files'
 TOOL_SPEC = {
     'name': TOOL_NAME,

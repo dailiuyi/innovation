@@ -1,7 +1,7 @@
 <template>
   <div class="app-container home-page">
     <el-card shadow="never" class="intro-card">
-      <h1>AR 场景管理</h1>
+      <h1>innovation-ar-resource-platform</h1>
       <p>管理场景信息、上传和校验资源文件、发布场景版本，以及管理团队账号和查看操作记录。</p>
       <el-button v-if="canOpen(entries[0])" type="primary" @click="router.push(entries[0].path)">进入场景管理</el-button>
     </el-card>

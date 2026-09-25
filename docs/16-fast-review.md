@@ -14,14 +14,14 @@
 统一用同一个 Windows 用户执行，必要时授权沙箱外运行；不在沙箱账号与宿主账号间反复建立 Git 快照。命令不依赖当前目录：
 
 ```powershell
-python E:/code/java/innovation/scripts/review.py prepare --pr 8
+python E:/code/java/innovation-ar-resource-platform/scripts/review.py prepare --pr 8
 # SHA 替换为 prepare 返回的完整提交号。
 # 在 check 前完成该 SHA 的独立代码审查；有阻断缺陷则报告，不启动验收实例。
-python E:/code/java/innovation/scripts/review.py check --pr 8 --sha SHA --suite auto
+python E:/code/java/innovation-ar-resource-platform/scripts/review.py check --pr 8 --sha SHA --suite auto
 # 独立审查者确认无阻断问题后执行。
-python E:/code/java/innovation/scripts/review.py serve --pr 8 --sha SHA --reviewed-sha SHA
-python E:/code/java/innovation/scripts/review.py status --pr 8 --sha SHA
-python E:/code/java/innovation/scripts/review.py stop --pr 8 --sha SHA
+python E:/code/java/innovation-ar-resource-platform/scripts/review.py serve --pr 8 --sha SHA --reviewed-sha SHA
+python E:/code/java/innovation-ar-resource-platform/scripts/review.py status --pr 8 --sha SHA
+python E:/code/java/innovation-ar-resource-platform/scripts/review.py stop --pr 8 --sha SHA
 ```
 
 工作区在 `.local/reviews/pr-编号/完整SHA/source`。每个提交独立检出，不覆盖脏目录、不切换主工作区。Python/JDK/PostgreSQL/Maven 来自宿主机 `.local`；npm 在审查目录独立安装并共享下载缓存。缺失 Maven 缓存时明确失败，确认后用 `check ... --online` 显式补齐依赖。预览运行期间拒绝重建，先停止再验证。

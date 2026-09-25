@@ -1,4 +1,4 @@
-"""Container checks against ONLY innovation-infra-check on loopback:18082.
+"""Container checks against ONLY innovation-ar-resource-platform-infra-check on loopback:18082.
 
 Creates synthetic data in the isolated test project. --recreate also recreates its
 containers to check named volumes. Never points at the existing local Demo.
@@ -15,7 +15,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_FILE = ROOT / 'config/compose-test.env'
-COMPOSE = ['docker', 'compose', '-p', 'innovation-infra-check', '--env-file', str(ENV_FILE),
+COMPOSE = ['docker', 'compose', '-p', 'innovation-ar-resource-platform-infra-check', '--env-file', str(ENV_FILE),
            '-f', str(ROOT / 'compose.yaml')]
 BASE = 'http://127.0.0.1:18082'
 checks = []
@@ -122,7 +122,7 @@ def main():
         actual = command(['exec', '-T', 'backend', 'cat', '/data/artifacts/committed/' + fixture_name])
         check('artifact bytes survive container recreation', hashlib.sha256(actual).digest() == hashlib.sha256(fixture).digest())
     report = {
-        'stage': 'infrastructure', 'project': 'innovation-infra-check',
+        'stage': 'infrastructure', 'project': 'innovation-ar-resource-platform-infra-check',
         'containerRecreationTested': args.recreate, 'checks': checks,
         'limitations': ['No real artifact/client contract', 'No upload/publication/download APIs',
                         'No real disk-full or power-loss test', 'No physical Linux host migration'],

@@ -17,7 +17,7 @@ import frontend_control
 
 ROOT = Path(__file__).resolve().parents[1]
 RESOURCES = ROOT
-REMOTE = 'https://github.com/dailiuyi/innovation.git'
+REMOTE = 'https://github.com/dailiuyi/innovation-ar-resource-platform.git'
 
 
 def run(args, cwd=ROOT, env=None):
@@ -84,7 +84,7 @@ def environment():
 
 def prepare(pr, extra_suites=()):
     sha = remote_head(pr)
-    metadata = json.loads(run(['gh', 'pr', 'view', str(pr), '--repo', 'dailiuyi/innovation',
+    metadata = json.loads(run(['gh', 'pr', 'view', str(pr), '--repo', 'dailiuyi/innovation-ar-resource-platform',
                               '--json', 'headRefOid,files']))
     if metadata['headRefOid'] != sha:
         raise RuntimeError('PR changed while preparing')

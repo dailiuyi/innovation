@@ -41,11 +41,13 @@ docker compose --env-file config/compose.env ps
 
 实际卷名含 Compose 项目前缀。项目名称保持稳定，否则会创建另一组卷。重建容器保留命名卷；`down -v` 会删除卷，不用于日常更新。
 
+当前 Compose 项目名为 `innovation-ar-resource-platform`，数据库名为 `innovation_ar_resource_platform`。数据库登录角色沿用 `innovation`；已有部署改名时必须先备份并迁移原有四个命名卷，不能直接用新项目名启动空卷。本机 2026-09-25 的迁移与保留的旧卷见 [验证记录](06-validation.md)。
+
 后端以 UID/GID 10001 运行。数据库和 Redis 不映射宿主端口，服务间使用 internal 网络；网关是唯一宿主入口。Nginx 不挂载成品卷，预留的成品路径直接返回 404，尚未提供 `X-Accel-Redirect` 或 Range 成品下载。Redis 的 `/data` 使用 tmpfs，不持久化登录会话，重启后重新登录。
 
 PostgreSQL 当前延续 Demo 的初始化/运行同账号模式，该账号拥有较高权限。本阶段用于单机内网 MVP；后续权限拆分需另立迁移方案。健康检查用于确认进程/基础接口可用，不代表客户端业务验收。
 
-镜像使用明确版本标签；应用镜像为 `innovation-backend:infra-v1`、`innovation-gateway:infra-v1`。迁移时应传输实际已验收的镜像并核对镜像 ID，不能把同名标签当作内容相同的证明。
+镜像使用明确版本标签；应用镜像为 `innovation-ar-resource-platform-backend:infra-v1`、`innovation-ar-resource-platform-gateway:infra-v1`。迁移时应传输实际已验收的镜像并核对镜像 ID，不能把同名标签当作内容相同的证明。
 
 ## 存储组件约定
 
@@ -73,9 +75,9 @@ mvn -f backend/pom.xml -Dmaven.repo.local=.local/m2 -pl ruoyi-ar -am test -B -nt
 
 ```powershell
 python scripts/prepare_compose.py --test --max-bytes 1048576
-docker compose -p innovation-infra-check --env-file config/compose-test.env up -d --build
+docker compose -p innovation-ar-resource-platform-infra-check --env-file config/compose-test.env up -d --build
 python scripts/verify_infrastructure.py --recreate
-docker compose -p innovation-infra-check --env-file config/compose-test.env stop
+docker compose -p innovation-ar-resource-platform-infra-check --env-file config/compose-test.env stop
 ```
 
 准备脚本拒绝覆盖已存在的配置，重复验收时跳过第一行。不要在这个专用测试项目中创建日常管理员，测试脚本使用它的引导账号。`--recreate` 重建该项目的容器并验证场景记录及合成文件保留，不删除卷。
@@ -88,7 +90,7 @@ docker compose -p innovation-infra-check --env-file config/compose-test.env stop
 
 1. 记录代码、实际镜像 ID、数据库版本、Compose 配置和持久卷清单。通过 `docker image save`/`load` 传输已验收应用及依赖镜像，目标架构必须兼容；配置与密钥通过私有渠道传输。
 2. 停止源环境网关与后端，保持 PostgreSQL 运行。确认没有其他文件写入者。
-3. 在 PostgreSQL 容器中用 `pg_dump -U innovation -d innovation -Fc -f /tmp/innovation.dump` 导出，再用 `docker compose cp` 复制到宿主。避免 PowerShell 文本重定向处理二进制 dump。
+3. 在 PostgreSQL 容器中用 `pg_dump -U innovation -d innovation_ar_resource_platform -Fc -f /tmp/innovation-ar-resource-platform.dump` 导出，再用 `docker compose cp` 复制到宿主。避免 PowerShell 文本重定向处理二进制 dump。
 4. 用一次性维护容器只读挂载成品卷，归档所有文件，并记录相对路径、大小、SHA256。保留暂存状态供后续排查；只迁移文件不改变其业务状态。框架文件及需保留的日志单独归档。
 5. 目标启动新 PostgreSQL，在尚未启动后端的空库中执行 `pg_restore --exit-on-error --no-owner --no-privileges`；不要向已有业务库直接恢复。成品恢复到新命名卷，恢复后端 UID/GID 10001 的读写权限。
 6. 核对数据库记录和逐文件摘要，启动相同版本应用，检查登录、场景和审计。未来资源模块接入后，还必须核对文件引用、发布关系和真实客户端下载。

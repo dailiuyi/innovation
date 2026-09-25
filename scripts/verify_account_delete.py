@@ -1,4 +1,4 @@
-"""Real browser/API checks; only the innovation-infra-check database is modified."""
+"""Real browser/API checks; only the innovation-ar-resource-platform-infra-check database is modified."""
 import json
 import secrets
 import time

@@ -2,7 +2,7 @@
 tracker:
   kind: github
   provider:
-    repo: dailiuyi/innovation
+    repo: dailiuyi/innovation-ar-resource-platform
     token: $GITHUB_TOKEN
   active_states: [open]
   terminal_states: [closed]
@@ -14,7 +14,7 @@ workspace:
 hooks:
   after_create: |
     set -eu
-    git clone --depth 1 https://github.com/dailiuyi/innovation.git .
+    git clone --depth 1 https://github.com/dailiuyi/innovation-ar-resource-platform.git .
     git config user.name "Symphony Agent"
     git config user.email "symphony-agent@users.noreply.github.com"
   before_run: |

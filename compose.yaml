@@ -1,4 +1,4 @@
-name: innovation
+name: innovation-ar-resource-platform
 
 x-logging: &logging
   driver: json-file
@@ -11,7 +11,7 @@ services:
     image: postgres:17.6-bookworm
     restart: unless-stopped
     environment:
-      POSTGRES_DB: innovation
+      POSTGRES_DB: innovation_ar_resource_platform
       POSTGRES_USER: innovation
       POSTGRES_PASSWORD: ${AR_DATABASE_PASSWORD:?Set AR_DATABASE_PASSWORD in a private env file}
       TZ: UTC
@@ -40,13 +40,13 @@ services:
     logging: *logging
 
   backend:
-    image: innovation-backend:infra-v1
+    image: innovation-ar-resource-platform-backend:infra-v1
     build:
       context: .
       dockerfile: deploy/backend.Dockerfile
     restart: unless-stopped
     environment:
-      AR_DATABASE_URL: jdbc:postgresql://postgres:5432/innovation
+      AR_DATABASE_URL: jdbc:postgresql://postgres:5432/innovation_ar_resource_platform
       AR_DATABASE_USER: innovation
       AR_DATABASE_PASSWORD: ${AR_DATABASE_PASSWORD:?Set AR_DATABASE_PASSWORD}
       AR_TOKEN_SECRET: ${AR_TOKEN_SECRET:?Set AR_TOKEN_SECRET}
@@ -76,7 +76,7 @@ services:
     logging: *logging
 
   gateway:
-    image: innovation-gateway:infra-v1
+    image: innovation-ar-resource-platform-gateway:infra-v1
     build:
       context: .
       dockerfile: deploy/gateway.Dockerfile

@@ -406,3 +406,11 @@ python scripts/verify_database.py --pg-bin 'C:/Program Files/PostgreSQL/17/bin'
 - 两路吞吐约提升 16%，内存余量有限，因此仍允许 4 个编码 Agent，控制器默认最多 1 路重构建；等待不计入命令超时，可取消，文件锁随进程退出释放。不引入新 Worker/服务。
 - 首次并发实验在卷权限阶段失败；随后发现复制夹具过度排除依赖包 dist，Java 通过但 Vite 缺文件。已修复空卷初始化与复制范围，增加回归与复制后依赖哈希校验，使用新空目录完成上述实验。失败记录保留，没有放宽业务断言。
 - 证据 `.local/symphony/environment-lock-validation/`；成功实验 `concurrency-report.json`，轻量自检 `doctor-final.log`、`task-gate-integration.json`，Linux 测试 `linux-tests.log`。回退容器 `innovation-symphony-before-environment-lock`、原脚本 rollback 与镜像/补丁 recovery 保留。限制：没有四路压力、冷下载、HTTP/数据库/浏览器验收结论，未合并或部署 Demo。
+
+## 2026-09-25 项目更名与 Compose 数据迁移
+
+- 基线 HEAD 为 `360632e21e77b26e57ef82bab189bc66386d89fe`。根项目元数据、前端标题、文档及自动化引用改为 `innovation-ar-resource-platform`；GitHub 仓库已更名，`origin` 指向新地址，`git ls-remote origin HEAD` 与基线一致。GitLab 私有项目的名称与路径已在网页更名，本地 `gitlab` 远端地址同步更新。保留此前已有的未提交修改；本次源码提交和远端同步以 Git 历史为准。
+- Compose 项目名与应用镜像名已更改，数据库由 `innovation` 改为 `innovation_ar_resource_platform`。数据库登录角色仍为 `innovation`。迁移前的 PostgreSQL 17.6 自定义格式备份保存在 `.local/rename-20260925/innovation-before-rename.dump`，SHA-256 为 `29FF5C2556A24FCCF0A16A2A1245172DB4917B3E8665292ACC918F1FE87649DB`；`pg_restore -l` 可读取。原 `innovation_` 四个命名卷未删除，新项目四个卷的文件清单与复制时源卷逐文件摘要一致。
+- 在新命名卷的数据库中核对公共表 24 张，`ar_audit=199`、`ar_draft=4`、`ar_draft_file=57`、`ar_scene=4`、`sys_user=3`，与迁移前一致。执行 `docker compose -f compose.yaml --env-file config/compose.env build backend gateway` 和 `up -d --wait --wait-timeout 180` 成功；PostgreSQL、Redis、后端、网关四个服务均 healthy。`http://192.168.0.12:43174/` 返回 HTTP 200 且页面标题为新名称，`/prod-api/captchaImage` 返回业务码 200。
+- `python scripts/check_java.py --module ruoyi-ar` 的 22 项测试通过，报告在 `.local/java-check/1d09cc3af862/report.json`。`python scripts/agent_check.py --profile frontend` 通过 quick、契约、专项前端检查及生产构建输入/产物复核，报告在 `.local/harness/20260925T065125Z-p8vme4sp/report.json`，该轮源码指纹 `118e6dd59ce86e33ce0ab359cb8c9c821f8ad4a949a38ed441c97dfbeaf3d03a`、`sourceUnchanged=true`；本条验证文档在该轮之后补记。
+- 限制：未执行真实账号登录、第二台局域网设备或客户端加载验收。原卷与备份作为回退材料保留；若新库已有新增写入，回退前需先处理数据差异。数据库角色重命名未完成，本次不修改其登录凭据。本机目录已更名为 `E:\code\java\innovation-ar-resource-platform`；Codex 桌面应用保存的项目入口另行核对。

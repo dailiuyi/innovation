@@ -35,7 +35,7 @@ Administrator publication is one published draft pointer per scene: files freeze
 - `database/migrations/`: historical candidate SQL, not current application migrations.
 - `contracts/`: generated OpenAPI and historical candidate manifest examples. Edit `scripts/generate_contracts.py`, then regenerate; never fix drift only in generated files.
 - `scripts/`: development, contract and acceptance tooling; `harness.py` is the common check entrypoint.
-- `compose.yaml`, `deploy/`: single-host containers; container tests must use isolated `innovation-infra-check` resources.
+- `compose.yaml`, `deploy/`: single-host containers; container tests must use isolated `innovation-ar-resource-platform-infra-check` resources.
 - `.local/`: ignored runtime, logs, harness evidence and secrets. Never commit or print credentials.
 - Root images and notes are user references; preserve unrelated files and worktree changes.
 

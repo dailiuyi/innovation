@@ -53,7 +53,7 @@ class Remote:
 
     @staticmethod
     def test_scope(path):
-        assert path.startswith('/repos/dailiuyi/innovation/')
+        assert path.startswith('/repos/dailiuyi/innovation-ar-resource-platform/')
 
 
 def run(root, args, remote):
@@ -188,7 +188,7 @@ class PublishTests(unittest.TestCase):
     def test_manual_blob_fallback_rejected(self):
         bridge = adapter.Bridge([])
         bridge.child = SimpleNamespace(stdin=io.BytesIO())
-        for path in ('/repos/dailiuyi/innovation/git/blobs', '/repos/dailiuyi/innovation/contents/x'):
+        for path in ('/repos/dailiuyi/innovation-ar-resource-platform/git/blobs', '/repos/dailiuyi/innovation-ar-resource-platform/contents/x'):
             bridge.handle_child({'id': 11, 'method': 'item/tool/call', 'params': {
                 'name': 'github_api', 'arguments': {'method': 'POST', 'path': path, 'body': {'content': 'large'}}}})
         replies = bridge.child.stdin.getvalue().splitlines()
